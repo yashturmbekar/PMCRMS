@@ -370,6 +370,35 @@ export const StructuralEngineerRegistrationPage = () => {
     }
   };
 
+  const handleSaveAsDraft = async () => {
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // TODO: Implement actual API call to save draft
+      console.log("Saving as Draft:", formData);
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      setSuccess(
+        "Application saved as draft successfully! You can continue editing later."
+      );
+
+      // Navigate to applications page after 2 seconds
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to save draft";
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getTotalExperience = () => {
     const total = formData.experiences.reduce(
       (sum, exp) => sum + exp.yearsOfExperience,
@@ -382,17 +411,24 @@ export const StructuralEngineerRegistrationPage = () => {
 
   return (
     <div className="pmc-fadeIn">
-      {/* Header Section */}
-      <div className="pmc-content-header pmc-fadeInDown">
+      {/* Header Section - Compact */}
+      <div
+        className="pmc-content-header pmc-fadeInDown"
+        style={{ marginBottom: "16px" }}
+      >
         <h1
-          className="pmc-content-title pmc-text-3xl pmc-font-bold"
-          style={{ color: "var(--pmc-gray-900)" }}
+          className="pmc-content-title"
+          style={{
+            color: "var(--pmc-gray-900)",
+            fontSize: "24px",
+            marginBottom: "4px",
+          }}
         >
           🏗️ Structural Engineer Registration
         </h1>
         <p
-          className="pmc-content-subtitle pmc-text-base"
-          style={{ color: "var(--pmc-gray-600)" }}
+          className="pmc-content-subtitle"
+          style={{ color: "var(--pmc-gray-600)", fontSize: "13px" }}
         >
           Complete all sections to register as a Structural Engineer with PMC
         </p>
@@ -404,20 +440,21 @@ export const StructuralEngineerRegistrationPage = () => {
           <div
             className="pmc-fadeIn"
             style={{
-              padding: "16px 20px",
-              marginBottom: "24px",
+              padding: "12px 16px",
+              marginBottom: "16px",
               background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
               border: "1px solid #86efac",
-              borderRadius: "12px",
+              borderRadius: "8px",
               color: "#166534",
               fontWeight: 500,
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: "10px",
+              fontSize: "13px",
             }}
           >
             <svg
-              style={{ width: "20px", height: "20px", flexShrink: 0 }}
+              style={{ width: "18px", height: "18px", flexShrink: 0 }}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -434,20 +471,21 @@ export const StructuralEngineerRegistrationPage = () => {
           <div
             className="pmc-fadeIn"
             style={{
-              padding: "16px 20px",
-              marginBottom: "24px",
+              padding: "12px 16px",
+              marginBottom: "16px",
               background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
               border: "1px solid #fca5a5",
-              borderRadius: "12px",
+              borderRadius: "8px",
               color: "#991b1b",
               fontWeight: 500,
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: "10px",
+              fontSize: "13px",
             }}
           >
             <svg
-              style={{ width: "20px", height: "20px", flexShrink: 0 }}
+              style={{ width: "18px", height: "18px", flexShrink: 0 }}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -465,7 +503,7 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Basic Information */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
@@ -473,6 +511,7 @@ export const StructuralEngineerRegistrationPage = () => {
                 background:
                   "linear-gradient(135deg, var(--pmc-primary) 0%, var(--pmc-primary-dark) 100%)",
                 color: "white",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -481,20 +520,27 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
+                  gap: "8px",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  margin: 0,
                 }}
               >
-                <span style={{ fontSize: "24px" }}>📋</span>
+                <span style={{ fontSize: "16px" }}>📋</span>
                 Basic Information
               </h2>
               <p
                 className="pmc-card-subtitle"
-                style={{ color: "rgba(255, 255, 255, 0.9)" }}
+                style={{
+                  color: "rgba(255, 255, 255, 0.9)",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
+                }}
               >
                 Position selection and fee information
               </p>
             </div>
-            <div className="pmc-card-body">
+            <div className="pmc-card-body" style={{ padding: "16px" }}>
               <div className="pmc-form-grid pmc-form-grid-2">
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -616,14 +662,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Personal Details */}
           <div
             className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -632,8 +678,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -645,8 +691,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Enter your personal information
@@ -907,14 +953,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Local Address */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -923,8 +969,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -936,8 +982,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Provide your current residential address
@@ -1077,14 +1123,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Permanent Address */}
           <div
             className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -1093,8 +1139,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -1106,8 +1152,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Enter your permanent residence details
@@ -1275,14 +1321,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* PAN Information */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
+                background: "linear-gradient(135deg, #0369a1 0%, #075985 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -1291,8 +1337,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -1304,8 +1350,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Enter your Permanent Account Number details
@@ -1361,14 +1407,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Aadhar Information */}
           <div
             className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #ec4899 0%, #db2777 100%)",
+                background: "linear-gradient(135deg, #be123c 0%, #9f1239 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -1377,8 +1423,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -1390,8 +1436,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Provide your Aadhaar card details
@@ -1447,14 +1493,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Qualifications */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                background: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <div
@@ -1471,8 +1517,8 @@ export const StructuralEngineerRegistrationPage = () => {
                       color: "white",
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
-                      fontSize: "20px",
+                      gap: "8px",
+                      fontSize: "16px",
                       fontWeight: "600",
                       margin: 0,
                     }}
@@ -1484,8 +1530,8 @@ export const StructuralEngineerRegistrationPage = () => {
                     className="pmc-card-subtitle"
                     style={{
                       color: "rgba(255, 255, 255, 0.9)",
-                      fontSize: "14px",
-                      margin: "4px 0 0 0",
+                      fontSize: "13px",
+                      margin: "2px 0 0 0",
                     }}
                   >
                     Add your educational qualifications
@@ -1511,7 +1557,7 @@ export const StructuralEngineerRegistrationPage = () => {
                 <div
                   key={qual.fileId}
                   style={{
-                    marginBottom: "24px",
+                    marginBottom: "12px",
                     padding: "20px",
                     background: "#f8fafc",
                     borderRadius: "12px",
@@ -1710,14 +1756,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Experience */}
           <div
             className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <div
@@ -1734,8 +1780,8 @@ export const StructuralEngineerRegistrationPage = () => {
                       color: "white",
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
-                      fontSize: "20px",
+                      gap: "8px",
+                      fontSize: "16px",
                       fontWeight: "600",
                       margin: 0,
                     }}
@@ -1747,8 +1793,8 @@ export const StructuralEngineerRegistrationPage = () => {
                     className="pmc-card-subtitle"
                     style={{
                       color: "rgba(255, 255, 255, 0.9)",
-                      fontSize: "14px",
-                      margin: "4px 0 0 0",
+                      fontSize: "13px",
+                      margin: "2px 0 0 0",
                     }}
                   >
                     Add your professional work experience
@@ -1774,7 +1820,7 @@ export const StructuralEngineerRegistrationPage = () => {
                 <div
                   key={exp.fileId}
                   style={{
-                    marginBottom: "24px",
+                    marginBottom: "12px",
                     padding: "20px",
                     background: "#f8fafc",
                     borderRadius: "12px",
@@ -1933,7 +1979,7 @@ export const StructuralEngineerRegistrationPage = () => {
                         padding: "12px",
                         background: "#dbeafe",
                         borderRadius: "8px",
-                        fontSize: "14px",
+                        fontSize: "13px",
                         fontWeight: 600,
                         color: "#1e40af",
                       }}
@@ -1965,14 +2011,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Additional Documents */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -1981,8 +2027,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -1994,8 +2040,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Upload any additional supporting documents
@@ -2038,14 +2084,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Self Declaration */}
           <div
             className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -2054,8 +2100,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -2067,8 +2113,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Download, fill, and upload the self declaration form
@@ -2113,14 +2159,14 @@ export const StructuralEngineerRegistrationPage = () => {
           {/* Upload Profile Picture */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "24px" }}
+            style={{ marginBottom: "12px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)",
+                background: "linear-gradient(135deg, #0369a1 0%, #075985 100%)",
                 color: "white",
-                padding: "20px 24px",
+                padding: "12px 16px",
               }}
             >
               <h2
@@ -2129,8 +2175,8 @@ export const StructuralEngineerRegistrationPage = () => {
                   color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "12px",
-                  fontSize: "20px",
+                  gap: "8px",
+                  fontSize: "16px",
                   fontWeight: "600",
                   margin: 0,
                 }}
@@ -2142,8 +2188,8 @@ export const StructuralEngineerRegistrationPage = () => {
                 className="pmc-card-subtitle"
                 style={{
                   color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "14px",
-                  margin: "4px 0 0 0",
+                  fontSize: "13px",
+                  margin: "2px 0 0 0",
                 }}
               >
                 Upload a clear photo (Max 500KB, JPG/PNG format)
@@ -2174,33 +2220,38 @@ export const StructuralEngineerRegistrationPage = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Buttons */}
           <div
             style={{
-              textAlign: "center",
-              marginTop: "48px",
-              marginBottom: "24px",
+              display: "flex",
+              justifyContent: "center",
+              gap: "12px",
+              marginTop: "24px",
+              marginBottom: "12px",
+              flexWrap: "wrap",
             }}
           >
+            {/* Save as Draft Button */}
             <button
-              type="submit"
+              type="button"
+              onClick={handleSaveAsDraft}
               className="pmc-button pmc-button-lg"
               disabled={loading}
               style={{
-                minWidth: "250px",
+                minWidth: "180px",
                 background: loading
                   ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
-                  : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  : "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
                 border: "none",
                 color: "white",
                 fontWeight: "700",
-                fontSize: "16px",
-                padding: "16px 48px",
-                borderRadius: "12px",
+                fontSize: "15px",
+                padding: "12px 28px",
+                borderRadius: "10px",
                 cursor: loading ? "not-allowed" : "pointer",
                 boxShadow: loading
                   ? "none"
-                  : "0 10px 25px rgba(16, 185, 129, 0.3)",
+                  : "0 8px 20px rgba(245, 158, 11, 0.3)",
                 transition: "all 0.3s ease",
                 transform: loading ? "none" : "translateY(0)",
               }}
@@ -2208,14 +2259,55 @@ export const StructuralEngineerRegistrationPage = () => {
                 if (!loading) {
                   e.currentTarget.style.transform = "translateY(-2px)";
                   e.currentTarget.style.boxShadow =
-                    "0 15px 30px rgba(16, 185, 129, 0.4)";
+                    "0 12px 25px rgba(245, 158, 11, 0.4)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (!loading) {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.boxShadow =
-                    "0 10px 25px rgba(16, 185, 129, 0.3)";
+                    "0 8px 20px rgba(245, 158, 11, 0.3)";
+                }
+              }}
+            >
+              {loading ? "⏳ Saving..." : "💾 SAVE AS DRAFT"}
+            </button>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              className="pmc-button pmc-button-lg"
+              disabled={loading}
+              style={{
+                minWidth: "180px",
+                background: loading
+                  ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+                  : "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+                border: "none",
+                color: "white",
+                fontWeight: "700",
+                fontSize: "15px",
+                padding: "12px 28px",
+                borderRadius: "10px",
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: loading
+                  ? "none"
+                  : "0 8px 20px rgba(16, 185, 129, 0.3)",
+                transition: "all 0.3s ease",
+                transform: loading ? "none" : "translateY(0)",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 25px rgba(16, 185, 129, 0.4)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 20px rgba(16, 185, 129, 0.3)";
                 }
               }}
             >
@@ -2227,3 +2319,9 @@ export const StructuralEngineerRegistrationPage = () => {
     </div>
   );
 };
+
+
+
+
+
+

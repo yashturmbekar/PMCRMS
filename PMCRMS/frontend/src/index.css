@@ -224,14 +224,14 @@ body {
 .pmc-form-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .pmc-input {
   width: 100%;
-  padding: 14px 16px;
+  padding: 10px 12px;
   border: 2px solid var(--pmc-gray-300);
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 400;
   color: var(--pmc-gray-800);
@@ -734,26 +734,26 @@ body {
 }
 
 .pmc-card-header {
-  padding: 20px 24px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--pmc-gray-200);
   background: var(--pmc-gray-50);
 }
 
 .pmc-card-title {
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--pmc-gray-800);
   margin: 0;
 }
 
 .pmc-card-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--pmc-gray-600);
-  margin: 4px 0 0 0;
+  margin: 2px 0 0 0;
 }
 
 .pmc-card-body {
-  padding: 24px;
+  padding: 16px;
 }
 
 .pmc-card-footer {
