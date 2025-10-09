@@ -3,11 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+  // Get user data from the correct localStorage keys used in LoginPage
+  const user = JSON.parse(localStorage.getItem("pmcrms_user") || "{}");
 
   const handleLogout = () => {
-    localStorage.removeItem("auth-token");
-    localStorage.removeItem("user");
+    localStorage.removeItem("pmcrms_token");
+    localStorage.removeItem("pmcrms_user");
     navigate("/login");
   };
 
