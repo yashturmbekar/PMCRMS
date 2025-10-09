@@ -1,0 +1,13 @@
+**/.dockerignore
+**/.env
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/logs
+**/uploads
+**/*.md
+**/appsettings.Development.json
+**/node_modules
