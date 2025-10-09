@@ -142,8 +142,17 @@ const Dashboard: React.FC = () => {
 
   const handleCreateForm = (positionType: PositionTypeValue) => {
     setShowDropdown(false);
-    // Navigate to structural engineer registration with position type
-    navigate(`/register-structural-engineer?type=${positionType}`);
+
+    // Map position type to URL-friendly string
+    const positionRoutes: Record<PositionTypeValue, string> = {
+      [PositionType.Architect]: "architect",
+      [PositionType.LicenceEngineer]: "licence-engineer",
+      [PositionType.StructuralEngineer]: "structural-engineer",
+      [PositionType.Supervisor1]: "supervisor1",
+      [PositionType.Supervisor2]: "supervisor2",
+    };
+
+    navigate(`/register/${positionRoutes[positionType]}`);
   };
 
   const getStatusBadge = (stage: ApplicationStageValue) => {

@@ -7,7 +7,7 @@ import {
 import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
-import { StructuralEngineerRegistrationPage } from "./pages/StructuralEngineerRegistrationPage";
+import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { Layout } from "./components/Layout";
@@ -59,11 +59,22 @@ function App() {
               }
             />
             <Route
+              path="/register/:positionType"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PositionRegistrationPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            {/* Legacy route for backwards compatibility */}
+            <Route
               path="/register-structural-engineer"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <StructuralEngineerRegistrationPage />
+                    <PositionRegistrationPage />
                   </Layout>
                 </ProtectedRoute>
               }

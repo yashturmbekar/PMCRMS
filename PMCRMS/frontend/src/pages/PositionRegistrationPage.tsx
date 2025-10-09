@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 // Enums matching backend
@@ -10,6 +10,200 @@ const PositionType = {
   Supervisor1: 3,
   Supervisor2: 4,
 } as const;
+
+// Position Configuration
+const POSITION_CONFIG = {
+  [PositionType.Architect]: {
+    name: "Architect",
+    icon: "🏛️",
+    fee: 0, // No fee mentioned
+    feeDuration: "3 years",
+    sections: {
+      basicInfo: true,
+      personalDetails: true,
+      localAddress: true,
+      permanentAddress: true,
+      panCard: true,
+      aadharCard: true,
+      qualifications: true,
+      experience: false,
+      coaCertificate: true, // Council of Architecture Certificate
+      isseCertificate: false,
+      propertyTaxReceipt: true,
+      additionalDocuments: true,
+      selfDeclaration: true,
+      profilePicture: true,
+    },
+    qualificationInfo: `A) The qualifications for Licensing Engineer will be the corporate membership (Civil) of the Institution of Engineers or such Degree or Diploma in Civil or Structural Engineering or equivalent.
+B) Diploma in Civil Engineering or equivalent, having experience of 10 years in the field of land and building planning. (AS PER DCPR RULE C-3.1)`,
+    scope: undefined,
+    documentsRequired: [
+      "Council of Architecture Certificate",
+      "Degree Certificate",
+      "Marksheet",
+      "Address Proof",
+      "Identity Proof",
+      "Self Declaration Form",
+    ],
+  },
+  [PositionType.LicenceEngineer]: {
+    name: "Licence Engineer",
+    icon: "⚙️",
+    fee: 3000,
+    feeDuration: "3 years",
+    sections: {
+      basicInfo: true,
+      personalDetails: true,
+      localAddress: true,
+      permanentAddress: true,
+      panCard: true,
+      aadharCard: true,
+      qualifications: true,
+      experience: true,
+      coaCertificate: false,
+      isseCertificate: false,
+      propertyTaxReceipt: true,
+      additionalDocuments: true,
+      selfDeclaration: true,
+      profilePicture: true,
+    },
+    experienceYears: 10,
+    qualificationInfo: `A) The qualifications for Licensing Engineer will be the corporate membership (Civil) of the Institution of Engineers or such Degree or Diploma in Civil or Structural Engineering or equivalent.
+B) Diploma in Civil Engineering or equivalent, having experience of 10 years in the field of land and building planning. (AS PER DCPR RULE C-3.1)`,
+    scope: undefined,
+    documentsRequired: [
+      "Degree Certificate",
+      "Marksheet",
+      "Address Proof - Aadhar Card",
+      "Identity Proof - PAN Card",
+      "Self Declaration Form",
+      "Experience Certificate",
+      "Degree out of Maharashtra - UGC Recognition",
+      "A.I.C.T.E Approved",
+    ],
+  },
+  [PositionType.StructuralEngineer]: {
+    name: "Structural Engineer",
+    icon: "🏗️",
+    fee: 1500,
+    feeDuration: "3 years",
+    sections: {
+      basicInfo: true,
+      personalDetails: true,
+      localAddress: true,
+      permanentAddress: true,
+      panCard: true,
+      aadharCard: true,
+      qualifications: true,
+      experience: true,
+      coaCertificate: false,
+      isseCertificate: true, // Indian Society of Structural Engineers
+      propertyTaxReceipt: true,
+      additionalDocuments: true,
+      selfDeclaration: true,
+      profilePicture: true,
+    },
+    experienceByDegree: {
+      BE: 3,
+      ME: 2,
+      PhD: 1,
+    },
+    qualificationInfo: `Qualifications for Licensing of structural engineers shall be as given below, with minimum 3 years of experience of structural engineering practice in designing and field work;
+(A) Graduate in Civil Engineering of recognized Indian or Foreign University and Chartered Engineer or Associated Member in Civil Engineering Division of Institution of Engineers (India) or equivalent Overseas Institution; or DCPR-2018 FOR PMRDA 159.
+(B) Shall have a postgraduate degree in structural engineering. Three years' experience will be reduced to two years for those with Post Graduation in Structural engineering. In the case of a doctorate in structural engineering, the experience criteria are reduced to one year. (AS PER DCPR RULE C-4.1).`,
+    scope: undefined,
+    documentsRequired: [
+      "Degree Certificate",
+      "Marksheet",
+      "I.S.S.E Certificate",
+      "Experience Certificate (BE: 3 years, ME: 2 years, PhD: 1 year)",
+      "Address Proof - Aadhar Card",
+      "Identity Proof - PAN Card",
+      "Degree from UGC recognized University",
+      "AICTE Approved",
+      "Self Declaration Form",
+      "Photo",
+    ],
+  },
+  [PositionType.Supervisor1]: {
+    name: "Supervisor 1",
+    icon: "👷",
+    fee: 900,
+    feeDuration: "3 years",
+    sections: {
+      basicInfo: true,
+      personalDetails: true,
+      localAddress: true,
+      permanentAddress: true,
+      panCard: true,
+      aadharCard: true,
+      qualifications: true,
+      experience: true,
+      coaCertificate: false,
+      isseCertificate: false,
+      propertyTaxReceipt: true,
+      additionalDocuments: true,
+      selfDeclaration: true,
+      profilePicture: true,
+    },
+    experienceByQualification: {
+      Diploma: 2,
+      ITI: 10,
+    },
+    qualificationInfo: `(A) Three years architectural assistantship or intermediate in architecture with two years experience, or
+(B) Diploma in Civil engineering or equivalent qualifications with two years experience.
+(C) Draftsman in Civil Engineering from ITI or equivalent qualifications with ten years experience, out of which five years shall be under Architect/Engineer. (AS PER DCPR RULE C-5.1.a).`,
+    scope: `(A) All plans and related information connected with development permission on a plot up to 500 sq.m.
+(B) Certificate of supervision of buildings on a plot up to 500 sq. m. and completion thereof. (AS PER DCPR RULE C-5.2.a).`,
+    documentsRequired: [
+      "Diploma / I.T.I Certificate",
+      "Marksheet",
+      "Experience Certificate (Diploma: 2 years, ITI: 10 years)",
+      "Address Proof",
+      "Identity Proof",
+      "Self Declaration Form + Photo",
+    ],
+  },
+  [PositionType.Supervisor2]: {
+    name: "Supervisor 2",
+    icon: "👷‍♂️",
+    fee: 900,
+    feeDuration: "3 years",
+    sections: {
+      basicInfo: true,
+      personalDetails: true,
+      localAddress: true,
+      permanentAddress: true,
+      panCard: true,
+      aadharCard: true,
+      qualifications: true,
+      experience: true,
+      coaCertificate: false,
+      isseCertificate: false,
+      propertyTaxReceipt: true,
+      additionalDocuments: true,
+      selfDeclaration: true,
+      profilePicture: true,
+    },
+    experienceByQualification: {
+      Diploma: 2,
+      ITI: 10,
+    },
+    qualificationInfo: `(A) Three years architectural assistantship or intermediate in architecture with two years experience, or
+(B) Diploma in Civil engineering or equivalent qualifications with two years experience.
+(C) Draftsman in Civil Engineering from ITI or equivalent qualifications with ten years experience, out of which five years shall be under Architect/Engineer. (AS PER DCPR RULE C-5.1.a).`,
+    scope: `(A) All plans and related information connected with development permission on a plot up to 500 sq.m.
+(B) Certificate of supervision of buildings on a plot up to 500 sq. m. and completion thereof. (AS PER DCPR RULE C-5.2.a).`,
+    documentsRequired: [
+      "Diploma / I.T.I Certificate",
+      "Marksheet",
+      "Experience Certificate (Diploma: 2 years, ITI: 10 years)",
+      "Address Proof",
+      "Identity Proof",
+      "Self Declaration Form + Photo",
+    ],
+  },
+};
 
 const Gender = {
   Male: 0,
@@ -103,13 +297,35 @@ interface FormData {
   documents: Document[];
 }
 
-export const StructuralEngineerRegistrationPage = () => {
+export const PositionRegistrationPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { positionType: positionParam } = useParams<{ positionType: string }>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [permanentSameAsLocal, setPermanentSameAsLocal] = useState(false);
+
+  // Determine position type from URL parameter or default to StructuralEngineer
+  const getPositionType = (): PositionTypeValue => {
+    if (!positionParam) return PositionType.StructuralEngineer;
+
+    const positionMap: { [key: string]: PositionTypeValue } = {
+      architect: PositionType.Architect,
+      "licence-engineer": PositionType.LicenceEngineer,
+      "structural-engineer": PositionType.StructuralEngineer,
+      supervisor1: PositionType.Supervisor1,
+      supervisor2: PositionType.Supervisor2,
+    };
+
+    return (
+      positionMap[positionParam.toLowerCase()] ??
+      PositionType.StructuralEngineer
+    );
+  };
+
+  const selectedPositionType = getPositionType();
+  const config = POSITION_CONFIG[selectedPositionType];
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -118,7 +334,7 @@ export const StructuralEngineerRegistrationPage = () => {
     motherName: "",
     mobileNumber: user?.phoneNumber || "",
     emailAddress: user?.email || "",
-    positionType: PositionType.StructuralEngineer,
+    positionType: selectedPositionType,
     bloodGroup: "",
     height: 0,
     gender: Gender.Male,
@@ -424,13 +640,13 @@ export const StructuralEngineerRegistrationPage = () => {
             marginBottom: "4px",
           }}
         >
-          🏗️ Structural Engineer Registration
+          {config.icon} {config.name} Registration
         </h1>
         <p
           className="pmc-content-subtitle"
           style={{ color: "var(--pmc-gray-600)", fontSize: "13px" }}
         >
-          Complete all sections to register as a Structural Engineer with PMC
+          Complete all sections to register as a {config.name} with PMC
         </p>
       </div>
 
@@ -561,20 +777,38 @@ export const StructuralEngineerRegistrationPage = () => {
                     ))}
                   </select>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "12px 20px",
-                    background: "#fef3c7",
-                    borderRadius: "8px",
-                    border: "1px solid #fbbf24",
-                  }}
-                >
-                  <span style={{ fontWeight: 600, color: "#92400e" }}>
-                    Fees - ₹3000 for 3 years
-                  </span>
-                </div>
+                {config.fee > 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "12px 20px",
+                      background: "#fef3c7",
+                      borderRadius: "8px",
+                      border: "1px solid #fbbf24",
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: "#92400e" }}>
+                      Fees - ₹{config.fee} for {config.feeDuration}
+                    </span>
+                  </div>
+                )}
+                {config.fee === 0 && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      padding: "12px 20px",
+                      background: "#dcfce7",
+                      borderRadius: "8px",
+                      border: "1px solid #86efac",
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: "#166534" }}>
+                      No Registration Fee
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Qualifications Info Box */}
@@ -591,28 +825,38 @@ export const StructuralEngineerRegistrationPage = () => {
                 <h3 style={{ fontWeight: 600, marginBottom: "8px" }}>
                   1. Qualifications
                 </h3>
-                <ul style={{ paddingLeft: "20px", margin: "8px 0" }}>
-                  <li>
-                    Qualifications for Licensing of structural engineers shall
-                    be as given below, with minimum 3 years of experience of
-                    structural engineering practice in designing and field work;
-                  </li>
-                  <li>
-                    (A) Graduate in Civil Engineering of recognized Indian or
-                    Foreign University and Chartered Engineer or Associated
-                    Member in Civil Engineering Division of Institution of
-                    Engineers (India) or equivalent Overseas Institution; or
-                    DCPR-2018 FOR PMRDA 159.
-                  </li>
-                  <li>
-                    (B) Shall have a postgraduate degree in structural
-                    engineering. Three years' experience will be reduced to two
-                    years for those with Post Graduation in Structural
-                    engineering. In the case of a doctorate in structural
-                    engineering, the experience criteria are reduced to one
-                    year. (AS PER DCPR RULE C-4.1).
-                  </li>
-                </ul>
+                <div
+                  style={{
+                    paddingLeft: "10px",
+                    margin: "8px 0",
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {config.qualificationInfo}
+                </div>
+
+                {config.scope && (
+                  <>
+                    <h3
+                      style={{
+                        fontWeight: 600,
+                        marginTop: "12px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      2. Scope of Work
+                    </h3>
+                    <div
+                      style={{
+                        margin: "4px 0",
+                        paddingLeft: "10px",
+                        whiteSpace: "pre-line",
+                      }}
+                    >
+                      {config.scope}
+                    </div>
+                  </>
+                )}
 
                 <h3
                   style={{
@@ -621,9 +865,9 @@ export const StructuralEngineerRegistrationPage = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  2. Duties and Responsibilities
+                  {config.scope ? "3" : "2"}. Duties and Responsibilities
                 </h3>
-                <p style={{ margin: "4px 0" }}>
+                <p style={{ margin: "4px 0", paddingLeft: "10px" }}>
                   It will be incumbent on every architect / licensed technical
                   personnel to assist and co-operate with the Metropolitan
                   Commissioner and other Officers in carrying out and enforcing
@@ -638,22 +882,13 @@ export const StructuralEngineerRegistrationPage = () => {
                     marginBottom: "8px",
                   }}
                 >
-                  3. Documents Required for Structural Engineer
+                  {config.scope ? "4" : "3"}. Documents Required for{" "}
+                  {config.name}
                 </h3>
                 <ol style={{ paddingLeft: "20px", margin: "8px 0" }}>
-                  <li>Degree Certificate</li>
-                  <li>Marksheet</li>
-                  <li>I.S.S.E Certificate</li>
-                  <li>
-                    Experience Certificate (BE: 3 years, ME: 2 years, PhD: 1
-                    year)
-                  </li>
-                  <li>Address Proof - Aadhar card</li>
-                  <li>Identity Proof - Pan Card</li>
-                  <li>Degree from UGC recognized University</li>
-                  <li>AICTE Approved</li>
-                  <li>Self Declaration form</li>
-                  <li>Photo</li>
+                  {config.documentsRequired.map((doc, idx) => (
+                    <li key={idx}>{doc}</li>
+                  ))}
                 </ol>
               </div>
             </div>
@@ -902,50 +1137,78 @@ export const StructuralEngineerRegistrationPage = () => {
               </div>
 
               <div className="pmc-form-grid pmc-form-grid-2">
-                <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
-                    Upload - Property Tax Receipt / Copy Of Rent Agreement /
-                    Electricity Bill
-                  </label>
-                  <input
-                    type="file"
-                    className="pmc-input"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleFileUpload(
-                          SEDocumentType.PropertyTaxReceipt,
-                          "DOC_PROPERTY_TAX",
-                          file
-                        );
-                      }
-                    }}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  />
-                  <span className="pmc-help-text">Max file size: 500KB</span>
-                </div>
-                <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
-                    Upload - Indian Society Of Structural Engineer Certificate
-                    (PDF File Upto 500 KB)
-                  </label>
-                  <input
-                    type="file"
-                    className="pmc-input"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        handleFileUpload(
-                          SEDocumentType.ISSECertificate,
-                          "DOC_ISSE",
-                          file
-                        );
-                      }
-                    }}
-                    accept=".pdf"
-                  />
-                  <span className="pmc-help-text">Max file size: 500KB</span>
-                </div>
+                {config.sections.propertyTaxReceipt && (
+                  <div className="pmc-form-group">
+                    <label className="pmc-label pmc-label-required">
+                      Upload - Property Tax Receipt / Copy Of Rent Agreement /
+                      Electricity Bill
+                    </label>
+                    <input
+                      type="file"
+                      className="pmc-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(
+                            SEDocumentType.PropertyTaxReceipt,
+                            "DOC_PROPERTY_TAX",
+                            file
+                          );
+                        }
+                      }}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                    />
+                    <span className="pmc-help-text">Max file size: 500KB</span>
+                  </div>
+                )}
+                {config.sections.isseCertificate && (
+                  <div className="pmc-form-group">
+                    <label className="pmc-label pmc-label-required">
+                      Upload - Indian Society Of Structural Engineer Certificate
+                      (PDF File Upto 500 KB)
+                    </label>
+                    <input
+                      type="file"
+                      className="pmc-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(
+                            SEDocumentType.ISSECertificate,
+                            "DOC_ISSE",
+                            file
+                          );
+                        }
+                      }}
+                      accept=".pdf"
+                    />
+                    <span className="pmc-help-text">Max file size: 500KB</span>
+                  </div>
+                )}
+                {config.sections.coaCertificate && (
+                  <div className="pmc-form-group">
+                    <label className="pmc-label pmc-label-required">
+                      Upload - Council of Architecture Certificate (PDF File
+                      Upto 500 KB)
+                    </label>
+                    <input
+                      type="file"
+                      className="pmc-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(
+                            SEDocumentType.COACertificate,
+                            "DOC_COA",
+                            file
+                          );
+                        }
+                      }}
+                      accept=".pdf"
+                    />
+                    <span className="pmc-help-text">Max file size: 500KB</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1491,178 +1754,471 @@ export const StructuralEngineerRegistrationPage = () => {
           </div>
 
           {/* Qualifications */}
-          <div
-            className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "12px" }}
-          >
+          {config.sections.qualifications && (
             <div
-              className="pmc-card-header"
-              style={{
-                background: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
-                color: "white",
-                padding: "12px 16px",
-              }}
+              className="pmc-card pmc-slideInLeft"
+              style={{ marginBottom: "12px" }}
             >
               <div
+                className="pmc-card-header"
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  background:
+                    "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
+                  color: "white",
+                  padding: "12px 16px",
                 }}
               >
-                <div>
-                  <h2
-                    className="pmc-card-title"
-                    style={{
-                      color: "white",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      fontSize: "16px",
-                      fontWeight: "600",
-                      margin: 0,
-                    }}
-                  >
-                    <span style={{ fontSize: "24px" }}>🎓</span>
-                    Qualification
-                  </h2>
-                  <p
-                    className="pmc-card-subtitle"
-                    style={{
-                      color: "rgba(255, 255, 255, 0.9)",
-                      fontSize: "13px",
-                      margin: "2px 0 0 0",
-                    }}
-                  >
-                    Add your educational qualifications
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={addQualification}
-                  className="pmc-button pmc-button-light pmc-button-sm"
-                  style={{
-                    background: "white",
-                    color: "var(--pmc-primary)",
-                    border: "none",
-                    fontWeight: "600",
-                  }}
-                >
-                  + Add
-                </button>
-              </div>
-            </div>
-            <div className="pmc-card-body">
-              {formData.qualifications.map((qual, index) => (
                 <div
-                  key={qual.fileId}
                   style={{
-                    marginBottom: "12px",
-                    padding: "20px",
-                    background: "#f8fafc",
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    position: "relative",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  {formData.qualifications.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeQualification(index)}
-                      className="pmc-button pmc-button-danger pmc-button-sm"
+                  <div>
+                    <h2
+                      className="pmc-card-title"
                       style={{
-                        position: "absolute",
-                        top: "16px",
-                        right: "16px",
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        margin: 0,
                       }}
                     >
-                      🗑️
-                    </button>
-                  )}
-
-                  <div className="pmc-form-grid pmc-form-grid-3">
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Institute Name
-                      </label>
-                      <input
-                        type="text"
-                        className="pmc-input"
-                        value={qual.instituteName}
-                        onChange={(e) =>
-                          handleQualificationChange(
-                            index,
-                            "instituteName",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        University Name
-                      </label>
-                      <input
-                        type="text"
-                        className="pmc-input"
-                        value={qual.universityName}
-                        onChange={(e) =>
-                          handleQualificationChange(
-                            index,
-                            "universityName",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Course Specialization
-                      </label>
-                      <select
-                        className="pmc-input pmc-select"
-                        value={qual.specialization}
-                        onChange={(e) =>
-                          handleQualificationChange(
-                            index,
-                            "specialization",
-                            Number(e.target.value)
-                          )
-                        }
-                        required
+                      <span style={{ fontSize: "24px" }}>🎓</span>
+                      Qualification
+                    </h2>
+                    <p
+                      className="pmc-card-subtitle"
+                      style={{
+                        color: "rgba(255, 255, 255, 0.9)",
+                        fontSize: "13px",
+                        margin: "2px 0 0 0",
+                      }}
+                    >
+                      Add your educational qualifications
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addQualification}
+                    className="pmc-button pmc-button-light pmc-button-sm"
+                    style={{
+                      background: "white",
+                      color: "var(--pmc-primary)",
+                      border: "none",
+                      fontWeight: "600",
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+              <div className="pmc-card-body">
+                {formData.qualifications.map((qual, index) => (
+                  <div
+                    key={qual.fileId}
+                    style={{
+                      marginBottom: "12px",
+                      padding: "20px",
+                      background: "#f8fafc",
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      position: "relative",
+                    }}
+                  >
+                    {formData.qualifications.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeQualification(index)}
+                        className="pmc-button pmc-button-danger pmc-button-sm"
+                        style={{
+                          position: "absolute",
+                          top: "16px",
+                          right: "16px",
+                        }}
                       >
-                        {specializationOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
+                        🗑️
+                      </button>
+                    )}
+
+                    <div className="pmc-form-grid pmc-form-grid-3">
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Institute Name
+                        </label>
+                        <input
+                          type="text"
+                          className="pmc-input"
+                          value={qual.instituteName}
+                          onChange={(e) =>
+                            handleQualificationChange(
+                              index,
+                              "instituteName",
+                              e.target.value
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          University Name
+                        </label>
+                        <input
+                          type="text"
+                          className="pmc-input"
+                          value={qual.universityName}
+                          onChange={(e) =>
+                            handleQualificationChange(
+                              index,
+                              "universityName",
+                              e.target.value
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Course Specialization
+                        </label>
+                        <select
+                          className="pmc-input pmc-select"
+                          value={qual.specialization}
+                          onChange={(e) =>
+                            handleQualificationChange(
+                              index,
+                              "specialization",
+                              Number(e.target.value)
+                            )
+                          }
+                          required
+                        >
+                          {specializationOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="pmc-form-grid pmc-form-grid-2">
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Upload Last Year Marksheet (Max 500KB)
+                        </label>
+                        <input
+                          type="file"
+                          className="pmc-input"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleFileUpload(
+                                SEDocumentType.Marksheet,
+                                qual.fileId,
+                                file
+                              );
+                            }
+                          }}
+                          accept=".pdf"
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Upload Certificate (Max 500KB)
+                        </label>
+                        <input
+                          type="file"
+                          className="pmc-input"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleFileUpload(
+                                SEDocumentType.DegreeCertificate,
+                                `${qual.fileId}_CERT`,
+                                file
+                              );
+                            }
+                          }}
+                          accept=".pdf"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pmc-form-grid pmc-form-grid-3">
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Name of Degree
+                        </label>
+                        <input
+                          type="text"
+                          className="pmc-input"
+                          value={qual.degreeName}
+                          onChange={(e) =>
+                            handleQualificationChange(
+                              index,
+                              "degreeName",
+                              e.target.value
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Passing Month
+                        </label>
+                        <select
+                          className="pmc-input pmc-select"
+                          value={qual.passingMonth}
+                          onChange={(e) =>
+                            handleQualificationChange(
+                              index,
+                              "passingMonth",
+                              Number(e.target.value)
+                            )
+                          }
+                          required
+                        >
+                          {monthOptions.map((month, idx) => (
+                            <option key={idx} value={idx + 1}>
+                              {month}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Passing Year
+                        </label>
+                        <input
+                          type="number"
+                          className="pmc-input"
+                          value={qual.yearOfPassing.split("-")[0] || ""}
+                          onChange={(e) =>
+                            handleQualificationChange(
+                              index,
+                              "yearOfPassing",
+                              `${e.target.value}-01-01T00:00:00.000Z`
+                            )
+                          }
+                          min="1950"
+                          max={new Date().getFullYear()}
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  <div className="pmc-form-grid pmc-form-grid-2">
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Upload Last Year Marksheet (Max 500KB)
-                      </label>
-                      <input
-                        type="file"
-                        className="pmc-input"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleFileUpload(
-                              SEDocumentType.Marksheet,
-                              qual.fileId,
-                              file
-                            );
-                          }
+          {/* Experience */}
+          {config.sections.experience && (
+            <div
+              className="pmc-card pmc-slideInRight"
+              style={{ marginBottom: "12px" }}
+            >
+              <div
+                className="pmc-card-header"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+                  color: "white",
+                  padding: "12px 16px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <h2
+                      className="pmc-card-title"
+                      style={{
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "16px",
+                        fontWeight: "600",
+                        margin: 0,
+                      }}
+                    >
+                      <span style={{ fontSize: "24px" }}>💼</span>
+                      Experience
+                    </h2>
+                    <p
+                      className="pmc-card-subtitle"
+                      style={{
+                        color: "rgba(255, 255, 255, 0.9)",
+                        fontSize: "13px",
+                        margin: "2px 0 0 0",
+                      }}
+                    >
+                      Add your professional work experience
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addExperience}
+                    className="pmc-button pmc-button-light pmc-button-sm"
+                    style={{
+                      background: "white",
+                      color: "var(--pmc-primary)",
+                      border: "none",
+                      fontWeight: "600",
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+              <div className="pmc-card-body">
+                {formData.experiences.map((exp, index) => (
+                  <div
+                    key={exp.fileId}
+                    style={{
+                      marginBottom: "12px",
+                      padding: "20px",
+                      background: "#f8fafc",
+                      borderRadius: "12px",
+                      border: "1px solid #e2e8f0",
+                      position: "relative",
+                    }}
+                  >
+                    {formData.experiences.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeExperience(index)}
+                        className="pmc-button pmc-button-danger pmc-button-sm"
+                        style={{
+                          position: "absolute",
+                          top: "16px",
+                          right: "16px",
                         }}
-                        accept=".pdf"
-                      />
+                      >
+                        🗑️
+                      </button>
+                    )}
+
+                    <div className="pmc-form-grid pmc-form-grid-3">
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Company Name
+                        </label>
+                        <input
+                          type="text"
+                          className="pmc-input"
+                          value={exp.companyName}
+                          onChange={(e) =>
+                            handleExperienceChange(
+                              index,
+                              "companyName",
+                              e.target.value
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Position
+                        </label>
+                        <input
+                          type="text"
+                          className="pmc-input"
+                          value={exp.position}
+                          onChange={(e) =>
+                            handleExperienceChange(
+                              index,
+                              "position",
+                              e.target.value
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          Years of Experience
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="pmc-input"
+                          value={exp.yearsOfExperience || ""}
+                          onChange={(e) =>
+                            handleExperienceChange(
+                              index,
+                              "yearsOfExperience",
+                              parseFloat(e.target.value)
+                            )
+                          }
+                          readOnly
+                        />
+                      </div>
                     </div>
+
+                    <div className="pmc-form-grid pmc-form-grid-3">
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          From Date
+                        </label>
+                        <input
+                          type="date"
+                          className="pmc-input"
+                          value={exp.fromDate.split("T")[0] || ""}
+                          onChange={(e) =>
+                            handleExperienceChange(
+                              index,
+                              "fromDate",
+                              `${e.target.value}T00:00:00.000Z`
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label pmc-label-required">
+                          To Date
+                        </label>
+                        <input
+                          type="date"
+                          className="pmc-input"
+                          value={exp.toDate.split("T")[0] || ""}
+                          onChange={(e) =>
+                            handleExperienceChange(
+                              index,
+                              "toDate",
+                              `${e.target.value}T00:00:00.000Z`
+                            )
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="pmc-form-group">
+                        <label className="pmc-label">&nbsp;</label>
+                        <button
+                          type="button"
+                          onClick={() => calculateExperience(index)}
+                          className="pmc-button pmc-button-primary pmc-button-sm"
+                          style={{ width: "100%" }}
+                        >
+                          Calculate Experience
+                        </button>
+                      </div>
+                    </div>
+
                     <div className="pmc-form-group">
                       <label className="pmc-label pmc-label-required">
                         Upload Certificate (Max 500KB)
@@ -1674,8 +2230,8 @@ export const StructuralEngineerRegistrationPage = () => {
                           const file = e.target.files?.[0];
                           if (file) {
                             handleFileUpload(
-                              SEDocumentType.DegreeCertificate,
-                              `${qual.fileId}_CERT`,
+                              SEDocumentType.ExperienceCertificate,
+                              exp.fileId,
                               file
                             );
                           }
@@ -1683,277 +2239,98 @@ export const StructuralEngineerRegistrationPage = () => {
                         accept=".pdf"
                       />
                     </div>
-                  </div>
 
-                  <div className="pmc-form-grid pmc-form-grid-3">
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Name of Degree
-                      </label>
-                      <input
-                        type="text"
-                        className="pmc-input"
-                        value={qual.degreeName}
-                        onChange={(e) =>
-                          handleQualificationChange(
-                            index,
-                            "degreeName",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Passing Month
-                      </label>
-                      <select
-                        className="pmc-input pmc-select"
-                        value={qual.passingMonth}
-                        onChange={(e) =>
-                          handleQualificationChange(
-                            index,
-                            "passingMonth",
-                            Number(e.target.value)
-                          )
-                        }
-                        required
+                    {exp.yearsOfExperience > 0 && (
+                      <div
+                        style={{
+                          marginTop: "12px",
+                          padding: "12px",
+                          background: "#dbeafe",
+                          borderRadius: "8px",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          color: "#1e40af",
+                        }}
                       >
-                        {monthOptions.map((month, idx) => (
-                          <option key={idx} value={idx + 1}>
-                            {month}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Passing Year
-                      </label>
-                      <input
-                        type="number"
-                        className="pmc-input"
-                        value={qual.yearOfPassing.split("-")[0] || ""}
-                        onChange={(e) =>
-                          handleQualificationChange(
-                            index,
-                            "yearOfPassing",
-                            `${e.target.value}-01-01T00:00:00.000Z`
-                          )
-                        }
-                        min="1950"
-                        max={new Date().getFullYear()}
-                        required
-                      />
-                    </div>
+                        Total Experience: {exp.yearsOfExperience} years
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
 
-          {/* Experience */}
-          <div
-            className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "12px" }}
-          >
-            <div
-              className="pmc-card-header"
-              style={{
-                background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
-                color: "white",
-                padding: "12px 16px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div>
-                  <h2
-                    className="pmc-card-title"
+                {formData.experiences.length > 0 && (
+                  <div
                     style={{
-                      color: "white",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      padding: "16px",
+                      background: "#dcfce7",
+                      borderRadius: "8px",
                       fontSize: "16px",
-                      fontWeight: "600",
-                      margin: 0,
+                      fontWeight: 600,
+                      color: "#166534",
+                      textAlign: "center",
                     }}
                   >
-                    <span style={{ fontSize: "24px" }}>💼</span>
-                    Experience
-                  </h2>
-                  <p
-                    className="pmc-card-subtitle"
-                    style={{
-                      color: "rgba(255, 255, 255, 0.9)",
-                      fontSize: "13px",
-                      margin: "2px 0 0 0",
-                    }}
-                  >
-                    Add your professional work experience
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={addExperience}
-                  className="pmc-button pmc-button-light pmc-button-sm"
-                  style={{
-                    background: "white",
-                    color: "var(--pmc-primary)",
-                    border: "none",
-                    fontWeight: "600",
-                  }}
-                >
-                  + Add
-                </button>
+                    Total Experience: {getTotalExperience()}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="pmc-card-body">
-              {formData.experiences.map((exp, index) => (
-                <div
-                  key={exp.fileId}
+          )}
+
+          {/* Additional Documents */}
+          {config.sections.additionalDocuments && (
+            <div
+              className="pmc-card pmc-slideInLeft"
+              style={{ marginBottom: "12px" }}
+            >
+              <div
+                className="pmc-card-header"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
+                  color: "white",
+                  padding: "12px 16px",
+                }}
+              >
+                <h2
+                  className="pmc-card-title"
                   style={{
-                    marginBottom: "12px",
-                    padding: "20px",
-                    background: "#f8fafc",
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    position: "relative",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    margin: 0,
                   }}
                 >
-                  {formData.experiences.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeExperience(index)}
-                      className="pmc-button pmc-button-danger pmc-button-sm"
-                      style={{
-                        position: "absolute",
-                        top: "16px",
-                        right: "16px",
-                      }}
-                    >
-                      🗑️
-                    </button>
-                  )}
-
-                  <div className="pmc-form-grid pmc-form-grid-3">
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Company Name
-                      </label>
-                      <input
-                        type="text"
-                        className="pmc-input"
-                        value={exp.companyName}
-                        onChange={(e) =>
-                          handleExperienceChange(
-                            index,
-                            "companyName",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Position
-                      </label>
-                      <input
-                        type="text"
-                        className="pmc-input"
-                        value={exp.position}
-                        onChange={(e) =>
-                          handleExperienceChange(
-                            index,
-                            "position",
-                            e.target.value
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        Years of Experience
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className="pmc-input"
-                        value={exp.yearsOfExperience || ""}
-                        onChange={(e) =>
-                          handleExperienceChange(
-                            index,
-                            "yearsOfExperience",
-                            parseFloat(e.target.value)
-                          )
-                        }
-                        readOnly
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pmc-form-grid pmc-form-grid-3">
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        From Date
-                      </label>
-                      <input
-                        type="date"
-                        className="pmc-input"
-                        value={exp.fromDate.split("T")[0] || ""}
-                        onChange={(e) =>
-                          handleExperienceChange(
-                            index,
-                            "fromDate",
-                            `${e.target.value}T00:00:00.000Z`
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label pmc-label-required">
-                        To Date
-                      </label>
-                      <input
-                        type="date"
-                        className="pmc-input"
-                        value={exp.toDate.split("T")[0] || ""}
-                        onChange={(e) =>
-                          handleExperienceChange(
-                            index,
-                            "toDate",
-                            `${e.target.value}T00:00:00.000Z`
-                          )
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="pmc-form-group">
-                      <label className="pmc-label">&nbsp;</label>
-                      <button
-                        type="button"
-                        onClick={() => calculateExperience(index)}
-                        className="pmc-button pmc-button-primary pmc-button-sm"
-                        style={{ width: "100%" }}
-                      >
-                        Calculate Experience
-                      </button>
-                    </div>
-                  </div>
-
+                  <span style={{ fontSize: "24px" }}>📄</span>
+                  Additional Documents
+                </h2>
+                <p
+                  className="pmc-card-subtitle"
+                  style={{
+                    color: "rgba(255, 255, 255, 0.9)",
+                    fontSize: "13px",
+                    margin: "2px 0 0 0",
+                  }}
+                >
+                  Upload any additional supporting documents
+                </p>
+              </div>
+              <div className="pmc-card-body">
+                <div className="pmc-form-grid pmc-form-grid-2">
                   <div className="pmc-form-group">
-                    <label className="pmc-label pmc-label-required">
-                      Upload Certificate (Max 500KB)
+                    <label className="pmc-label">Document Name</label>
+                    <input
+                      type="text"
+                      className="pmc-input"
+                      placeholder="Enter document name"
+                    />
+                  </div>
+                  <div className="pmc-form-group">
+                    <label className="pmc-label">
+                      Upload Attachment (Max 500KB)
                     </label>
                     <input
                       type="file"
@@ -1962,104 +2339,76 @@ export const StructuralEngineerRegistrationPage = () => {
                         const file = e.target.files?.[0];
                         if (file) {
                           handleFileUpload(
-                            SEDocumentType.ExperienceCertificate,
-                            exp.fileId,
+                            SEDocumentType.AdditionalDocument,
+                            `DOC_ADD_${Date.now()}`,
                             file
                           );
                         }
                       }}
-                      accept=".pdf"
+                      accept=".pdf,.jpg,.jpeg,.png"
                     />
                   </div>
-
-                  {exp.yearsOfExperience > 0 && (
-                    <div
-                      style={{
-                        marginTop: "12px",
-                        padding: "12px",
-                        background: "#dbeafe",
-                        borderRadius: "8px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        color: "#1e40af",
-                      }}
-                    >
-                      Total Experience: {exp.yearsOfExperience} years
-                    </div>
-                  )}
                 </div>
-              ))}
+              </div>
+            </div>
+          )}
 
-              {formData.experiences.length > 0 && (
-                <div
+          {/* Self Declaration */}
+          {config.sections.selfDeclaration && (
+            <div
+              className="pmc-card pmc-slideInRight"
+              style={{ marginBottom: "12px" }}
+            >
+              <div
+                className="pmc-card-header"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+                  color: "white",
+                  padding: "12px 16px",
+                }}
+              >
+                <h2
+                  className="pmc-card-title"
                   style={{
-                    padding: "16px",
-                    background: "#dcfce7",
-                    borderRadius: "8px",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
                     fontSize: "16px",
-                    fontWeight: 600,
-                    color: "#166534",
-                    textAlign: "center",
+                    fontWeight: "600",
+                    margin: 0,
                   }}
                 >
-                  Total Experience: {getTotalExperience()}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Additional Documents */}
-          <div
-            className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "12px" }}
-          >
-            <div
-              className="pmc-card-header"
-              style={{
-                background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
-                color: "white",
-                padding: "12px 16px",
-              }}
-            >
-              <h2
-                className="pmc-card-title"
-                style={{
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  margin: 0,
-                }}
-              >
-                <span style={{ fontSize: "24px" }}>📄</span>
-                Additional Documents
-              </h2>
-              <p
-                className="pmc-card-subtitle"
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "13px",
-                  margin: "2px 0 0 0",
-                }}
-              >
-                Upload any additional supporting documents
-              </p>
-            </div>
-            <div className="pmc-card-body">
-              <div className="pmc-form-grid pmc-form-grid-2">
+                  <span style={{ fontSize: "24px" }}>📋</span>
+                  Self Declaration
+                </h2>
+                <p
+                  className="pmc-card-subtitle"
+                  style={{
+                    color: "rgba(255, 255, 255, 0.9)",
+                    fontSize: "13px",
+                    margin: "2px 0 0 0",
+                  }}
+                >
+                  Download, fill, and upload the self declaration form
+                </p>
+              </div>
+              <div className="pmc-card-body">
                 <div className="pmc-form-group">
-                  <label className="pmc-label">Document Name</label>
-                  <input
-                    type="text"
-                    className="pmc-input"
-                    placeholder="Enter document name"
-                  />
-                </div>
-                <div className="pmc-form-group">
-                  <label className="pmc-label">
-                    Upload Attachment (Max 500KB)
+                  <p style={{ marginBottom: "12px" }}>
+                    Self Declaration -{" "}
+                    <a
+                      href="/files/self-declaration-form.pdf"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: "#0c4a6e", fontWeight: 600 }}
+                    >
+                      Download Self Declaration Form
+                    </a>
+                  </p>
+                  <label className="pmc-label pmc-label-required">
+                    Upload Self Declaration
                   </label>
                   <input
                     type="file"
@@ -2068,157 +2417,86 @@ export const StructuralEngineerRegistrationPage = () => {
                       const file = e.target.files?.[0];
                       if (file) {
                         handleFileUpload(
-                          SEDocumentType.AdditionalDocument,
-                          `DOC_ADD_${Date.now()}`,
+                          SEDocumentType.SelfDeclaration,
+                          "DOC_SELF_DEC",
                           file
                         );
                       }
                     }}
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept=".pdf"
+                    required
                   />
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Self Declaration */}
-          <div
-            className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "12px" }}
-          >
-            <div
-              className="pmc-card-header"
-              style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                color: "white",
-                padding: "12px 16px",
-              }}
-            >
-              <h2
-                className="pmc-card-title"
-                style={{
-                  color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  margin: 0,
-                }}
-              >
-                <span style={{ fontSize: "24px" }}>📋</span>
-                Self Declaration
-              </h2>
-              <p
-                className="pmc-card-subtitle"
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "13px",
-                  margin: "2px 0 0 0",
-                }}
-              >
-                Download, fill, and upload the self declaration form
-              </p>
-            </div>
-            <div className="pmc-card-body">
-              <div className="pmc-form-group">
-                <p style={{ marginBottom: "12px" }}>
-                  Self Declaration -{" "}
-                  <a
-                    href="/files/self-declaration-form.pdf"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: "#0c4a6e", fontWeight: 600 }}
-                  >
-                    Download Self Declaration Form
-                  </a>
-                </p>
-                <label className="pmc-label pmc-label-required">
-                  Upload Self Declaration
-                </label>
-                <input
-                  type="file"
-                  className="pmc-input"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileUpload(
-                        SEDocumentType.SelfDeclaration,
-                        "DOC_SELF_DEC",
-                        file
-                      );
-                    }
-                  }}
-                  accept=".pdf"
-                  required
-                />
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Upload Profile Picture */}
-          <div
-            className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "12px" }}
-          >
+          {config.sections.profilePicture && (
             <div
-              className="pmc-card-header"
-              style={{
-                background: "linear-gradient(135deg, #0369a1 0%, #075985 100%)",
-                color: "white",
-                padding: "12px 16px",
-              }}
+              className="pmc-card pmc-slideInLeft"
+              style={{ marginBottom: "12px" }}
             >
-              <h2
-                className="pmc-card-title"
+              <div
+                className="pmc-card-header"
                 style={{
+                  background:
+                    "linear-gradient(135deg, #0369a1 0%, #075985 100%)",
                   color: "white",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  margin: 0,
+                  padding: "12px 16px",
                 }}
               >
-                <span style={{ fontSize: "24px" }}>📷</span>
-                Upload Profile Picture
-              </h2>
-              <p
-                className="pmc-card-subtitle"
-                style={{
-                  color: "rgba(255, 255, 255, 0.9)",
-                  fontSize: "13px",
-                  margin: "2px 0 0 0",
-                }}
-              >
-                Upload a clear photo (Max 500KB, JPG/PNG format)
-              </p>
-            </div>
-            <div className="pmc-card-body">
-              <div className="pmc-form-group">
-                <label className="pmc-label pmc-label-required">
-                  Upload ProfilePicture (Max 500KB)
-                </label>
-                <input
-                  type="file"
-                  className="pmc-input"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleFileUpload(
-                        SEDocumentType.ProfilePicture,
-                        "DOC_PROFILE",
-                        file
-                      );
-                    }
+                <h2
+                  className="pmc-card-title"
+                  style={{
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    margin: 0,
                   }}
-                  accept=".jpg,.jpeg,.png"
-                  required
-                />
+                >
+                  <span style={{ fontSize: "24px" }}>📷</span>
+                  Upload Profile Picture
+                </h2>
+                <p
+                  className="pmc-card-subtitle"
+                  style={{
+                    color: "rgba(255, 255, 255, 0.9)",
+                    fontSize: "13px",
+                    margin: "2px 0 0 0",
+                  }}
+                >
+                  Upload a clear photo (Max 500KB, JPG/PNG format)
+                </p>
+              </div>
+              <div className="pmc-card-body">
+                <div className="pmc-form-group">
+                  <label className="pmc-label pmc-label-required">
+                    Upload ProfilePicture (Max 500KB)
+                  </label>
+                  <input
+                    type="file"
+                    className="pmc-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileUpload(
+                          SEDocumentType.ProfilePicture,
+                          "DOC_PROFILE",
+                          file
+                        );
+                      }
+                    }}
+                    accept=".jpg,.jpeg,.png"
+                    required
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Submit Buttons */}
           <div
@@ -2319,9 +2597,3 @@ export const StructuralEngineerRegistrationPage = () => {
     </div>
   );
 };
-
-
-
-
-
-
