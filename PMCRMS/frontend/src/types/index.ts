@@ -340,6 +340,15 @@ export interface FileUploadResponse {
 }
 
 // Report Types
+export interface ReportFilters {
+  fromDate?: string;
+  toDate?: string;
+  status?: ApplicationCurrentStatus;
+  type?: ApplicationType;
+  userId?: number;
+  department?: string;
+}
+
 export interface ReportData {
   applicationsByStatus: { [key: string]: number };
   applicationsByType: { [key: string]: number };

@@ -1,120 +1,70 @@
-import axios from "axios";
-import type { AxiosInstance, AxiosResponse } from "axios";
+// Main API Service - combines all service modules
+import { authService } from "./authService";
+import { applicationService } from "./applicationService";
+import { userService } from "./userService";
+import { documentService } from "./documentService";
+import { statusService } from "./statusService";
+import { paymentService } from "./paymentService";
+import { reportService } from "./reportService";
+import { getToken, setToken, removeToken } from "./apiClient";
 import type {
-  ApiResponse,
+  User,
   AuthResponse,
   LoginRequest,
   OtpVerificationRequest,
-  User,
-  Application,
-  CreateApplicationRequest,
-  UpdateApplicationRequest,
-  UpdateStatusRequest,
   ApplicationFilters,
-  PaginatedResponse,
-  DashboardStats,
-  FileUploadResponse,
-  ApplicationDocument,
-  Payment,
-  ReportData,
 } from "../types";
 
 class ApiService {
-  private api: AxiosInstance;
-  private baseURL = "http://localhost:5086/api";
+  // Service modules
+  auth = authService;
+  applications = applicationService;
+  users = userService;
+  documents = documentService;
+  status = statusService;
+  payments = paymentService;
+  reports = reportService;
 
-  constructor() {
-    this.api = axios.create({
-      baseURL: this.baseURL,
-      timeout: 30000,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    // Request interceptor to add auth token
-    this.api.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem("pmcrms_token");
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor to handle errors
-    this.api.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          this.logout();
-          window.location.href = "/login";
-        }
-        return Promise.reject(error);
-      }
-    );
-  }
-
-  // Authentication Methods
+  // Convenience methods for backward compatibility and auth management
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const response: AxiosResponse<ApiResponse<AuthResponse>> =
-      await this.api.post("/auth/login", data);
-    if (response.data.success && response.data.data) {
-      localStorage.setItem("pmcrms_token", response.data.data.token);
-      localStorage.setItem(
-        "pmcrms_user",
-        JSON.stringify(response.data.data.user)
-      );
-      return response.data.data;
+    const response = await this.auth.login(data);
+    if (response.success && response.data) {
+      setToken(response.data.token);
+      localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
+      return response.data;
     }
-    throw new Error(response.data.message || "Login failed");
+    throw new Error(response.message || "Login failed");
   }
 
-  async sendOtp(phoneNumber: string): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await this.api.post(
-      "/auth/send-otp",
-      { phoneNumber }
-    );
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to send OTP");
+  async sendOtp(identifier: string): Promise<void> {
+    const response = await this.auth.sendOtp(identifier);
+    if (!response.success) {
+      throw new Error(response.message || "Failed to send OTP");
     }
   }
 
   async verifyOtp(data: OtpVerificationRequest): Promise<AuthResponse> {
-    const response: AxiosResponse<ApiResponse<AuthResponse>> =
-      await this.api.post("/auth/verify-otp", data);
-    if (response.data.success && response.data.data) {
-      localStorage.setItem("pmcrms_token", response.data.data.token);
-      localStorage.setItem(
-        "pmcrms_user",
-        JSON.stringify(response.data.data.user)
-      );
-      return response.data.data;
+    const response = await this.auth.verifyOtp(data);
+    if (response.success && response.data) {
+      setToken(response.data.token);
+      localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
+      return response.data;
     }
-    throw new Error(response.data.message || "OTP verification failed");
+    throw new Error(response.message || "OTP verification failed");
   }
 
   async register(userData: Partial<User>): Promise<AuthResponse> {
-    const response: AxiosResponse<ApiResponse<AuthResponse>> =
-      await this.api.post("/auth/register", userData);
-    if (response.data.success && response.data.data) {
-      localStorage.setItem("pmcrms_token", response.data.data.token);
-      localStorage.setItem(
-        "pmcrms_user",
-        JSON.stringify(response.data.data.user)
-      );
-      return response.data.data;
+    const response = await this.auth.register(userData);
+    if (response.success && response.data) {
+      setToken(response.data.token);
+      localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
+      return response.data;
     }
-    throw new Error(response.data.message || "Registration failed");
+    throw new Error(response.message || "Registration failed");
   }
 
   logout(): void {
-    localStorage.removeItem("pmcrms_token");
-    localStorage.removeItem("pmcrms_user");
+    removeToken();
   }
 
   getCurrentUser(): User | null {
@@ -123,257 +73,44 @@ class ApiService {
   }
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem("pmcrms_token");
+    return !!getToken();
   }
 
-  // Application Methods
+  // Convenience method for updating user profile
+  async updateUserProfile(userData: Partial<User>): Promise<User> {
+    const response = await this.users.updateUserProfile(userData);
+    if (response.success && response.data) {
+      // Update localStorage
+      localStorage.setItem("pmcrms_user", JSON.stringify(response.data));
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to update profile");
+  }
+
+  // Convenience method for getting dashboard stats
+  async getDashboardStats() {
+    const response = await this.reports.getDashboardStats();
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(response.message || "Failed to fetch dashboard stats");
+  }
+
+  // Convenience method for getting applications
   async getApplications(
     page = 1,
     pageSize = 10,
     filters?: ApplicationFilters
-  ): Promise<PaginatedResponse<Application>> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      pageSize: pageSize.toString(),
-      ...filters,
-    });
-
-    const response: AxiosResponse<ApiResponse<PaginatedResponse<Application>>> =
-      await this.api.get(`/applications?${params}`);
-
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch applications");
-  }
-
-  async getApplication(id: number): Promise<Application> {
-    const response: AxiosResponse<ApiResponse<Application>> =
-      await this.api.get(`/applications/${id}`);
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch application");
-  }
-
-  async createApplication(
-    data: CreateApplicationRequest
-  ): Promise<Application> {
-    const response: AxiosResponse<ApiResponse<Application>> =
-      await this.api.post("/applications", data);
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to create application");
-  }
-
-  async updateApplication(
-    data: UpdateApplicationRequest
-  ): Promise<Application> {
-    const response: AxiosResponse<ApiResponse<Application>> =
-      await this.api.put(`/applications/${data.id}`, data);
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to update application");
-  }
-
-  async deleteApplication(id: number): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await this.api.delete(
-      `/applications/${id}`
+  ) {
+    const response = await this.applications.getApplications(
+      page,
+      pageSize,
+      filters
     );
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to delete application");
+    if (response.success && response.data) {
+      return response.data;
     }
-  }
-
-  // Status Management
-  async updateApplicationStatus(
-    applicationId: number,
-    data: UpdateStatusRequest
-  ): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await this.api.post(
-      `/status/update/${applicationId}`,
-      data
-    );
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to update status");
-    }
-  }
-
-  async getPendingApplications(
-    page = 1,
-    pageSize = 10
-  ): Promise<PaginatedResponse<Application>> {
-    const response: AxiosResponse<ApiResponse<PaginatedResponse<Application>>> =
-      await this.api.get(`/status/pending?page=${page}&pageSize=${pageSize}`);
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(
-      response.data.message || "Failed to fetch pending applications"
-    );
-  }
-
-  // Document Management
-  async uploadDocument(
-    applicationId: number,
-    file: File,
-    documentType: string
-  ): Promise<FileUploadResponse> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("documentType", documentType);
-
-    const response: AxiosResponse<ApiResponse<FileUploadResponse>> =
-      await this.api.post(`/documents/upload/${applicationId}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to upload document");
-  }
-
-  async getApplicationDocuments(
-    applicationId: number
-  ): Promise<ApplicationDocument[]> {
-    const response: AxiosResponse<ApiResponse<ApplicationDocument[]>> =
-      await this.api.get(`/documents/application/${applicationId}`);
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch documents");
-  }
-
-  async downloadDocument(documentId: number): Promise<Blob> {
-    const response: AxiosResponse<Blob> = await this.api.get(
-      `/documents/download/${documentId}`,
-      {
-        responseType: "blob",
-      }
-    );
-    return response.data;
-  }
-
-  async deleteDocument(documentId: number): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await this.api.delete(
-      `/documents/${documentId}`
-    );
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to delete document");
-    }
-  }
-
-  // User Management
-  async getUsers(page = 1, pageSize = 10): Promise<PaginatedResponse<User>> {
-    const response: AxiosResponse<ApiResponse<PaginatedResponse<User>>> =
-      await this.api.get(`/users?page=${page}&pageSize=${pageSize}`);
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch users");
-  }
-
-  async getUser(id: number): Promise<User> {
-    const response: AxiosResponse<ApiResponse<User>> = await this.api.get(
-      `/users/${id}`
-    );
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch user");
-  }
-
-  async updateUserProfile(userData: Partial<User>): Promise<User> {
-    const response: AxiosResponse<ApiResponse<User>> = await this.api.put(
-      "/users/profile",
-      userData
-    );
-    if (response.data.success && response.data.data) {
-      // Update stored user data
-      localStorage.setItem("pmcrms_user", JSON.stringify(response.data.data));
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to update profile");
-  }
-
-  async updateUserRole(userId: number, role: string): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await this.api.put(
-      `/users/${userId}/role`,
-      { role }
-    );
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to update user role");
-    }
-  }
-
-  async updateUserStatus(userId: number, isActive: boolean): Promise<void> {
-    const response: AxiosResponse<ApiResponse> = await this.api.put(
-      `/users/${userId}/status`,
-      { isActive }
-    );
-    if (!response.data.success) {
-      throw new Error(response.data.message || "Failed to update user status");
-    }
-  }
-
-  // Dashboard & Reports
-  async getDashboardStats(): Promise<DashboardStats> {
-    const response: AxiosResponse<ApiResponse<DashboardStats>> =
-      await this.api.get("/dashboard/stats");
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch dashboard stats");
-  }
-
-  async getReportData(): Promise<ReportData> {
-    const response: AxiosResponse<ApiResponse<ReportData>> = await this.api.get(
-      "/reports/data"
-    );
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch report data");
-  }
-
-  // Payment Methods
-  async initiatePayment(
-    applicationId: number,
-    amount: number
-  ): Promise<Payment> {
-    const response: AxiosResponse<ApiResponse<Payment>> = await this.api.post(
-      "/payments/initiate",
-      { applicationId, amount }
-    );
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to initiate payment");
-  }
-
-  async getPaymentStatus(paymentId: string): Promise<Payment> {
-    const response: AxiosResponse<ApiResponse<Payment>> = await this.api.get(
-      `/payments/status/${paymentId}`
-    );
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch payment status");
-  }
-
-  async getApplicationPayments(applicationId: number): Promise<Payment[]> {
-    const response: AxiosResponse<ApiResponse<Payment[]>> = await this.api.get(
-      `/payments/application/${applicationId}`
-    );
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-    throw new Error(response.data.message || "Failed to fetch payments");
+    throw new Error(response.message || "Failed to fetch applications");
   }
 }
 

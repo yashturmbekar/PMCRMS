@@ -1,42 +1,68 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+/* ============================================
+   PMC Application Styles
+   ============================================
+   
+   All professional styling is now centralized in index.css
+   This file is reserved for app-specific overrides only.
+   
+   Available PMC Design System Classes:
+   
+   BUTTONS:
+   - .pmc-button (base)
+   - .pmc-button-primary, .pmc-button-secondary
+   - .pmc-button-success, .pmc-button-warning, .pmc-button-danger
+   - .pmc-button-outline
+   - .pmc-button-sm, .pmc-button-lg, .pmc-button-xl
+   - .pmc-button-full (full width)
+   - .pmc-button-loading
+   
+   FORMS:
+   - .pmc-form-container, .pmc-form-header, .pmc-form-body
+   - .pmc-form-section, .pmc-form-section-header
+   - .pmc-form-group
+   - .pmc-input, .pmc-select, .pmc-textarea
+   - .pmc-input-with-icon
+   - .pmc-label, .pmc-label-required
+   - .pmc-help-text, .pmc-text-error
+   
+   CARDS:
+   - .pmc-card, .pmc-card-header, .pmc-card-body, .pmc-card-footer
+   
+   TABLES:
+   - .pmc-table, .pmc-table-striped, .pmc-table-bordered
+   - .pmc-table-responsive
+   
+   BADGES:
+   - .pmc-badge, .pmc-badge-success, .pmc-badge-warning
+   - .pmc-badge-error, .pmc-badge-info, .pmc-badge-primary
+   - .pmc-status-pending, .pmc-status-approved, etc.
+   
+   LAYOUT:
+   - .pmc-header, .pmc-sidebar, .pmc-content
+   - .pmc-nav-item, .pmc-nav-section
+   
+   AUTH PAGES:
+   - .pmc-auth-page, .pmc-auth-card
+   - .pmc-auth-brand-panel, .pmc-auth-form-panel
+   - .pmc-auth-features
+   
+   ALERTS:
+   - .pmc-alert, .pmc-alert-success, .pmc-alert-error
+   - .pmc-alert-warning, .pmc-alert-info
+   
+   ANIMATIONS:
+   - .pmc-fadeIn, .pmc-fadeInUp, .pmc-slideInLeft
+   - .pmc-pulse, .pmc-spin
+   
+   UTILITIES:
+   - Spacing: .pmc-p-*, .pmc-m-*, .pmc-mt-*, .pmc-mb-*
+   - Flexbox: .pmc-flex, .pmc-items-center, .pmc-justify-between
+   - Grid: .pmc-grid, .pmc-grid-cols-*
+   - Colors: .pmc-text-*, .pmc-bg-*
+   - Borders: .pmc-border, .pmc-rounded-*
+   - Shadows: .pmc-shadow-*, .pmc-shadow-lg
+   - And many more...
+   
+   ============================================ */
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
+/* App-specific styles go here */
