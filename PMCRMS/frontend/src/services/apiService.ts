@@ -97,11 +97,7 @@ class ApiService {
   }
 
   // Convenience method for getting applications
-  async getApplications(
-    page = 1,
-    pageSize = 10,
-    filters?: ApplicationFilters
-  ) {
+  async getApplications(page = 1, pageSize = 10, filters?: ApplicationFilters) {
     const response = await this.applications.getApplications(
       page,
       pageSize,

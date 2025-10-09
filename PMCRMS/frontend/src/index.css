@@ -1838,21 +1838,23 @@ body {
 }
 
 .pmc-auth-logo-box {
-  width: 64px;
-  height: 64px;
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  border-radius: 12px;
+  width: 56px;
+  height: 56px;
+  background: #ffffff;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  border: 2px solid rgba(249, 115, 22, 0.2);
 }
 
 .pmc-auth-logo-box img {
-  width: 40px;
-  height: 40px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  filter: brightness(0) invert(1);
+  /* Remove filter to show original logo colors */
 }
 
 .pmc-auth-title-group {
