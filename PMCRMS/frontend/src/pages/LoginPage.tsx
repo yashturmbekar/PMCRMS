@@ -58,12 +58,13 @@ const LoginPage: React.FC = () => {
       });
 
       if (response.success && response.data) {
-        // Store token and user data
+        // Store token and user data in localStorage
         localStorage.setItem("pmcrms_token", response.data.token);
         localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
 
-        // Navigate to dashboard
-        navigate("/dashboard");
+        // Force reload to trigger AuthContext initialization
+        // This will make useEffect in AuthContext read the new localStorage values
+        window.location.href = "/dashboard";
       } else {
         throw new Error(
           response.message || "OTP verification failed. Please try again."

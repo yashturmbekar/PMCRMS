@@ -7,8 +7,10 @@ import {
 import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
+import { StructuralEngineerRegistrationPage } from "./pages/StructuralEngineerRegistrationPage";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./hooks/useAuth";
+import { Layout } from "./components/Layout";
 import "./index.css";
 
 // Proper protected route component using AuthContext
@@ -45,12 +47,24 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/officer-login" element={<OfficerLoginPage />} />
 
-            {/* Protected routes */}
+            {/* Protected routes with Layout */}
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/register-structural-engineer"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <StructuralEngineerRegistrationPage />
+                  </Layout>
                 </ProtectedRoute>
               }
             />

@@ -12,7 +12,6 @@ import {
   Menu,
   X,
   Bell,
-  User,
 } from "lucide-react";
 
 interface LayoutProps {
@@ -67,38 +66,50 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   );
 
   return (
-    <div className="h-screen flex bg-gray-50">
-      {/* Mobile sidebar */}
-      <div
-        className={`fixed inset-0 z-40 lg:hidden ${
-          sidebarOpen ? "" : "hidden"
-        }`}
-      >
-        <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-75"
-          onClick={() => setSidebarOpen(false)}
-        />
-        <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
-          <div className="absolute top-0 right-0 -mr-12 pt-2">
-            <button
-              type="button"
-              className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <X className="h-6 w-6 text-white" />
-            </button>
-          </div>
-          <SidebarContent
-            navigation={filteredNavigation}
-            currentPath={location.pathname}
-            onNavigate={() => setSidebarOpen(false)}
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        background: "var(--pmc-bg-secondary)",
+      }}
+    >
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div
+            className="fixed inset-0"
+            style={{
+              background: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(4px)",
+            }}
+            onClick={() => setSidebarOpen(false)}
           />
+          <div
+            className="relative flex-1 flex flex-col max-w-xs w-full pmc-slideInLeft"
+            style={{ background: "white", height: "100vh" }}
+          >
+            <div className="absolute top-0 right-0 -mr-12 pt-2">
+              <button
+                type="button"
+                className="ml-1 flex items-center justify-center h-10 w-10 rounded-full pmc-focus-visible"
+                style={{ background: "rgba(255, 255, 255, 0.1)" }}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X className="h-6 w-6" style={{ color: "white" }} />
+              </button>
+            </div>
+            <SidebarContent
+              navigation={filteredNavigation}
+              currentPath={location.pathname}
+              onNavigate={() => setSidebarOpen(false)}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
-        <div className="flex flex-col w-64">
+        <div className="flex flex-col" style={{ width: "280px" }}>
           <SidebarContent
             navigation={filteredNavigation}
             currentPath={location.pathname}
@@ -107,65 +118,106 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Top navigation */}
-        <div className="relative z-10 flex-shrink-0 flex h-16 bg-white shadow">
-          <button
-            type="button"
-            className="px-4 border-r border-gray-200 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
+      <div className="flex flex-col flex-1" style={{ overflow: "hidden" }}>
+        {/* Top navigation - PMC Header */}
+        <div className="pmc-header pmc-fadeInDown">
+          <div className="pmc-header-content" style={{ padding: "16px 32px" }}>
+            <button
+              type="button"
+              className="lg:hidden pmc-button pmc-button-icon pmc-button-sm"
+              style={{
+                marginRight: "16px",
+                background: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+              }}
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" style={{ color: "white" }} />
+            </button>
 
-          {/* Top nav content */}
-          <div className="flex-1 px-4 flex justify-between items-center">
-            <div className="flex-1 flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">
-                PMCRMS - Pune Municipal Corporation
-              </h1>
+            <div className="pmc-header-brand">
+              <div className="pmc-header-logo">
+                <img
+                  src="/pmc-logo.png"
+                  alt="PMC Logo"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+              <div>
+                <h1 className="pmc-header-title">PMCRMS</h1>
+                <p className="pmc-header-subtitle">
+                  Pune Municipal Corporation
+                </p>
+              </div>
             </div>
 
-            <div className="ml-4 flex items-center md:ml-6 space-x-4">
+            <div className="pmc-header-actions">
               {/* Notifications */}
-              <button className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                <Bell className="h-6 w-6" />
+              <button
+                className="pmc-button pmc-button-icon pmc-button-sm"
+                style={{
+                  background: "rgba(255, 255, 255, 0.1)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  position: "relative",
+                }}
+                title="Notifications"
+              >
+                <Bell className="h-5 w-5" style={{ color: "white" }} />
+                <span
+                  className="pmc-badge pmc-badge-error pmc-badge-sm"
+                  style={{
+                    position: "absolute",
+                    top: "-4px",
+                    right: "-4px",
+                    minWidth: "18px",
+                    height: "18px",
+                    padding: "2px 6px",
+                    fontSize: "10px",
+                  }}
+                >
+                  3
+                </span>
               </button>
 
-              {/* Profile dropdown */}
-              <div className="relative">
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center">
-                      <User className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
-                  <div className="hidden md:block">
-                    <div className="text-sm font-medium text-gray-900">
-                      {user?.name}
-                    </div>
-                    <div className="text-xs text-gray-500">{user?.role}</div>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="bg-white p-1 rounded-full text-gray-400 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    title="Logout"
-                  >
-                    <LogOut className="h-5 w-5" />
-                  </button>
+              {/* Profile section */}
+              <div className="pmc-user-menu">
+                <div className="pmc-user-avatar">
+                  {user?.name?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div className="pmc-user-info">
+                  <p className="pmc-user-name">{user?.name || "User"}</p>
+                  <p className="pmc-user-role">{user?.role || "Member"}</p>
                 </div>
               </div>
+
+              {/* Logout button */}
+              <button
+                onClick={handleLogout}
+                className="pmc-button pmc-button-danger pmc-button-sm pmc-button-icon"
+                style={{ background: "rgba(220, 38, 38, 0.9)" }}
+                title="Logout"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
 
         {/* Page content */}
-        <main className="flex-1 relative overflow-y-auto focus:outline-none">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
-            </div>
-          </div>
+        <main
+          className="flex-1 relative pmc-content"
+          style={{
+            marginLeft: 0,
+            overflowY: "auto",
+            padding: "32px",
+            background: "var(--pmc-bg-secondary)",
+          }}
+        >
+          <div style={{ maxWidth: "1400px", margin: "0 auto" }}>{children}</div>
         </main>
       </div>
     </div>
@@ -183,44 +235,109 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
   currentPath,
   onNavigate,
 }) => (
-  <div className="flex flex-col h-0 flex-1 bg-gray-800">
-    {/* Logo */}
-    <div className="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900">
-      <img className="h-8 w-auto" src="/pmc-logo.png" alt="PMC Logo" />
-      <div className="ml-3">
-        <div className="text-white text-sm font-medium">PMC</div>
-        <div className="text-gray-300 text-xs">Record Management</div>
+  <div
+    className="pmc-sidebar pmc-fadeIn"
+    style={{
+      position: "static",
+      width: "100%",
+      height: "100vh",
+      overflowY: "auto",
+    }}
+  >
+    {/* Logo Section - Professional Header */}
+    <div
+      className="pmc-sidebar-header"
+      style={{ padding: "24px", textAlign: "center" }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            width: "48px",
+            height: "48px",
+            background: "white",
+            borderRadius: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "8px",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          }}
+        >
+          <img
+            src="/pmc-logo.png"
+            alt="PMC Logo"
+            style={{ width: "100%", height: "100%", objectFit: "contain" }}
+          />
+        </div>
+        <div style={{ textAlign: "left" }}>
+          <div
+            className="pmc-font-bold"
+            style={{ fontSize: "16px", lineHeight: "1.2" }}
+          >
+            PMC RMS
+          </div>
+          <div className="pmc-text-xs" style={{ opacity: 0.9 }}>
+            Record Management
+          </div>
+        </div>
       </div>
     </div>
 
     {/* Navigation */}
-    <div className="flex-1 flex flex-col overflow-y-auto">
-      <nav className="flex-1 px-2 py-4 space-y-1">
-        {navigation.map((item) => {
-          const isActive = currentPath === item.href;
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              onClick={onNavigate}
-              className={`${
-                isActive
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-300 hover:bg-gray-700 hover:text-white"
-              } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-150`}
-            >
-              <item.icon
-                className={`${
-                  isActive
-                    ? "text-gray-300"
-                    : "text-gray-400 group-hover:text-gray-300"
-                } mr-3 h-5 w-5`}
-              />
-              {item.name}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
+    <nav className="pmc-sidebar-nav" style={{ padding: "16px" }}>
+      <div className="pmc-nav-section">
+        <h3 className="pmc-nav-section-title">Main Menu</h3>
+        <div style={{ marginTop: "8px" }}>
+          {navigation.map((item) => {
+            const isActive = currentPath === item.href;
+            const IconComponent = item.icon;
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                onClick={onNavigate}
+                className={`pmc-nav-item ${isActive ? "active" : ""}`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  textDecoration: "none",
+                }}
+              >
+                <IconComponent className="pmc-nav-icon" />
+                <span className="pmc-font-medium">{item.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Footer Info */}
+      <div
+        style={{
+          marginTop: "32px",
+          padding: "16px",
+          borderTop: "1px solid var(--pmc-gray-200)",
+          background: "var(--pmc-gray-50)",
+          borderRadius: "12px",
+        }}
+      >
+        <p
+          className="pmc-text-xs pmc-font-medium"
+          style={{ color: "var(--pmc-gray-600)", marginBottom: "4px" }}
+        >
+          Version 1.0.0
+        </p>
+        <p className="pmc-text-xs" style={{ color: "var(--pmc-gray-500)" }}>
+          © 2025 PMC. All rights reserved.
+        </p>
+      </div>
+    </nav>
   </div>
 );

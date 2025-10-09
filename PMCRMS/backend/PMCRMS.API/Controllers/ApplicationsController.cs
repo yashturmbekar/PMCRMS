@@ -258,6 +258,142 @@ namespace PMCRMS.API.Controllers
             }
         }
 
+        [HttpGet("my-applications")]
+        public async Task<ActionResult<ApiResponse<object>>> GetMyApplications(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 100)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                var query = _context.Applications
+                    .Where(a => a.ApplicantId == userId);
+
+                var totalCount = await query.CountAsync();
+                var applications = await query
+                    .Include(a => a.Applicant)
+                    .OrderByDescending(a => a.CreatedDate)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var applicationDtos = applications.Select(app => new
+                {
+                    id = app.Id,
+                    applicationNumber = app.ApplicationNumber,
+                    positionType = 0, // Default to Architect, you can map this based on your application type
+                    applicantName = app.Applicant?.Name ?? "Unknown",
+                    submissionDate = app.CreatedDate.ToString("yyyy-MM-dd"),
+                    stage = MapStatusToStage(app.CurrentStatus),
+                    status = app.CurrentStatus.ToString()
+                }).ToList();
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "My applications retrieved successfully",
+                    Data = new
+                    {
+                        items = applicationDtos,
+                        totalCount = totalCount,
+                        page = page,
+                        pageSize = pageSize,
+                        totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving my applications");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to retrieve applications",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("analytics")]
+        public async Task<ActionResult<ApiResponse<object>>> GetDashboardAnalytics()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+
+                var applications = await _context.Applications
+                    .Where(a => a.ApplicantId == userId)
+                    .ToListAsync();
+
+                var totalApplications = applications.Count;
+                var approvedApplications = applications.Count(a => 
+                    a.CurrentStatus == ApplicationCurrentStatus.CertificateIssued ||
+                    a.CurrentStatus == ApplicationCurrentStatus.Completed);
+                var rejectedApplications = applications.Count(a => 
+                    a.CurrentStatus == ApplicationCurrentStatus.RejectedByJE ||
+                    a.CurrentStatus == ApplicationCurrentStatus.RejectedByAE ||
+                    a.CurrentStatus == ApplicationCurrentStatus.RejectedByEE1 ||
+                    a.CurrentStatus == ApplicationCurrentStatus.RejectedByCE1);
+                var pendingApplications = totalApplications - approvedApplications - rejectedApplications;
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Analytics retrieved successfully",
+                    Data = new
+                    {
+                        totalApplications,
+                        approvedApplications,
+                        pendingApplications,
+                        rejectedApplications
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving analytics");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to retrieve analytics",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        private int MapStatusToStage(ApplicationCurrentStatus status)
+        {
+            // Map ApplicationCurrentStatus to ApplicationStage enum (0-10)
+            return status switch
+            {
+                ApplicationCurrentStatus.Draft => 0,
+                ApplicationCurrentStatus.Submitted => 0, // JUNIOR_ENGINEER_PENDING
+                ApplicationCurrentStatus.UnderReviewByJE => 1, // DOCUMENT_VERIFICATION_PENDING
+                ApplicationCurrentStatus.ApprovedByJE => 2, // ASSISTANT_ENGINEER_PENDING
+                ApplicationCurrentStatus.RejectedByJE => 10, // REJECTED
+                ApplicationCurrentStatus.UnderReviewByAE => 2, // ASSISTANT_ENGINEER_PENDING
+                ApplicationCurrentStatus.ApprovedByAE => 3, // EXECUTIVE_ENGINEER_PENDING
+                ApplicationCurrentStatus.RejectedByAE => 10, // REJECTED
+                ApplicationCurrentStatus.UnderReviewByEE1 => 3, // EXECUTIVE_ENGINEER_PENDING
+                ApplicationCurrentStatus.ApprovedByEE1 => 4, // CITY_ENGINEER_PENDING
+                ApplicationCurrentStatus.RejectedByEE1 => 10, // REJECTED
+                ApplicationCurrentStatus.UnderReviewByCE1 => 4, // CITY_ENGINEER_PENDING
+                ApplicationCurrentStatus.ApprovedByCE1 => 5, // PAYMENT_PENDING
+                ApplicationCurrentStatus.RejectedByCE1 => 10, // REJECTED
+                ApplicationCurrentStatus.PaymentPending => 5, // PAYMENT_PENDING
+                ApplicationCurrentStatus.PaymentCompleted => 6, // CLERK_PENDING
+                ApplicationCurrentStatus.UnderProcessingByClerk => 6, // CLERK_PENDING
+                ApplicationCurrentStatus.ProcessedByClerk => 7, // EXECUTIVE_ENGINEER_SIGN_PENDING
+                ApplicationCurrentStatus.UnderDigitalSignatureByEE2 => 7, // EXECUTIVE_ENGINEER_SIGN_PENDING
+                ApplicationCurrentStatus.DigitalSignatureCompletedByEE2 => 8, // CITY_ENGINEER_SIGN_PENDING
+                ApplicationCurrentStatus.UnderFinalApprovalByCE2 => 8, // CITY_ENGINEER_SIGN_PENDING
+                ApplicationCurrentStatus.CertificateIssued => 9, // APPROVED
+                ApplicationCurrentStatus.Completed => 9, // APPROVED
+                _ => 0
+            };
+        }
+
         private int GetCurrentUserId()
         {
             var userIdClaim = HttpContext.User.FindFirst("user_id") ?? HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);

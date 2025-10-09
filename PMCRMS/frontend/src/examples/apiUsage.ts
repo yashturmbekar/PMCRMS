@@ -22,8 +22,8 @@ export async function loginWithOtp(identifier: string, otp: string) {
 
   // Verify OTP
   const response = await authService.verifyOtp({
-    phoneNumber: identifier,
-    otp,
+    identifier: identifier,
+    otpCode: otp,
     purpose: "login",
   });
 

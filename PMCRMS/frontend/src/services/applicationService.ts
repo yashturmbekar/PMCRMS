@@ -56,6 +56,17 @@ export const applicationService = {
     return apiClient.get(`${endpoint}/my-applications`, { params });
   },
 
+  async getDashboardAnalytics(): Promise<
+    ApiResponse<{
+      totalApplications: number;
+      approvedApplications: number;
+      pendingApplications: number;
+      rejectedApplications: number;
+    }>
+  > {
+    return apiClient.get(`${endpoint}/analytics`);
+  },
+
   async duplicateApplication(id: number): Promise<ApiResponse<Application>> {
     return apiClient.post(`${endpoint}/${id}/duplicate`);
   },

@@ -16,6 +16,13 @@ namespace PMCRMS.API.Data
         public DbSet<ApplicationComment> ApplicationComments { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
+        
+        // Structural Engineer Application entities
+        public DbSet<StructuralEngineerApplication> StructuralEngineerApplications { get; set; }
+        public DbSet<SEAddress> SEAddresses { get; set; }
+        public DbSet<SEQualification> SEQualifications { get; set; }
+        public DbSet<SEExperience> SEExperiences { get; set; }
+        public DbSet<SEDocument> SEDocuments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -116,6 +123,65 @@ namespace PMCRMS.API.Data
             modelBuilder.Entity<OtpVerification>(entity =>
             {
                 entity.HasIndex(e => new { e.Identifier, e.Purpose, e.IsActive });
+            });
+
+            // Configure StructuralEngineerApplication entity
+            modelBuilder.Entity<StructuralEngineerApplication>(entity =>
+            {
+                entity.HasIndex(e => e.ApplicationNumber).IsUnique();
+                entity.Property(e => e.PositionType).HasConversion<int>();
+                entity.Property(e => e.Gender).HasConversion<int>();
+                entity.Property(e => e.Status).HasConversion<int>();
+                
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure SEAddress entity
+            modelBuilder.Entity<SEAddress>(entity =>
+            {
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.Addresses)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure SEQualification entity
+            modelBuilder.Entity<SEQualification>(entity =>
+            {
+                entity.Property(e => e.Specialization).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.Qualifications)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure SEExperience entity
+            modelBuilder.Entity<SEExperience>(entity =>
+            {
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.Experiences)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Configure SEDocument entity
+            modelBuilder.Entity<SEDocument>(entity =>
+            {
+                entity.Property(e => e.DocumentType).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.Documents)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.VerifiedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.VerifiedBy)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Seed initial data
