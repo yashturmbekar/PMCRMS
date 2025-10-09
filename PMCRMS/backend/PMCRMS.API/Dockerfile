@@ -3,16 +3,16 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY PMCRMS.API.csproj ./
-RUN dotnet restore "PMCRMS.API.csproj"
+COPY PMCRMS/backend/PMCRMS.API/PMCRMS.API.csproj ./PMCRMS.API/
+RUN dotnet restore "./PMCRMS.API/PMCRMS.API.csproj"
 
 # Copy everything else and build
-COPY . .
-RUN dotnet build "PMCRMS.API.csproj" -c Release -o /app/build
+COPY PMCRMS/backend/PMCRMS.API/. ./PMCRMS.API/
+RUN dotnet build "./PMCRMS.API/PMCRMS.API.csproj" -c Release -o /app/build
 
 # Publish stage
 FROM build AS publish
-RUN dotnet publish "PMCRMS.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./PMCRMS.API/PMCRMS.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
