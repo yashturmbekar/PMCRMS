@@ -15,11 +15,19 @@ namespace PMCRMS.API.Controllers
     {
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<ApplicationsController> _logger;
+        private readonly Services.IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public ApplicationsController(PMCRMSDbContext context, ILogger<ApplicationsController> logger)
+        public ApplicationsController(
+            PMCRMSDbContext context, 
+            ILogger<ApplicationsController> logger,
+            Services.IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         [HttpGet]

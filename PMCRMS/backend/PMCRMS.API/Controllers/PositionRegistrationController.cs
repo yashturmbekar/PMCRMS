@@ -13,13 +13,19 @@ namespace PMCRMS.API.Controllers
     {
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<PositionRegistrationController> _logger;
+        private readonly Services.IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
         public PositionRegistrationController(
             PMCRMSDbContext context,
-            ILogger<PositionRegistrationController> logger)
+            ILogger<PositionRegistrationController> logger,
+            Services.IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         // POST: api/PositionRegistration
@@ -156,6 +162,36 @@ namespace PMCRMS.API.Controllers
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Position registration application created successfully. ID: {Id}", application.Id);
+
+                // Send email if application is submitted
+                if (request.Status == ApplicationCurrentStatus.Submitted && !string.IsNullOrEmpty(application.ApplicationNumber))
+                {
+                    try
+                    {
+                        var frontendUrl = _configuration["CorsSettings:AllowedOrigins:0"] ?? "http://localhost:5173";
+                        var viewUrl = $"{frontendUrl}/applications/{application.Id}";
+                        var applicantName = $"{application.FirstName} {application.LastName}";
+                        var positionTypeName = application.PositionType.ToString();
+
+                        await _emailService.SendApplicationSubmissionEmailAsync(
+                            application.EmailAddress,
+                            applicantName,
+                            application.ApplicationNumber,
+                            $"Position Registration - {positionTypeName}",
+                            application.Id.ToString(),
+                            viewUrl
+                        );
+
+                        _logger.LogInformation("Submission email sent to {Email} for application {ApplicationNumber}", 
+                            application.EmailAddress, application.ApplicationNumber);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError(emailEx, "Failed to send submission email for application {ApplicationNumber}", 
+                            application.ApplicationNumber);
+                        // Don't fail the request if email fails
+                    }
+                }
 
                 var response = await GetApplicationResponse(application.Id);
                 return CreatedAtAction(nameof(GetApplication), new { id = application.Id }, response);
@@ -340,6 +376,41 @@ namespace PMCRMS.API.Controllers
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Position registration application updated successfully. ID: {Id}", id);
+
+                // Send email if application status changed to submitted
+                var wasJustSubmitted = request.Status == ApplicationCurrentStatus.Submitted && 
+                                      !string.IsNullOrEmpty(application.ApplicationNumber) &&
+                                      application.SubmittedDate.HasValue &&
+                                      (DateTime.UtcNow - application.SubmittedDate.Value).TotalSeconds < 10;
+
+                if (wasJustSubmitted && !string.IsNullOrEmpty(application.ApplicationNumber))
+                {
+                    try
+                    {
+                        var frontendUrl = _configuration["CorsSettings:AllowedOrigins:0"] ?? "http://localhost:5173";
+                        var viewUrl = $"{frontendUrl}/applications/{application.Id}";
+                        var applicantName = $"{application.FirstName} {application.LastName}";
+                        var positionTypeName = application.PositionType.ToString();
+
+                        await _emailService.SendApplicationSubmissionEmailAsync(
+                            application.EmailAddress,
+                            applicantName,
+                            application.ApplicationNumber,
+                            $"Position Registration - {positionTypeName}",
+                            application.Id.ToString(),
+                            viewUrl
+                        );
+
+                        _logger.LogInformation("Submission email sent to {Email} for application {ApplicationNumber}", 
+                            application.EmailAddress, application.ApplicationNumber);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError(emailEx, "Failed to send submission email for application {ApplicationNumber}", 
+                            application.ApplicationNumber);
+                        // Don't fail the request if email fails
+                    }
+                }
 
                 return NoContent();
             }

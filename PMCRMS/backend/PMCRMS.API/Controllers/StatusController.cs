@@ -15,11 +15,19 @@ namespace PMCRMS.API.Controllers
     {
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<StatusController> _logger;
+        private readonly Services.IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public StatusController(PMCRMSDbContext context, ILogger<StatusController> logger)
+        public StatusController(
+            PMCRMSDbContext context, 
+            ILogger<StatusController> logger,
+            Services.IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         [HttpPost("update/{applicationId}")]
@@ -381,6 +389,37 @@ namespace PMCRMS.API.Controllers
         {
             switch (newStatus)
             {
+                case ApplicationCurrentStatus.Submitted:
+                    // Send confirmation email when application is submitted
+                    try
+                    {
+                        var applicant = await _context.Users.FindAsync(application.ApplicantId);
+                        if (applicant != null)
+                        {
+                            var frontendUrl = _configuration["CorsSettings:AllowedOrigins:0"] ?? "http://localhost:5173";
+                            var viewUrl = $"{frontendUrl}/applications/{application.Id}";
+
+                            await _emailService.SendApplicationSubmissionEmailAsync(
+                                applicant.Email,
+                                applicant.Name,
+                                application.ApplicationNumber,
+                                application.Type.ToString(),
+                                application.Id.ToString(),
+                                viewUrl
+                            );
+
+                            _logger.LogInformation("Submission email sent to {Email} for application {ApplicationNumber}",
+                                applicant.Email, application.ApplicationNumber);
+                        }
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError(emailEx, "Failed to send submission email for application {ApplicationNumber}",
+                            application.ApplicationNumber);
+                        // Don't fail the request if email fails
+                    }
+                    break;
+
                 case ApplicationCurrentStatus.PaymentPending:
                     // Calculate fee amount based on application type and area
                     application.FeeAmount = CalculateFeeAmount(application.Type, application.BuiltUpArea);

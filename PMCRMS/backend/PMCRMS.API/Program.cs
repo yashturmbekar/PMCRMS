@@ -20,14 +20,32 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
+// Get connection string from environment variable or configuration
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Database connection string is not configured. Set DATABASE_URL environment variable or DefaultConnection in appsettings.json");
+}
+
+Log.Information("Database connection string configured");
+
 builder.Services.AddDbContext<PMCRMSDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddControllers();
 
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = Encoding.ASCII.GetBytes(jwtSettings["SecretKey"]!);
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? jwtSettings["SecretKey"];
+
+if (string.IsNullOrEmpty(jwtSecretKey))
+{
+    throw new InvalidOperationException("JWT Secret Key is not configured. Set JWT_SECRET_KEY environment variable or JwtSettings:SecretKey in appsettings.json");
+}
+
+var secretKey = Encoding.ASCII.GetBytes(jwtSecretKey);
 
 builder.Services.AddAuthentication(options =>
 {
@@ -54,26 +72,23 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // Configure CORS
-var corsSettings = builder.Configuration.GetSection("CorsSettings");
-var allowedOrigins = corsSettings.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
-
-// Add default localhost origins if none configured
-var origins = new List<string>(allowedOrigins);
-if (!origins.Any() || origins.Any(o => o.Contains("${FRONTEND_URL}")))
+var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
+var origins = new List<string>
 {
-    origins = new List<string>
-    {
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:5000"
-    };
-}
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:5000"
+};
 
 // Add frontend URL from environment if available
-var frontendUrl = builder.Configuration["FRONTEND_URL"];
-if (!string.IsNullOrEmpty(frontendUrl) && !origins.Contains(frontendUrl))
+if (!string.IsNullOrEmpty(frontendUrl))
 {
-    origins.Add(frontendUrl);
+    // Remove trailing slashes for consistency
+    frontendUrl = frontendUrl.TrimEnd('/');
+    if (!origins.Contains(frontendUrl))
+    {
+        origins.Add(frontendUrl);
+    }
 }
 
 builder.Services.AddCors(options =>
