@@ -1,0 +1,11 @@
+# Railway configuration for React frontend
+[build]
+builder = "NIXPACKS"
+
+[build.env]
+VITE_API_BASE_URL = "https://pmcrms-production.up.railway.app"
+
+[deploy]
+startCommand = "npm run preview"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

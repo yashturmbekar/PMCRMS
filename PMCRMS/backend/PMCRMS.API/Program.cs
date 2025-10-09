@@ -112,15 +112,13 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Enable Swagger in all environments (can be restricted later if needed)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "PMCRMS API V1");
-        c.RoutePrefix = string.Empty;
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "PMCRMS API V1");
+    c.RoutePrefix = string.Empty; // Swagger UI at root
+});
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
@@ -134,6 +132,25 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow }))
    .WithName("HealthCheck")
    .WithTags("Health");
+
+// API Info endpoint
+app.MapGet("/api/info", () => Results.Ok(new 
+{ 
+    Name = "PMCRMS API",
+    Version = "v1.0",
+    Status = "Running",
+    Environment = app.Environment.EnvironmentName,
+    Timestamp = DateTime.UtcNow,
+    Endpoints = new 
+    {
+        Health = "/health",
+        Swagger = "/swagger",
+        Api = "/api/*"
+    }
+}))
+   .WithName("ApiInfo")
+   .WithTags("Info")
+   .AllowAnonymous();
 
 // Database migration and seeding
 using (var scope = app.Services.CreateScope())
