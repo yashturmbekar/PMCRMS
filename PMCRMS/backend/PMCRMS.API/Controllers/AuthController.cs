@@ -21,17 +21,20 @@ namespace PMCRMS.API.Controllers
         private readonly IConfiguration _configuration;
         private readonly ILogger<AuthController> _logger;
         private readonly IPasswordHasher _passwordHasher;
+        private readonly IEmailService _emailService;
 
         public AuthController(
             PMCRMSDbContext context, 
             IConfiguration configuration, 
             ILogger<AuthController> logger,
-            IPasswordHasher passwordHasher)
+            IPasswordHasher passwordHasher,
+            IEmailService emailService)
         {
             _context = context;
             _configuration = configuration;
             _logger = logger;
             _passwordHasher = passwordHasher;
+            _emailService = emailService;
         }
 
         [HttpPost("send-otp")]
@@ -52,23 +55,12 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Check if user exists for LOGIN purpose
-                if (request.Purpose == "LOGIN")
+                // Check if user exists - if it's an officer account, deny OTP login
+                var existingUser = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
+                
+                if (existingUser != null)
                 {
-                    var existingUser = await _context.Users
-                        .FirstOrDefaultAsync(u => u.Email == request.Email && u.IsActive);
-                    
-                    if (existingUser == null)
-                    {
-                        _logger.LogWarning("Login attempt for non-existent user: {Email}", request.Email);
-                        return BadRequest(new ApiResponse
-                        {
-                            Success = false,
-                            Message = "Account not found. Please register first.",
-                            Errors = new List<string> { "User does not exist" }
-                        });
-                    }
-
                     // Only allow OTP login for applicants
                     if (existingUser.Role != UserRole.Applicant)
                     {
@@ -81,6 +73,9 @@ namespace PMCRMS.API.Controllers
                         });
                     }
                 }
+                
+                // For new users, OTP will serve as registration
+                // User will be created during OTP verification
 
                 // Invalidate previous OTPs for this identifier
                 var previousOtps = await _context.OtpVerifications
@@ -95,30 +90,53 @@ namespace PMCRMS.API.Controllers
                 // Generate OTP (6-digit)
                 var otpCode = GenerateOtp();
                 
-                // Save OTP to database
+                // Save OTP to database with 5-minute expiry
                 var otpVerification = new OtpVerification
                 {
                     Identifier = request.Email,
                     OtpCode = otpCode,
                     Purpose = request.Purpose,
-                    ExpiryTime = DateTime.UtcNow.AddMinutes(10), // 10 minutes expiry
+                    ExpiryTime = DateTime.UtcNow.AddMinutes(5), // 5 minutes expiry
                     IsActive = true,
-                    CreatedBy = "System"
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow
                 };
 
                 _context.OtpVerifications.Add(otpVerification);
                 await _context.SaveChangesAsync();
 
-                // TODO: Send OTP via email service
+                _logger.LogInformation("OTP saved to database. ID: {OtpId}, Expires at: {ExpiryTime}", 
+                    otpVerification.Id, otpVerification.ExpiryTime);
+
+                // Send OTP via email
+                var emailSent = await _emailService.SendOtpEmailAsync(request.Email, otpCode, request.Purpose);
+                
+                if (!emailSent)
+                {
+                    _logger.LogWarning("Failed to send OTP email to {Email}, but OTP was generated and saved to database", request.Email);
+                }
+                else
+                {
+                    _logger.LogInformation("OTP email sent successfully to {Email}", request.Email);
+                }
+                
+                // Log OTP for development/testing (Remove in production)
                 _logger.LogInformation("OTP generated for {Identifier}: {OTP} (Remove this log in production)", request.Email, otpCode);
+
+                var isNewUser = existingUser == null;
+                var message = isNewUser 
+                    ? $"OTP sent to {request.Email}. A new account will be created upon verification."
+                    : $"OTP sent successfully to {request.Email}";
 
                 return Ok(new ApiResponse
                 {
                     Success = true,
-                    Message = $"OTP sent successfully to {request.Email}",
+                    Message = message,
                     Data = new { 
-                        ExpiresIn = 600, // 10 minutes in seconds
+                        ExpiresIn = 300, // 5 minutes in seconds
                         ExpiresAt = otpVerification.ExpiryTime,
+                        IsNewUser = isNewUser,
+                        EmailSent = emailSent,
                         // Remove in production - for testing only
                         OtpCode = otpCode
                     }
@@ -141,38 +159,61 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation("OTP verification request for: {Identifier}", request.Identifier);
+                _logger.LogInformation("OTP verification request for: {Identifier}, Purpose: {Purpose}", 
+                    request.Identifier, request.Purpose);
 
-                // Find valid OTP
-                var otpVerification = await _context.OtpVerifications
-                    .Where(o => o.Identifier == request.Identifier 
-                               && o.Purpose == request.Purpose 
-                               && o.IsActive 
-                               && !o.IsUsed 
-                               && o.ExpiryTime > DateTime.UtcNow)
+                // Find valid OTP with detailed logging
+                var allOtps = await _context.OtpVerifications
+                    .Where(o => o.Identifier == request.Identifier && o.Purpose == request.Purpose)
                     .OrderByDescending(o => o.CreatedDate)
-                    .FirstOrDefaultAsync();
+                    .ToListAsync();
+
+                _logger.LogInformation("Found {Count} OTP records for {Identifier}", allOtps.Count, request.Identifier);
+
+                var otpVerification = allOtps
+                    .Where(o => o.IsActive && !o.IsUsed && o.ExpiryTime > DateTime.UtcNow)
+                    .FirstOrDefault();
 
                 if (otpVerification == null)
                 {
+                    var latestOtp = allOtps.FirstOrDefault();
+                    if (latestOtp != null)
+                    {
+                        _logger.LogWarning(
+                            "OTP validation failed for {Identifier}. Latest OTP: IsActive={IsActive}, IsUsed={IsUsed}, ExpiryTime={ExpiryTime}, Now={Now}", 
+                            request.Identifier, latestOtp.IsActive, latestOtp.IsUsed, latestOtp.ExpiryTime, DateTime.UtcNow);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No OTP found for {Identifier}", request.Identifier);
+                    }
+
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
-                        Message = "Invalid or expired OTP",
+                        Message = "Invalid or expired OTP. Please request a new OTP.",
                         Errors = new List<string> { "OTP verification failed" }
                     });
                 }
 
+                _logger.LogInformation("OTP found. Verifying code for {Identifier}", request.Identifier);
+
                 if (otpVerification.OtpCode != request.OtpCode)
                 {
                     otpVerification.AttemptCount++;
+                    otpVerification.UpdatedDate = DateTime.UtcNow;
                     await _context.SaveChangesAsync();
+
+                    _logger.LogWarning("Invalid OTP attempt {Attempt}/3 for {Identifier}", 
+                        otpVerification.AttemptCount, request.Identifier);
 
                     if (otpVerification.AttemptCount >= 3)
                     {
                         otpVerification.IsActive = false;
                         await _context.SaveChangesAsync();
                         
+                        _logger.LogWarning("OTP deactivated for {Identifier} due to max attempts", request.Identifier);
+
                         return BadRequest(new ApiResponse
                         {
                             Success = false,
@@ -184,51 +225,67 @@ namespace PMCRMS.API.Controllers
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
-                        Message = "Invalid OTP code",
+                        Message = $"Invalid OTP code. {3 - otpVerification.AttemptCount} attempts remaining.",
                         Errors = new List<string> { "OTP verification failed" }
                     });
                 }
 
+                _logger.LogInformation("OTP code verified successfully for {Identifier}", request.Identifier);
+
                 // Mark OTP as used
                 otpVerification.IsUsed = true;
                 otpVerification.VerifiedAt = DateTime.UtcNow;
+                otpVerification.UpdatedDate = DateTime.UtcNow;
 
-                // Find or create user
+                // Find or create user (automatic registration via OTP)
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Email == request.Identifier || u.PhoneNumber == request.Identifier);
 
-                if (user == null && request.Purpose == "REGISTRATION")
-                {
-                    // Create new user for registration
-                    user = new User
-                    {
-                        Email = request.Identifier.Contains("@") ? request.Identifier : "",
-                        PhoneNumber = !request.Identifier.Contains("@") ? request.Identifier : "",
-                        Name = "New User", // Will be updated during profile completion
-                        Role = UserRole.Applicant,
-                        IsActive = true,
-                        CreatedBy = "System"
-                    };
-                    
-                    _context.Users.Add(user);
-                }
+                var isNewRegistration = false;
 
                 if (user == null)
                 {
-                    return BadRequest(new ApiResponse
+                    // Automatically create new user account via OTP verification
+                    _logger.LogInformation("Creating new user account for {Identifier}", request.Identifier);
+                    
+                    var isEmail = request.Identifier.Contains("@");
+                    var userName = isEmail 
+                        ? request.Identifier.Split('@')[0] 
+                        : $"User_{request.Identifier.Substring(request.Identifier.Length - 4)}";
+                    
+                    user = new User
                     {
-                        Success = false,
-                        Message = "User not found. Please register first.",
-                        Errors = new List<string> { "User not found" }
-                    });
+                        Email = isEmail ? request.Identifier : $"{Guid.NewGuid().ToString().Substring(0, 8)}@temp.pmcrms.gov.in",
+                        PhoneNumber = !isEmail ? request.Identifier : "0000000000", // Temporary phone number
+                        Name = userName,
+                        Role = UserRole.Applicant,
+                        IsActive = true,
+                        CreatedBy = "OTP_Registration",
+                        CreatedDate = DateTime.UtcNow
+                    };
+                    
+                    _context.Users.Add(user);
+                    isNewRegistration = true;
+                    _logger.LogInformation("New user account created via OTP for: {Identifier}, Name: {Name}", 
+                        request.Identifier, userName);
+                }
+                else
+                {
+                    _logger.LogInformation("Existing user found for {Identifier}. User ID: {UserId}", 
+                        request.Identifier, user.Id);
                 }
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("OTP marked as used and user saved to database");
 
                 // Update last login
                 user.LastLoginAt = DateTime.UtcNow;
                 user.UpdatedBy = user.Email ?? user.PhoneNumber ?? "System";
+                user.UpdatedDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("User last login updated for {UserId}", user.Id);
 
                 // Generate JWT token
                 var token = GenerateJwtToken(user);
@@ -253,12 +310,17 @@ namespace PMCRMS.API.Controllers
                     }
                 };
 
-                _logger.LogInformation("User {UserId} logged in successfully via OTP", user.Id);
+                _logger.LogInformation("User {UserId} logged in successfully via OTP. New registration: {IsNewRegistration}", 
+                    user.Id, isNewRegistration);
+
+                var successMessage = isNewRegistration 
+                    ? "Account created and logged in successfully! Welcome to PMCRMS."
+                    : "Login successful";
 
                 return Ok(new ApiResponse<LoginResponse>
                 {
                     Success = true,
-                    Message = "Login successful",
+                    Message = successMessage,
                     Data = loginResponse
                 });
             }

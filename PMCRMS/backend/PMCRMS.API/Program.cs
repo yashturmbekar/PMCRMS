@@ -106,6 +106,7 @@ builder.Services.AddSwaggerGen(c =>
 // Register application services
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 // TODO: Add more service registrations here
 
 var app = builder.Build();

@@ -162,3 +162,11 @@ Desktop.ini
 *.tmp
 *.temp
 *.cache
+
+# =========================
+# PMCRMS Specific Logs
+# =========================
+# Ignore all log files in the PMCRMS logs directory
+PMCRMS/backend/PMCRMS.API/logs/*
+# But keep the logs directory itself
+!PMCRMS/backend/PMCRMS.API/logs/.gitkeep
