@@ -324,7 +324,11 @@ export const PositionRegistrationPage = () => {
     );
   };
 
-  const selectedPositionType = getPositionType();
+  // Use state for selected position type so it can be changed dynamically
+  const [selectedPositionType, setSelectedPositionType] =
+    useState<PositionTypeValue>(getPositionType());
+
+  // Config updates automatically when selectedPositionType changes
   const config = POSITION_CONFIG[selectedPositionType];
 
   const [formData, setFormData] = useState<FormData>({
@@ -418,6 +422,11 @@ export const PositionRegistrationPage = () => {
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Update selectedPositionType when position dropdown changes
+    if (field === "positionType" && typeof value === "number") {
+      setSelectedPositionType(value as PositionTypeValue);
+    }
   };
 
   const handleAddressChange = (
@@ -463,10 +472,18 @@ export const PositionRegistrationPage = () => {
   };
 
   const removeQualification = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      qualifications: prev.qualifications.filter((_, i) => i !== index),
-    }));
+    // Only allow removal if there's more than one qualification
+    if (formData.qualifications.length > 1) {
+      setFormData((prev) => {
+        const newQualifications = prev.qualifications.filter(
+          (_, i) => i !== index
+        );
+        return {
+          ...prev,
+          qualifications: newQualifications,
+        };
+      });
+    }
   };
 
   const handleQualificationChange = (
@@ -500,10 +517,16 @@ export const PositionRegistrationPage = () => {
   };
 
   const removeExperience = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      experiences: prev.experiences.filter((_, i) => i !== index),
-    }));
+    // Only allow removal if there's more than one experience
+    if (formData.experiences.length > 1) {
+      setFormData((prev) => {
+        const newExperiences = prev.experiences.filter((_, i) => i !== index);
+        return {
+          ...prev,
+          experiences: newExperiences,
+        };
+      });
+    }
   };
 
   const handleExperienceChange = (
@@ -724,16 +747,16 @@ export const PositionRegistrationPage = () => {
             <div
               className="pmc-card-header"
               style={{
-                background:
-                  "linear-gradient(135deg, var(--pmc-primary) 0%, var(--pmc-primary-dark) 100%)",
-                color: "white",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
                 padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "white",
+                  color: "#334155",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -748,7 +771,7 @@ export const PositionRegistrationPage = () => {
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "#64748b",
                   fontSize: "13px",
                   margin: "2px 0 0 0",
                 }}
@@ -902,15 +925,16 @@ export const PositionRegistrationPage = () => {
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
-                color: "white",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
                 padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "white",
+                  color: "#334155",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -925,7 +949,7 @@ export const PositionRegistrationPage = () => {
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "#64748b",
                   fontSize: "13px",
                   margin: "2px 0 0 0",
                 }}
@@ -1221,15 +1245,16 @@ export const PositionRegistrationPage = () => {
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
-                color: "white",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
                 padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "white",
+                  color: "#334155",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -1244,7 +1269,7 @@ export const PositionRegistrationPage = () => {
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "#64748b",
                   fontSize: "13px",
                   margin: "2px 0 0 0",
                 }}
@@ -1391,15 +1416,16 @@ export const PositionRegistrationPage = () => {
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                color: "white",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
                 padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "white",
+                  color: "#334155",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -1414,7 +1440,7 @@ export const PositionRegistrationPage = () => {
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "#64748b",
                   fontSize: "13px",
                   margin: "2px 0 0 0",
                 }}
@@ -1589,15 +1615,16 @@ export const PositionRegistrationPage = () => {
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #0369a1 0%, #075985 100%)",
-                color: "white",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
                 padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "white",
+                  color: "#334155",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -1612,7 +1639,7 @@ export const PositionRegistrationPage = () => {
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "#64748b",
                   fontSize: "13px",
                   margin: "2px 0 0 0",
                 }}
@@ -1675,15 +1702,16 @@ export const PositionRegistrationPage = () => {
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #be123c 0%, #9f1239 100%)",
-                color: "white",
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
                 padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "white",
+                  color: "#334155",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
@@ -1698,7 +1726,7 @@ export const PositionRegistrationPage = () => {
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "rgba(255, 255, 255, 0.9)",
+                  color: "#64748b",
                   fontSize: "13px",
                   margin: "2px 0 0 0",
                 }}
@@ -1763,9 +1791,10 @@ export const PositionRegistrationPage = () => {
                 className="pmc-card-header"
                 style={{
                   background:
-                    "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
-                  color: "white",
+                    "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                  color: "#334155",
                   padding: "12px 16px",
+                  borderBottom: "2px solid #cbd5e1",
                 }}
               >
                 <div
@@ -1779,7 +1808,7 @@ export const PositionRegistrationPage = () => {
                     <h2
                       className="pmc-card-title"
                       style={{
-                        color: "white",
+                        color: "#334155",
                         display: "flex",
                         alignItems: "center",
                         gap: "8px",
@@ -1794,7 +1823,7 @@ export const PositionRegistrationPage = () => {
                     <p
                       className="pmc-card-subtitle"
                       style={{
-                        color: "rgba(255, 255, 255, 0.9)",
+                        color: "#64748b",
                         fontSize: "13px",
                         margin: "2px 0 0 0",
                       }}
@@ -1839,7 +1868,19 @@ export const PositionRegistrationPage = () => {
                           position: "absolute",
                           top: "16px",
                           right: "16px",
+                          background:
+                            "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "18px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
                         }}
+                        title="Remove this qualification"
                       >
                         🗑️
                       </button>
@@ -2029,9 +2070,10 @@ export const PositionRegistrationPage = () => {
                 className="pmc-card-header"
                 style={{
                   background:
-                    "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
-                  color: "white",
+                    "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                  color: "#334155",
                   padding: "12px 16px",
+                  borderBottom: "2px solid #cbd5e1",
                 }}
               >
                 <div
@@ -2045,7 +2087,7 @@ export const PositionRegistrationPage = () => {
                     <h2
                       className="pmc-card-title"
                       style={{
-                        color: "white",
+                        color: "#334155",
                         display: "flex",
                         alignItems: "center",
                         gap: "8px",
@@ -2060,7 +2102,7 @@ export const PositionRegistrationPage = () => {
                     <p
                       className="pmc-card-subtitle"
                       style={{
-                        color: "rgba(255, 255, 255, 0.9)",
+                        color: "#64748b",
                         fontSize: "13px",
                         margin: "2px 0 0 0",
                       }}
@@ -2105,7 +2147,19 @@ export const PositionRegistrationPage = () => {
                           position: "absolute",
                           top: "16px",
                           right: "16px",
+                          background:
+                            "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "18px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
                         }}
+                        title="Remove this experience"
                       >
                         🗑️
                       </button>
@@ -2287,15 +2341,16 @@ export const PositionRegistrationPage = () => {
                 className="pmc-card-header"
                 style={{
                   background:
-                    "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
-                  color: "white",
+                    "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                  color: "#334155",
                   padding: "12px 16px",
+                  borderBottom: "2px solid #cbd5e1",
                 }}
               >
                 <h2
                   className="pmc-card-title"
                   style={{
-                    color: "white",
+                    color: "#334155",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -2310,7 +2365,7 @@ export const PositionRegistrationPage = () => {
                 <p
                   className="pmc-card-subtitle"
                   style={{
-                    color: "rgba(255, 255, 255, 0.9)",
+                    color: "#64748b",
                     fontSize: "13px",
                     margin: "2px 0 0 0",
                   }}
@@ -2363,15 +2418,16 @@ export const PositionRegistrationPage = () => {
                 className="pmc-card-header"
                 style={{
                   background:
-                    "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                  color: "white",
+                    "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                  color: "#334155",
                   padding: "12px 16px",
+                  borderBottom: "2px solid #cbd5e1",
                 }}
               >
                 <h2
                   className="pmc-card-title"
                   style={{
-                    color: "white",
+                    color: "#334155",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -2386,7 +2442,7 @@ export const PositionRegistrationPage = () => {
                 <p
                   className="pmc-card-subtitle"
                   style={{
-                    color: "rgba(255, 255, 255, 0.9)",
+                    color: "#64748b",
                     fontSize: "13px",
                     margin: "2px 0 0 0",
                   }}
@@ -2441,15 +2497,16 @@ export const PositionRegistrationPage = () => {
                 className="pmc-card-header"
                 style={{
                   background:
-                    "linear-gradient(135deg, #0369a1 0%, #075985 100%)",
-                  color: "white",
+                    "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                  color: "#334155",
                   padding: "12px 16px",
+                  borderBottom: "2px solid #cbd5e1",
                 }}
               >
                 <h2
                   className="pmc-card-title"
                   style={{
-                    color: "white",
+                    color: "#334155",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -2464,7 +2521,7 @@ export const PositionRegistrationPage = () => {
                 <p
                   className="pmc-card-subtitle"
                   style={{
-                    color: "rgba(255, 255, 255, 0.9)",
+                    color: "#64748b",
                     fontSize: "13px",
                     margin: "2px 0 0 0",
                   }}
