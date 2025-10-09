@@ -55,16 +55,39 @@ builder.Services.AddAuthorization();
 
 // Configure CORS
 var corsSettings = builder.Configuration.GetSection("CorsSettings");
+var allowedOrigins = corsSettings.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+// Add default localhost origins if none configured
+var origins = new List<string>(allowedOrigins);
+if (!origins.Any() || origins.Any(o => o.Contains("${FRONTEND_URL}")))
+{
+    origins = new List<string>
+    {
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:5000"
+    };
+}
+
+// Add frontend URL from environment if available
+var frontendUrl = builder.Configuration["FRONTEND_URL"];
+if (!string.IsNullOrEmpty(frontendUrl) && !origins.Contains(frontendUrl))
+{
+    origins.Add(frontendUrl);
+}
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(corsSettings.GetSection("AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:5173" })
+        policy.WithOrigins(origins.ToArray())
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
     });
 });
+
+Log.Information("CORS configured with origins: {Origins}", string.Join(", ", origins));
 
 // Configure Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
