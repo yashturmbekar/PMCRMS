@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "PMCRMS/backend/PMCRMS.API/Dockerfile"
-dockerContext = "PMCRMS/backend/PMCRMS.API"
 
 [deploy]
 startCommand = "dotnet PMCRMS.API.dll"
