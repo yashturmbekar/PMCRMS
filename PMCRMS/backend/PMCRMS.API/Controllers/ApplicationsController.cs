@@ -23,7 +23,7 @@ namespace PMCRMS.API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IEnumerable<ApplicationDto>>>> GetApplications(
+        public async Task<ActionResult<ApiResponse<object>>> GetApplications(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -68,11 +68,19 @@ namespace PMCRMS.API.Controllers
                     CertificateNumber = app.CertificateNumber
                 }).ToList();
 
-                return Ok(new ApiResponse<IEnumerable<ApplicationDto>>
+                // Return paginated response format expected by frontend
+                return Ok(new ApiResponse<object>
                 {
                     Success = true,
                     Message = $"Applications retrieved successfully. Total: {totalCount}, Page: {page}/{(int)Math.Ceiling((double)totalCount / pageSize)}",
-                    Data = applicationDtos
+                    Data = new
+                    {
+                        data = applicationDtos,
+                        page = page,
+                        pageSize = pageSize,
+                        totalCount = totalCount,
+                        totalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                    }
                 });
             }
             catch (Exception ex)

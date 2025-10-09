@@ -213,7 +213,7 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
 
 const Gender = {
   Male: 0,
-  Female: 0,
+  Female: 1,
   Other: 2,
 } as const;
 
@@ -305,12 +305,28 @@ interface FormData {
 
 export const PositionRegistrationPage = () => {
   const navigate = useNavigate();
-  const { positionType: positionParam } = useParams<{ positionType: string }>();
+  const { positionType: positionParam, applicationId } = useParams<{
+    positionType: string;
+    applicationId?: string;
+  }>();
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [permanentSameAsLocal, setPermanentSameAsLocal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showValidationPopup, setShowValidationPopup] = useState(false);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [submittedApplicationNumber, setSubmittedApplicationNumber] =
+    useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingApplicationId, setEditingApplicationId] = useState<
+    number | null
+  >(null);
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
@@ -393,6 +409,212 @@ export const PositionRegistrationPage = () => {
     ],
     documents: [],
   });
+
+  // ============================================
+  // 🧪 MOCK DATA FOR TESTING - REMOVE AFTER TESTING
+  // ============================================
+  // Toggle this flag to enable/disable mock data
+  const USE_MOCK_DATA = true; // Set to false to disable mock data
+
+  useEffect(() => {
+    if (USE_MOCK_DATA) {
+      // Helper function to convert date to ISO 8601 UTC format for PostgreSQL
+      const toUTCDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toISOString(); // Returns format: "1990-05-15T00:00:00.000Z"
+      };
+
+      // Helper function to create mock File object from public assets
+      const createMockFile = async (
+        path: string,
+        fileName: string,
+        mimeType: string
+      ): Promise<File> => {
+        try {
+          const response = await fetch(path);
+          const blob = await response.blob();
+          return new File([blob], fileName, { type: mimeType });
+        } catch {
+          console.warn(`⚠️ Could not load ${fileName}, using dummy file`);
+          // Fallback: create a small dummy file
+          const blob = new Blob([`Mock ${fileName}`], { type: mimeType });
+          return new File([blob], fileName, { type: mimeType });
+        }
+      };
+
+      // Load mock data with files
+      const loadMockData = async () => {
+        // Create mock files for all mandatory documents
+        const mockPDF = await createMockFile(
+          "/PMCRMS_Application_Doc.pdf",
+          "sample-document.pdf",
+          "application/pdf"
+        );
+
+        const mockProfilePic = await createMockFile(
+          "/pmc-logo.png",
+          "profile-picture.png",
+          "image/png"
+        );
+
+        // Create mock documents array with all mandatory documents
+        const mockDocuments: Document[] = [
+          {
+            fileId: "DOC_PAN_" + Date.now(),
+            documentType: SEDocumentType.PanCard,
+            fileName: "pan-card.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_AADHAR_" + Date.now(),
+            documentType: SEDocumentType.AadharCard,
+            fileName: "aadhar-card.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_DEGREE_" + Date.now(),
+            documentType: SEDocumentType.DegreeCertificate,
+            fileName: "degree-certificate.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_MARKS_" + Date.now(),
+            documentType: SEDocumentType.Marksheet,
+            fileName: "marksheet.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_EXP_" + Date.now(),
+            documentType: SEDocumentType.ExperienceCertificate,
+            fileName: "experience-certificate.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_PROP_TAX_" + Date.now(),
+            documentType: SEDocumentType.PropertyTaxReceipt,
+            fileName: "property-tax-receipt.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_SELF_DEC_" + Date.now(),
+            documentType: SEDocumentType.SelfDeclaration,
+            fileName: "self-declaration.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_PROFILE_" + Date.now(),
+            documentType: SEDocumentType.ProfilePicture,
+            fileName: "profile-picture.png",
+            filePath: URL.createObjectURL(mockProfilePic),
+            file: mockProfilePic,
+          },
+          {
+            fileId: "DOC_COA_" + Date.now(),
+            documentType: SEDocumentType.COACertificate,
+            fileName: "coa-certificate.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+          {
+            fileId: "DOC_ADDR_PROOF_" + Date.now(),
+            documentType: SEDocumentType.AddressProof,
+            fileName: "address-proof.pdf",
+            filePath: URL.createObjectURL(mockPDF),
+            file: mockPDF,
+          },
+        ];
+
+        setFormData({
+          firstName: "Rajesh",
+          middleName: "Kumar",
+          lastName: "Sharma",
+          motherName: "Sunita Sharma",
+          mobileNumber: "9876543210",
+          emailAddress: "rajesh.sharma@example.com",
+          positionType: selectedPositionType,
+          bloodGroup: "B+",
+          height: 175,
+          gender: Gender.Male,
+          dateOfBirth: toUTCDate("1990-05-15"), // UTC format for PostgreSQL
+          permanentAddress: {
+            addressLine1: "Plot No. 123, Sector 5",
+            addressLine2: "Near City Hospital",
+            addressLine3: "Vidya Nagar",
+            city: "Pune",
+            state: "Maharashtra",
+            country: "India",
+            pinCode: "411014",
+          },
+          currentAddress: {
+            addressLine1: "Flat 501, Sunshine Apartments",
+            addressLine2: "MG Road",
+            addressLine3: "Kothrud",
+            city: "Pune",
+            state: "Maharashtra",
+            country: "India",
+            pinCode: "411038",
+          },
+          panCardNumber: "ABCDE1234F",
+          aadharCardNumber: "123456789012",
+          coaCardNumber: "COA/2020/12345",
+          qualifications: [
+            {
+              fileId: `QN_${Date.now()}`,
+              instituteName: "College of Engineering Pune",
+              universityName: "University of Pune",
+              specialization: Specialization.BE,
+              degreeName: "Bachelor of Engineering in Civil",
+              passingMonth: 6,
+              yearOfPassing: "2012",
+            },
+            {
+              fileId: `QN_${Date.now() + 1}`,
+              instituteName: "IIT Bombay",
+              universityName: "Indian Institute of Technology Bombay",
+              specialization: Specialization.ME,
+              degreeName: "Master of Engineering in Structural",
+              passingMonth: 5,
+              yearOfPassing: "2015",
+            },
+          ],
+          experiences: [
+            {
+              fileId: `EXP_${Date.now()}`,
+              companyName: "ABC Construction Ltd",
+              position: "Senior Civil Engineer",
+              yearsOfExperience: 5,
+              fromDate: toUTCDate("2015-07-01"), // UTC format for PostgreSQL
+              toDate: toUTCDate("2020-06-30"), // UTC format for PostgreSQL
+            },
+            {
+              fileId: `EXP_${Date.now() + 1}`,
+              companyName: "XYZ Infrastructure Pvt Ltd",
+              position: "Project Manager",
+              yearsOfExperience: 3,
+              fromDate: toUTCDate("2020-07-01"), // UTC format for PostgreSQL
+              toDate: toUTCDate("2023-12-31"), // UTC format for PostgreSQL
+            },
+          ],
+          documents: mockDocuments, // Pre-loaded with all mandatory documents
+        });
+
+        console.log("✅ Mock data loaded for testing (with UTC dates & files)");
+        console.log(`📄 Loaded ${mockDocuments.length} mock documents`);
+      };
+
+      loadMockData();
+    }
+  }, [selectedPositionType, USE_MOCK_DATA]); // Re-apply mock data when position type changes
+  // ============================================
+  // END MOCK DATA
+  // ============================================
 
   const positionOptions = [
     { value: PositionType.Architect, label: "Architect" },
@@ -592,6 +814,16 @@ export const PositionRegistrationPage = () => {
     data: FormData,
     status: number
   ): PositionRegistrationRequest => {
+    // Helper function to convert date strings to ISO 8601 UTC format
+    const toUTCDate = (dateStr: string) => {
+      if (!dateStr) return dateStr;
+      // If already in ISO format, return as is
+      if (dateStr.includes("T") && dateStr.includes("Z")) return dateStr;
+      // Convert to UTC ISO format
+      const date = new Date(dateStr);
+      return date.toISOString();
+    };
+
     // Map local address
     const localAddress: ApiAddress = {
       addressLine1: data.currentAddress.addressLine1,
@@ -636,8 +868,8 @@ export const PositionRegistrationPage = () => {
         fileId: e.fileId,
         companyName: e.companyName,
         position: e.position,
-        fromDate: e.fromDate,
-        toDate: e.toDate,
+        fromDate: toUTCDate(e.fromDate), // Convert to UTC
+        toDate: toUTCDate(e.toDate), // Convert to UTC
       }));
 
     // Build request
@@ -652,7 +884,7 @@ export const PositionRegistrationPage = () => {
       bloodGroup: data.bloodGroup || undefined,
       height: data.height || undefined,
       gender: data.gender,
-      dateOfBirth: data.dateOfBirth,
+      dateOfBirth: toUTCDate(data.dateOfBirth), // Convert to UTC
       panCardNumber: data.panCardNumber,
       aadharCardNumber: data.aadharCardNumber,
       coaCardNumber: data.coaCardNumber || undefined,
@@ -676,36 +908,165 @@ export const PositionRegistrationPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    // Set attemptedSubmit first to trigger validation UI
+    setAttemptedSubmit(true);
+
+    // Basic frontend validation - check if required fields are filled
+    const hasEmptyFields =
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.motherName ||
+      !formData.mobileNumber ||
+      !formData.emailAddress ||
+      !formData.dateOfBirth;
+
+    if (hasEmptyFields) {
+      // Don't show popup for frontend validation, only inline errors
+      setError("Please fill in all required fields");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    // Show review popup instead of submitting directly
+    setShowReviewPopup(true);
+  };
+
+  // New function to handle actual submission after review
+  const handleConfirmSubmit = async () => {
+    setIsSubmitting(true);
     setError("");
     setSuccess("");
+    setValidationErrors([]);
+    setFieldErrors({});
+    setShowValidationPopup(false);
 
     try {
       // Map form data to API request with Submitted status (2)
       const request = mapFormDataToRequest(formData, 2);
 
-      // Call API to create application
-      const response = await positionRegistrationService.createApplication(
-        request
-      );
+      let response;
+      // If in edit mode, update existing application; otherwise create new
+      if (isEditMode && editingApplicationId) {
+        response = await positionRegistrationService.updateApplication(
+          editingApplicationId,
+          request
+        );
+      } else {
+        response = await positionRegistrationService.createApplication(request);
+      }
 
-      setSuccess(
-        `Application submitted successfully! Application Number: ${
-          response.applicationNumber || "Pending"
-        }`
-      );
+      // Close review popup and show success popup
+      setShowReviewPopup(false);
+      setSubmittedApplicationNumber(response.applicationNumber || "Pending");
+      setShowSuccessPopup(true);
 
-      // Navigate to dashboard after 2 seconds
+      // Navigate to dashboard after 3 seconds
       setTimeout(() => {
         navigate("/dashboard");
-      }, 2000);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to submit application";
-      setError(errorMessage);
+      }, 3000);
+    } catch (err: unknown) {
       console.error("Submission error:", err);
+
+      // Close review popup
+      setShowReviewPopup(false);
+
+      // Handle different types of errors from backend
+      const error = err as {
+        response?: {
+          status?: number;
+          data?: {
+            errors?: Record<string, string[]>;
+            error?: string;
+            message?: string;
+            title?: string;
+            detail?: string;
+          };
+        };
+        message?: string;
+      };
+
+      if (error?.response?.data) {
+        const errorData = error.response.data;
+
+        // Handle validation errors (400 Bad Request with errors object)
+        if (error.response.status === 400 && errorData.errors) {
+          const errors: string[] = [];
+          const fields: Record<string, string> = {};
+
+          // Extract validation errors from ASP.NET Core ModelState
+          Object.keys(errorData.errors).forEach((field) => {
+            const fieldErrors = errorData.errors?.[field];
+            if (Array.isArray(fieldErrors)) {
+              fieldErrors.forEach((errorMsg: string) => {
+                errors.push(errorMsg);
+                // Map backend field names to frontend field names
+                const fieldName = field.toLowerCase();
+                if (!fields[fieldName]) {
+                  fields[fieldName] = errorMsg;
+                }
+              });
+            }
+          });
+
+          if (errors.length > 0) {
+            setValidationErrors(errors);
+            setFieldErrors(fields);
+            setShowValidationPopup(true); // Show popup for backend validation
+            setError("");
+          } else if (errorData.message || errorData.title) {
+            const errorMsg = errorData.message || errorData.title || "";
+            setError(errorMsg);
+            setValidationErrors([errorMsg]);
+            setShowValidationPopup(true); // Show popup
+          } else {
+            setError("Validation failed. Please check your input.");
+            setValidationErrors([
+              "Validation failed. Please check your input.",
+            ]);
+            setShowValidationPopup(true); // Show popup
+          }
+        }
+        // Handle single error field from backend (like "error": "message")
+        else if (errorData.error) {
+          setError(errorData.error);
+          setValidationErrors([errorData.error]);
+          setShowValidationPopup(true); // Show popup for backend errors
+        }
+        // Handle general error messages
+        else if (errorData.message) {
+          setError(errorData.message);
+          setValidationErrors([errorData.message]);
+          setShowValidationPopup(true); // Show popup for backend errors
+        }
+        // Handle exception messages (title/detail from ProblemDetails)
+        else if (errorData.title || errorData.detail) {
+          const errorMsg = errorData.detail || errorData.title || "";
+          setError(errorMsg);
+          setValidationErrors([errorMsg]);
+          setShowValidationPopup(true); // Show popup for exceptions
+        } else {
+          const errorMsg = "Failed to submit application. Please try again.";
+          setError(errorMsg);
+          setValidationErrors([errorMsg]);
+          setShowValidationPopup(true); // Show popup for unknown errors
+        }
+      } else if (error.message) {
+        // Network errors or other exceptions
+        setError(error.message);
+        setValidationErrors([error.message]);
+        setShowValidationPopup(true); // Show popup for exceptions
+      } else {
+        const errorMsg = "Failed to submit application. Please try again.";
+        setError(errorMsg);
+        setValidationErrors([errorMsg]);
+        setShowValidationPopup(true); // Show popup for unknown errors
+      }
+
+      // Scroll to top to see error message
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -713,15 +1074,24 @@ export const PositionRegistrationPage = () => {
     setLoading(true);
     setError("");
     setSuccess("");
+    setValidationErrors([]);
+    setFieldErrors({});
+    setShowValidationPopup(false);
 
     try {
       // Map form data to API request with Draft status (1)
       const request = mapFormDataToRequest(formData, 1);
 
-      // Call API to create/save draft
-      const response = await positionRegistrationService.createApplication(
-        request
-      );
+      let response;
+      // If in edit mode, update existing draft; otherwise create new
+      if (isEditMode && editingApplicationId) {
+        response = await positionRegistrationService.updateApplication(
+          editingApplicationId,
+          request
+        );
+      } else {
+        response = await positionRegistrationService.createApplication(request);
+      }
 
       setSuccess(
         `Application saved as draft successfully! ${
@@ -735,11 +1105,79 @@ export const PositionRegistrationPage = () => {
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to save draft";
-      setError(errorMessage);
+    } catch (err: unknown) {
       console.error("Draft save error:", err);
+
+      // Handle different types of errors from backend
+      const error = err as {
+        response?: {
+          status?: number;
+          data?: {
+            errors?: Record<string, string[]>;
+            message?: string;
+            title?: string;
+            detail?: string;
+          };
+        };
+        message?: string;
+      };
+
+      if (error?.response?.data) {
+        const errorData = error.response.data;
+
+        // Handle validation errors (400 Bad Request with errors array)
+        if (error.response.status === 400 && errorData.errors) {
+          const errors: string[] = [];
+          const fields: Record<string, string> = {};
+
+          // Extract validation errors from ASP.NET Core ModelState
+          Object.keys(errorData.errors).forEach((field) => {
+            const fieldErrors = errorData.errors?.[field];
+            if (Array.isArray(fieldErrors)) {
+              fieldErrors.forEach((errorMsg: string) => {
+                errors.push(errorMsg);
+                // Map backend field names to frontend field names
+                const fieldName = field.toLowerCase();
+                if (!fields[fieldName]) {
+                  fields[fieldName] = errorMsg;
+                }
+              });
+            }
+          });
+
+          if (errors.length > 0) {
+            setValidationErrors(errors);
+            setFieldErrors(fields);
+            setShowValidationPopup(true);
+            setError("");
+          } else if (errorData.message || errorData.title) {
+            setError(errorData.message || errorData.title || "");
+          } else {
+            setError("Validation failed. Please check your input.");
+          }
+        }
+        // Handle general error messages
+        else if (errorData.message) {
+          setError(errorData.message);
+          setShowValidationPopup(true);
+          setValidationErrors([errorData.message]);
+        }
+        // Handle exception messages
+        else if (errorData.title || errorData.detail) {
+          const errorMsg = errorData.detail || errorData.title || "";
+          setError(errorMsg);
+          setShowValidationPopup(true);
+          setValidationErrors([errorMsg]);
+        } else {
+          setError("Failed to save draft. Please try again.");
+        }
+      } else if (error.message) {
+        setError(error.message);
+        setShowValidationPopup(true);
+        setValidationErrors([error.message]);
+      } else {
+        setError("Failed to save draft. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -764,6 +1202,148 @@ export const PositionRegistrationPage = () => {
     return () => clearTimeout(timer);
   }, []);
 
+  // Load application data if editing (applicationId present)
+  useEffect(() => {
+    const loadApplicationData = async () => {
+      if (!applicationId) return;
+
+      try {
+        setLoading(true);
+        setIsEditMode(true);
+        setEditingApplicationId(parseInt(applicationId));
+
+        // Fetch application data
+        const response = await positionRegistrationService.getApplication(
+          parseInt(applicationId)
+        );
+
+        // Map API response to form data
+        const addressLocal = response.addresses?.find(
+          (a: { addressType: string }) => a.addressType === "Local"
+        );
+        const addressPermanent = response.addresses?.find(
+          (a: { addressType: string }) => a.addressType === "Permanent"
+        );
+
+        setFormData({
+          firstName: response.firstName || "",
+          middleName: response.middleName || "",
+          lastName: response.lastName || "",
+          motherName: response.motherName || "",
+          mobileNumber: response.mobileNumber || "",
+          emailAddress: response.emailAddress || "",
+          positionType:
+            (response.positionType as PositionTypeValue) ??
+            selectedPositionType,
+          bloodGroup: response.bloodGroup || "",
+          height: response.height || 0,
+          gender: (response.gender as GenderValue) ?? 0,
+          dateOfBirth: response.dateOfBirth
+            ? response.dateOfBirth.split("T")[0]
+            : "",
+          currentAddress: addressLocal
+            ? {
+                addressLine1: addressLocal.addressLine1 || "",
+                addressLine2: addressLocal.addressLine2 || "",
+                addressLine3: addressLocal.addressLine3 || "",
+                city: addressLocal.city || "",
+                state: addressLocal.state || "",
+                country: addressLocal.country || "",
+                pinCode: addressLocal.pinCode || "",
+              }
+            : {
+                addressLine1: "",
+                addressLine2: "",
+                addressLine3: "",
+                city: "",
+                state: "",
+                country: "",
+                pinCode: "",
+              },
+          permanentAddress: addressPermanent
+            ? {
+                addressLine1: addressPermanent.addressLine1 || "",
+                addressLine2: addressPermanent.addressLine2 || "",
+                addressLine3: addressPermanent.addressLine3 || "",
+                city: addressPermanent.city || "",
+                state: addressPermanent.state || "",
+                country: addressPermanent.country || "",
+                pinCode: addressPermanent.pinCode || "",
+              }
+            : {
+                addressLine1: "",
+                addressLine2: "",
+                addressLine3: "",
+                city: "",
+                state: "",
+                country: "",
+                pinCode: "",
+              },
+          panCardNumber: response.panCardNumber || "",
+          aadharCardNumber: response.aadharCardNumber || "",
+          coaCardNumber: response.coaCardNumber || "",
+          qualifications:
+            response.qualifications?.map((q) => ({
+              fileId: q.fileId || `QUAL_${Date.now()}_${Math.random()}`,
+              instituteName: q.instituteName || "",
+              universityName: q.universityName || "",
+              specialization: (q.specialization as SpecializationValue) ?? 0,
+              degreeName: q.degreeName || "",
+              passingMonth: q.passingMonth || 1,
+              yearOfPassing: q.yearOfPassing?.toString() || "",
+            })) || [],
+          experiences:
+            response.experiences?.map((e) => ({
+              fileId: e.fileId || `EXP_${Date.now()}_${Math.random()}`,
+              companyName: e.companyName || "",
+              position: e.position || "",
+              yearsOfExperience: e.yearsOfExperience || 0,
+              fromDate: e.fromDate ? e.fromDate.split("T")[0] : "",
+              toDate: e.toDate ? e.toDate.split("T")[0] : "",
+            })) || [],
+          documents:
+            response.documents?.map((d) => ({
+              fileId: d.fileId || `DOC_${Date.now()}_${Math.random()}`,
+              documentType: (d.documentType as SEDocumentTypeValue) ?? 0,
+              fileName: d.fileName || "",
+              filePath: d.filePath || "",
+            })) || [],
+        });
+
+        // Update position type if different
+        if (
+          response.positionType !== undefined &&
+          response.positionType !== selectedPositionType
+        ) {
+          setSelectedPositionType(response.positionType as PositionTypeValue);
+        }
+
+        setSuccess(
+          `Editing ${response.status === 1 ? "Draft" : "Application"} #${
+            response.applicationNumber || applicationId
+          }`
+        );
+      } catch (err) {
+        console.error("Error loading application:", err);
+        setError(
+          "Failed to load application data. Redirecting to dashboard..."
+        );
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 2000);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadApplicationData();
+  }, [applicationId, navigate, selectedPositionType]);
+
+  // Helper function to determine if a field should have error styling
+  const hasFieldError = (fieldName: string): boolean => {
+    return !!fieldErrors[fieldName.toLowerCase()];
+  };
+
   // Show page loader during initialization
   if (initializing) {
     return (
@@ -773,6 +1353,141 @@ export const PositionRegistrationPage = () => {
 
   return (
     <div className="pmc-fadeIn">
+      {/* Validation Error Popup */}
+      {showValidationPopup && validationErrors.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+          }}
+          onClick={() => setShowValidationPopup(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "24px",
+              maxWidth: "500px",
+              width: "90%",
+              maxHeight: "70vh",
+              overflow: "auto",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "16px",
+                paddingBottom: "16px",
+                borderBottom: "2px solid #fee2e2",
+              }}
+            >
+              <svg
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  color: "#dc2626",
+                  flexShrink: 0,
+                }}
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <h2
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "700",
+                  color: "#991b1b",
+                  margin: 0,
+                }}
+              >
+                Validation Error
+              </h2>
+            </div>
+            <div
+              style={{
+                marginBottom: "20px",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#64748b",
+                  marginBottom: "12px",
+                }}
+              >
+                Please fix the following errors:
+              </p>
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: 0,
+                }}
+              >
+                {validationErrors.map((error, index) => (
+                  <li
+                    key={index}
+                    style={{
+                      padding: "10px 12px",
+                      marginBottom: "8px",
+                      backgroundColor: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "6px",
+                      color: "#991b1b",
+                      fontSize: "13px",
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    • {error}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowValidationPopup(false)}
+                style={{
+                  padding: "10px 24px",
+                  backgroundColor: "#dc2626",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#b91c1c";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#dc2626";
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section - Compact */}
       <div
         className="pmc-content-header pmc-fadeInDown"
@@ -796,7 +1511,7 @@ export const PositionRegistrationPage = () => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {/* Success/Error Messages */}
         {success && (
           <div
@@ -1088,13 +1803,28 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      (attemptedSubmit && !formData.firstName) ||
+                      hasFieldError("firstName")
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.firstName}
                     onChange={(e) =>
                       handleInputChange("firstName", e.target.value)
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.firstName && (
+                    <span className="pmc-text-error">
+                      First name is required
+                    </span>
+                  )}
+                  {hasFieldError("firstName") && (
+                    <span className="pmc-text-error">
+                      {fieldErrors["firstname"]}
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label">Middle Name</label>
@@ -1113,13 +1843,28 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      (attemptedSubmit && !formData.lastName) ||
+                      hasFieldError("lastName")
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.lastName}
                     onChange={(e) =>
                       handleInputChange("lastName", e.target.value)
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.lastName && (
+                    <span className="pmc-text-error">
+                      Last name is required
+                    </span>
+                  )}
+                  {hasFieldError("lastName") && (
+                    <span className="pmc-text-error">
+                      {fieldErrors["lastname"]}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1130,13 +1875,23 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      (attemptedSubmit && !formData.motherName) ||
+                      hasFieldError("motherName")
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.motherName}
                     onChange={(e) =>
                       handleInputChange("motherName", e.target.value)
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.motherName && (
+                    <span className="pmc-text-error">
+                      Mother name is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -1144,13 +1899,23 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="tel"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      (attemptedSubmit && !formData.mobileNumber) ||
+                      hasFieldError("mobileNumber")
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.mobileNumber}
                     onChange={(e) =>
                       handleInputChange("mobileNumber", e.target.value)
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.mobileNumber && (
+                    <span className="pmc-text-error">
+                      Mobile number is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -1158,13 +1923,23 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="email"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      (attemptedSubmit && !formData.emailAddress) ||
+                      hasFieldError("emailAddress")
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.emailAddress}
                     onChange={(e) =>
                       handleInputChange("emailAddress", e.target.value)
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.emailAddress && (
+                    <span className="pmc-text-error">
+                      Email address is required
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1175,13 +1950,28 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="date"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      (attemptedSubmit && !formData.dateOfBirth) ||
+                      hasFieldError("dateOfBirth")
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.dateOfBirth}
                     onChange={(e) =>
                       handleInputChange("dateOfBirth", e.target.value)
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.dateOfBirth && (
+                    <span className="pmc-text-error">
+                      Date of birth is required
+                    </span>
+                  )}
+                  {hasFieldError("dateOfBirth") && (
+                    <span className="pmc-text-error">
+                      {fieldErrors["dateofbirth"]}
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -2774,6 +3564,512 @@ export const PositionRegistrationPage = () => {
           </div>
         </div>
       </form>
+
+      {/* Review Popup */}
+      {showReviewPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            padding: "20px",
+          }}
+          onClick={() => !isSubmitting && setShowReviewPopup(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "16px",
+              maxWidth: "900px",
+              width: "100%",
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+                padding: "24px",
+                borderTopLeftRadius: "16px",
+                borderTopRightRadius: "16px",
+                color: "white",
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: "24px", fontWeight: "700" }}>
+                📋 Review Application Details
+              </h2>
+              <p
+                style={{ margin: "8px 0 0 0", opacity: 0.9, fontSize: "14px" }}
+              >
+                Please review all information before submitting
+              </p>
+            </div>
+
+            {/* Content */}
+            <div style={{ padding: "24px" }}>
+              {/* Basic Information */}
+              <div style={{ marginBottom: "24px" }}>
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "12px",
+                    color: "#1e40af",
+                  }}
+                >
+                  👤 Personal Information
+                </h3>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                    gap: "12px",
+                    background: "#f8fafc",
+                    padding: "16px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div>
+                    <strong>Name:</strong> {formData.firstName}{" "}
+                    {formData.middleName} {formData.lastName}
+                  </div>
+                  <div>
+                    <strong>Mother's Name:</strong> {formData.motherName}
+                  </div>
+                  <div>
+                    <strong>Date of Birth:</strong> {formData.dateOfBirth}
+                  </div>
+                  <div>
+                    <strong>Gender:</strong>{" "}
+                    {formData.gender === 0
+                      ? "Male"
+                      : formData.gender === 1
+                      ? "Female"
+                      : formData.gender === 2
+                      ? "Other"
+                      : "N/A"}
+                  </div>
+                  <div>
+                    <strong>Blood Group:</strong> {formData.bloodGroup || "N/A"}
+                  </div>
+                  <div>
+                    <strong>Height:</strong> {formData.height || "N/A"} cm
+                  </div>
+                  <div>
+                    <strong>Mobile:</strong> {formData.mobileNumber}
+                  </div>
+                  <div>
+                    <strong>Email:</strong> {formData.emailAddress}
+                  </div>
+                  <div>
+                    <strong>PAN:</strong> {formData.panCardNumber}
+                  </div>
+                  <div>
+                    <strong>Aadhar:</strong> {formData.aadharCardNumber}
+                  </div>
+                  {formData.coaCardNumber && (
+                    <div>
+                      <strong>COA Number:</strong> {formData.coaCardNumber}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Local Address */}
+              <div style={{ marginBottom: "24px" }}>
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "12px",
+                    color: "#1e40af",
+                  }}
+                >
+                  🏠 Current Address
+                </h3>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "16px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    {formData.currentAddress.addressLine1},{" "}
+                    {formData.currentAddress.addressLine2 &&
+                      `${formData.currentAddress.addressLine2}, `}
+                    {formData.currentAddress.addressLine3 &&
+                      `${formData.currentAddress.addressLine3}, `}
+                    {formData.currentAddress.city},{" "}
+                    {formData.currentAddress.state},{" "}
+                    {formData.currentAddress.country} -{" "}
+                    {formData.currentAddress.pinCode}
+                  </p>
+                </div>
+              </div>
+
+              {/* Permanent Address */}
+              <div style={{ marginBottom: "24px" }}>
+                <h3
+                  style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    marginBottom: "12px",
+                    color: "#1e40af",
+                  }}
+                >
+                  🏡 Permanent Address
+                </h3>
+                <div
+                  style={{
+                    background: "#f8fafc",
+                    padding: "16px",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    {formData.permanentAddress.addressLine1},{" "}
+                    {formData.permanentAddress.addressLine2 &&
+                      `${formData.permanentAddress.addressLine2}, `}
+                    {formData.permanentAddress.addressLine3 &&
+                      `${formData.permanentAddress.addressLine3}, `}
+                    {formData.permanentAddress.city},{" "}
+                    {formData.permanentAddress.state},{" "}
+                    {formData.permanentAddress.country} -{" "}
+                    {formData.permanentAddress.pinCode}
+                  </p>
+                </div>
+              </div>
+
+              {/* Qualifications */}
+              {formData.qualifications.length > 0 && (
+                <div style={{ marginBottom: "24px" }}>
+                  <h3
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                      color: "#1e40af",
+                    }}
+                  >
+                    🎓 Qualifications
+                  </h3>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      padding: "16px",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    {formData.qualifications.map((qual, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          marginBottom:
+                            index < formData.qualifications.length - 1
+                              ? "12px"
+                              : "0",
+                          paddingBottom:
+                            index < formData.qualifications.length - 1
+                              ? "12px"
+                              : "0",
+                          borderBottom:
+                            index < formData.qualifications.length - 1
+                              ? "1px solid #e2e8f0"
+                              : "none",
+                        }}
+                      >
+                        <strong>{qual.degreeName}</strong> -{" "}
+                        {qual.specialization}
+                        <br />
+                        {qual.instituteName}, {qual.universityName}
+                        <br />
+                        Passing: {qual.passingMonth}/{qual.yearOfPassing}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Experiences */}
+              {formData.experiences.length > 0 && (
+                <div style={{ marginBottom: "24px" }}>
+                  <h3
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                      color: "#1e40af",
+                    }}
+                  >
+                    💼 Work Experience
+                  </h3>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      padding: "16px",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    {formData.experiences.map((exp, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          marginBottom:
+                            index < formData.experiences.length - 1
+                              ? "12px"
+                              : "0",
+                          paddingBottom:
+                            index < formData.experiences.length - 1
+                              ? "12px"
+                              : "0",
+                          borderBottom:
+                            index < formData.experiences.length - 1
+                              ? "1px solid #e2e8f0"
+                              : "none",
+                        }}
+                      >
+                        <strong>{exp.position}</strong> at {exp.companyName}
+                        <br />
+                        Duration: {exp.fromDate} to {exp.toDate}
+                        <br />
+                        Experience: {exp.yearsOfExperience} years
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Documents */}
+              {formData.documents.length > 0 && (
+                <div style={{ marginBottom: "24px" }}>
+                  <h3
+                    style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      marginBottom: "12px",
+                      color: "#1e40af",
+                    }}
+                  >
+                    📎 Documents Attached
+                  </h3>
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(200px, 1fr))",
+                      gap: "8px",
+                    }}
+                  >
+                    {formData.documents.map((doc, index) => (
+                      <div
+                        key={index}
+                        style={{
+                          padding: "8px",
+                          background: "white",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                        }}
+                      >
+                        ✓ {doc.fileName}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div
+              style={{
+                padding: "20px 24px",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "12px",
+                background: "#f8fafc",
+                borderBottomLeftRadius: "16px",
+                borderBottomRightRadius: "16px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowReviewPopup(false)}
+                disabled={isSubmitting}
+                style={{
+                  padding: "12px 24px",
+                  background: "white",
+                  border: "2px solid #cbd5e1",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                  opacity: isSubmitting ? 0.5 : 1,
+                  fontSize: "14px",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) =>
+                  !isSubmitting &&
+                  (e.currentTarget.style.background = "#f1f5f9")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "white")
+                }
+              >
+                ✏️ Edit
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                disabled={isSubmitting}
+                style={{
+                  padding: "12px 32px",
+                  background: isSubmitting
+                    ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+                    : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontWeight: "700",
+                  cursor: isSubmitting ? "not-allowed" : "pointer",
+                  fontSize: "14px",
+                  boxShadow: isSubmitting
+                    ? "none"
+                    : "0 4px 12px rgba(16, 185, 129, 0.3)",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) =>
+                  !isSubmitting &&
+                  (e.currentTarget.style.transform = "translateY(-2px)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.transform = "translateY(0)")
+                }
+              >
+                {isSubmitting ? "⏳ Submitting..." : "✅ Confirm & Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "16px",
+              maxWidth: "500px",
+              width: "100%",
+              padding: "40px",
+              textAlign: "center",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            <div
+              style={{
+                width: "80px",
+                height: "80px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                margin: "0 auto 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "40px",
+              }}
+            >
+              ✓
+            </div>
+            <h2
+              style={{
+                fontSize: "28px",
+                fontWeight: "700",
+                color: "#10b981",
+                marginBottom: "16px",
+              }}
+            >
+              Application Submitted Successfully!
+            </h2>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#64748b",
+                marginBottom: "8px",
+              }}
+            >
+              Your application has been submitted successfully.
+            </p>
+            <p
+              style={{
+                fontSize: "18px",
+                fontWeight: "600",
+                color: "#1e40af",
+                marginBottom: "24px",
+              }}
+            >
+              Application Number:{" "}
+              <span style={{ color: "#10b981" }}>
+                {submittedApplicationNumber}
+              </span>
+            </p>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "4px solid #10b981",
+                borderTopColor: "transparent",
+                borderRadius: "50%",
+                margin: "0 auto",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            <p
+              style={{
+                marginTop: "16px",
+                fontSize: "14px",
+                color: "#64748b",
+              }}
+            >
+              Redirecting to dashboard...
+            </p>
+            <style>
+              {`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              `}
+            </style>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -17,8 +17,8 @@ namespace PMCRMS.API.Data
         public DbSet<Payment> Payments { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
         
-        // Structural Engineer Application entities
-        public DbSet<StructuralEngineerApplication> StructuralEngineerApplications { get; set; }
+        // Position Application entities
+        public DbSet<PositionApplication> PositionApplications { get; set; }
         public DbSet<SEAddress> SEAddresses { get; set; }
         public DbSet<SEQualification> SEQualifications { get; set; }
         public DbSet<SEExperience> SEExperiences { get; set; }
@@ -125,8 +125,8 @@ namespace PMCRMS.API.Data
                 entity.HasIndex(e => new { e.Identifier, e.Purpose, e.IsActive });
             });
 
-            // Configure StructuralEngineerApplication entity
-            modelBuilder.Entity<StructuralEngineerApplication>(entity =>
+            // Configure PositionApplication entity
+            modelBuilder.Entity<PositionApplication>(entity =>
             {
                 entity.HasIndex(e => e.ApplicationNumber).IsUnique();
                 entity.Property(e => e.PositionType).HasConversion<int>();

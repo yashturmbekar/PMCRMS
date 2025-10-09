@@ -36,44 +36,14 @@ namespace PMCRMS.API.Controllers
                     return BadRequest(new { errors = validationErrors });
                 }
 
-                // Check for duplicate PAN
-                var existingPan = await _context.StructuralEngineerApplications
-                    .AnyAsync(a => a.PanCardNumber == request.PanCardNumber.ToUpper());
-                if (existingPan)
-                {
-                    return BadRequest(new { error = "An application with this PAN card number already exists" });
-                }
+                // Note: Removed duplicate checks for PAN, Aadhar, Email, and Mobile
+                // Users can submit multiple applications with the same details
 
-                // Check for duplicate Aadhar
-                var existingAadhar = await _context.StructuralEngineerApplications
-                    .AnyAsync(a => a.AadharCardNumber == request.AadharCardNumber);
-                if (existingAadhar)
-                {
-                    return BadRequest(new { error = "An application with this Aadhar card number already exists" });
-                }
-
-                // Check for duplicate Email
-                var existingEmail = await _context.StructuralEngineerApplications
-                    .AnyAsync(a => a.EmailAddress.ToLower() == request.EmailAddress.ToLower());
-                if (existingEmail)
-                {
-                    return BadRequest(new { error = "An application with this email address already exists" });
-                }
-
-                // Check for duplicate Mobile
-                var existingMobile = await _context.StructuralEngineerApplications
-                    .AnyAsync(a => a.MobileNumber == request.MobileNumber);
-                if (existingMobile)
-                {
-                    return BadRequest(new { error = "An application with this mobile number already exists" });
-                }
-
-                // Get or create user (for now, we'll create a temporary user ID = 1)
-                // In production, this should come from authentication context
-                var userId = 1;
+                // Get user ID from authentication context
+                var userId = GetCurrentUserId();
 
                 // Create application entity
-                var application = new StructuralEngineerApplication
+                var application = new PositionApplication
                 {
                     PositionType = request.PositionType,
                     FirstName = request.FirstName.Trim(),
@@ -142,7 +112,7 @@ namespace PMCRMS.API.Controllers
                         Specialization = qual.Specialization,
                         DegreeName = qual.DegreeName.Trim(),
                         PassingMonth = qual.PassingMonth,
-                        YearOfPassing = new DateTime(qual.YearOfPassing, 1, 1),
+                        YearOfPassing = new DateTime(qual.YearOfPassing, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
                     });
@@ -158,8 +128,8 @@ namespace PMCRMS.API.Controllers
                         FileId = exp.FileId,
                         CompanyName = exp.CompanyName.Trim(),
                         Position = exp.Position.Trim(),
-                        FromDate = exp.FromDate.Date,
-                        ToDate = exp.ToDate.Date,
+                        FromDate = DateTime.SpecifyKind(exp.FromDate.Date, DateTimeKind.Utc),
+                        ToDate = DateTime.SpecifyKind(exp.ToDate.Date, DateTimeKind.Utc),
                         YearsOfExperience = yearsOfExperience,
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -182,7 +152,7 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                _context.StructuralEngineerApplications.Add(application);
+                _context.PositionApplications.Add(application);
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Position registration application created successfully. ID: {Id}", application.Id);
@@ -224,7 +194,7 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var application = await _context.StructuralEngineerApplications
+                var application = await _context.PositionApplications
                     .Include(a => a.Addresses)
                     .Include(a => a.Qualifications)
                     .Include(a => a.Experiences)
@@ -250,21 +220,8 @@ namespace PMCRMS.API.Controllers
                     return BadRequest(new { errors = validationErrors });
                 }
 
-                // Check for duplicate PAN (excluding current application)
-                var existingPan = await _context.StructuralEngineerApplications
-                    .AnyAsync(a => a.Id != id && a.PanCardNumber == request.PanCardNumber.ToUpper());
-                if (existingPan)
-                {
-                    return BadRequest(new { error = "An application with this PAN card number already exists" });
-                }
-
-                // Check for duplicate Aadhar (excluding current application)
-                var existingAadhar = await _context.StructuralEngineerApplications
-                    .AnyAsync(a => a.Id != id && a.AadharCardNumber == request.AadharCardNumber);
-                if (existingAadhar)
-                {
-                    return BadRequest(new { error = "An application with this Aadhar card number already exists" });
-                }
+                // Note: Removed duplicate checks for PAN and Aadhar
+                // Users can have multiple applications with the same details
 
                 // Update basic fields
                 application.PositionType = request.PositionType;
@@ -336,7 +293,7 @@ namespace PMCRMS.API.Controllers
                         Specialization = qual.Specialization,
                         DegreeName = qual.DegreeName.Trim(),
                         PassingMonth = qual.PassingMonth,
-                        YearOfPassing = new DateTime(qual.YearOfPassing, 1, 1),
+                        YearOfPassing = new DateTime(qual.YearOfPassing, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
                     });
@@ -354,8 +311,8 @@ namespace PMCRMS.API.Controllers
                         FileId = exp.FileId,
                         CompanyName = exp.CompanyName.Trim(),
                         Position = exp.Position.Trim(),
-                        FromDate = exp.FromDate.Date,
-                        ToDate = exp.ToDate.Date,
+                        FromDate = DateTime.SpecifyKind(exp.FromDate.Date, DateTimeKind.Utc),
+                        ToDate = DateTime.SpecifyKind(exp.ToDate.Date, DateTimeKind.Utc),
                         YearsOfExperience = yearsOfExperience,
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -399,7 +356,7 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var application = await _context.StructuralEngineerApplications.FindAsync(id);
+                var application = await _context.PositionApplications.FindAsync(id);
                 if (application == null)
                 {
                     return NotFound(new { error = "Application not found" });
@@ -411,7 +368,7 @@ namespace PMCRMS.API.Controllers
                     return BadRequest(new { error = "Only draft applications can be deleted" });
                 }
 
-                _context.StructuralEngineerApplications.Remove(application);
+                _context.PositionApplications.Remove(application);
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Position registration application deleted successfully. ID: {Id}", id);
@@ -434,7 +391,7 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var query = _context.StructuralEngineerApplications
+                var query = _context.PositionApplications
                     .Include(a => a.Addresses)
                     .Include(a => a.Qualifications)
                     .Include(a => a.Experiences)
@@ -471,9 +428,19 @@ namespace PMCRMS.API.Controllers
 
         #region Private Helper Methods
 
+        private int GetCurrentUserId()
+        {
+            var userIdClaim = HttpContext.User.FindFirst("user_id");
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
+            {
+                return userId;
+            }
+            throw new UnauthorizedAccessException("User ID not found in token");
+        }
+
         private async Task<PositionRegistrationResponseDTO?> GetApplicationResponse(int id)
         {
-            var application = await _context.StructuralEngineerApplications
+            var application = await _context.PositionApplications
                 .Include(a => a.Addresses)
                 .Include(a => a.Qualifications)
                 .Include(a => a.Experiences)
@@ -488,7 +455,7 @@ namespace PMCRMS.API.Controllers
             return MapToResponse(application);
         }
 
-        private PositionRegistrationResponseDTO MapToResponse(StructuralEngineerApplication application)
+        private PositionRegistrationResponseDTO MapToResponse(PositionApplication application)
         {
             var age = DateTime.Today.Year - application.DateOfBirth.Year;
             if (application.DateOfBirth.Date > DateTime.Today.AddYears(-age)) age--;
@@ -646,7 +613,7 @@ namespace PMCRMS.API.Controllers
             var year = DateTime.Now.Year;
             var month = DateTime.Now.Month.ToString("D2");
 
-            var count = await _context.StructuralEngineerApplications
+            var count = await _context.PositionApplications
                 .Where(a => a.PositionType == positionType &&
                            a.ApplicationNumber != null &&
                            a.ApplicationNumber.StartsWith($"{prefix}{year}{month}"))

@@ -10,7 +10,8 @@ const endpoint = "/reports";
 
 export const reportService = {
   async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
-    return apiClient.get("/dashboard/stats");
+    // Use the correct analytics endpoint
+    return apiClient.get("/applications/analytics");
   },
 
   async getReportData(

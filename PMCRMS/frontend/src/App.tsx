@@ -68,6 +68,16 @@ function App() {
               }
             />
             <Route
+              path="/register/:positionType/:applicationId"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PositionRegistrationPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/application/:id"
               element={
                 <ProtectedRoute>

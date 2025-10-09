@@ -1,9 +1,9 @@
+/* PMC Animated Loaders */
+@import url("./styles/loaders.css");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* PMC Animated Loaders */
-@import url("./styles/loaders.css");
 
 /* Professional PMC Color Palette */
 :root {
@@ -264,6 +264,18 @@ body {
 .pmc-input.error {
   border-color: var(--pmc-error);
   box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+}
+
+/* Error state for inputs */
+.pmc-input-error {
+  border-color: var(--pmc-error) !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+  background-color: #fef2f2 !important;
+}
+
+.pmc-input-error:focus {
+  border-color: var(--pmc-error) !important;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.15) !important;
 }
 
 .pmc-textarea {

@@ -160,7 +160,7 @@ const positionRegistrationService = {
   updateApplication: async (
     id: number,
     data: PositionRegistrationRequest
-  ): Promise<void> => {
+  ): Promise<PositionRegistrationResponse> => {
     return await apiClient.put(`/PositionRegistration/${id}`, data);
   },
 

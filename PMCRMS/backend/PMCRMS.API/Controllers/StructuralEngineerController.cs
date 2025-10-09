@@ -50,7 +50,7 @@ namespace PMCRMS.API.Controllers
                 var applicationNumber = await GenerateApplicationNumber();
 
                 // Create the main application
-                var application = new StructuralEngineerApplication
+                var application = new PositionApplication
                 {
                     FirstName = request.FirstName,
                     MiddleName = request.MiddleName,
@@ -73,7 +73,7 @@ namespace PMCRMS.API.Controllers
                     CreatedBy = userIdInt.ToString()
                 };
 
-                _context.StructuralEngineerApplications.Add(application);
+                _context.PositionApplications.Add(application);
                 await _context.SaveChangesAsync();
 
                 // Add Addresses
@@ -205,7 +205,7 @@ namespace PMCRMS.API.Controllers
 
                 var role = User.FindFirst("role")?.Value;
                 
-                IQueryable<StructuralEngineerApplication> query = _context.StructuralEngineerApplications;
+                IQueryable<PositionApplication> query = _context.PositionApplications;
 
                 // Filter based on role
                 if (role == "Applicant" || role == "JuniorArchitect")
@@ -261,7 +261,7 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                var application = await _context.StructuralEngineerApplications
+                var application = await _context.PositionApplications
                     .Include(a => a.Addresses)
                     .Include(a => a.Qualifications)
                     .Include(a => a.Experiences)
@@ -326,7 +326,7 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                var application = await _context.StructuralEngineerApplications.FindAsync(id);
+                var application = await _context.PositionApplications.FindAsync(id);
                 if (application == null)
                 {
                     return NotFound(new ApiResponse
@@ -383,7 +383,7 @@ namespace PMCRMS.API.Controllers
             var month = DateTime.UtcNow.Month.ToString("D2");
             
             // Get the last application number for this month
-            var lastNumber = await _context.StructuralEngineerApplications
+            var lastNumber = await _context.PositionApplications
                 .Where(a => a.ApplicationNumber!.StartsWith($"{prefix}{year}{month}"))
                 .OrderByDescending(a => a.ApplicationNumber)
                 .Select(a => a.ApplicationNumber)
@@ -404,7 +404,7 @@ namespace PMCRMS.API.Controllers
 
         private async Task<StructuralEngineerApplicationResponse> GetApplicationResponse(int applicationId)
         {
-            var application = await _context.StructuralEngineerApplications
+            var application = await _context.PositionApplications
                 .Include(a => a.Addresses)
                 .Include(a => a.Qualifications)
                 .Include(a => a.Experiences)
@@ -417,7 +417,7 @@ namespace PMCRMS.API.Controllers
             return MapToResponse(application);
         }
 
-        private StructuralEngineerApplicationResponse MapToResponse(StructuralEngineerApplication app)
+        private StructuralEngineerApplicationResponse MapToResponse(PositionApplication app)
         {
             var monthNames = CultureInfo.CurrentCulture.DateTimeFormat.MonthNames;
 

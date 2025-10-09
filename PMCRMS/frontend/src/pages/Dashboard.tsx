@@ -79,12 +79,15 @@ const Dashboard: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        console.log("📊 Fetching dashboard data for user:", user.id);
 
         // Fetch all applications for the logged-in user
         const allApplicationsResponse =
           await positionRegistrationService.getAllApplications({
             userId: user.id,
           });
+
+        console.log("✅ Fetched applications:", allApplicationsResponse);
 
         // Separate submitted and draft applications
         const submitted = allApplicationsResponse.filter(
@@ -97,6 +100,15 @@ const Dashboard: React.FC = () => {
           (app) => app.status === 23
         ); // Status 23 = Completed
 
+        console.log(
+          "📋 Submitted:",
+          submitted.length,
+          "Draft:",
+          drafts.length,
+          "Completed:",
+          completed.length
+        );
+
         setSubmittedApplications(submitted);
         setDraftApplications(drafts);
 
@@ -108,7 +120,7 @@ const Dashboard: React.FC = () => {
           completedApplications: completed.length,
         });
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        console.error("❌ Error fetching dashboard data:", error);
         // Set empty state on error
         setSubmittedApplications([]);
         setDraftApplications([]);
@@ -669,15 +681,53 @@ const Dashboard: React.FC = () => {
                     <td>
                       <button
                         className="pmc-button pmc-button-secondary pmc-button-sm"
-                        onClick={() => navigate(`/application/${app.id}`)}
+                        onClick={() => {
+                          if (activeTab === "draft") {
+                            // For drafts, navigate to edit page
+                            const positionRoutes: Record<number, string> = {
+                              0: "architect",
+                              1: "licence-engineer",
+                              2: "structural-engineer",
+                              3: "supervisor1",
+                              4: "supervisor2",
+                            };
+                            const positionRoute =
+                              positionRoutes[app.positionType] ||
+                              "structural-engineer";
+                            navigate(`/register/${positionRoute}/${app.id}`);
+                          } else {
+                            // For submitted applications, view details
+                            navigate(`/application/${app.id}`);
+                          }
+                        }}
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: "6px",
                         }}
                       >
-                        <Eye size={14} />
-                        View
+                        {activeTab === "draft" ? (
+                          <>
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                            </svg>
+                            Edit
+                          </>
+                        ) : (
+                          <>
+                            <Eye size={14} />
+                            View
+                          </>
+                        )}
                       </button>
                     </td>
                   </tr>

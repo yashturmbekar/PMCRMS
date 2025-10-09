@@ -43,7 +43,7 @@ namespace PMCRMS.API.Models
         AdditionalDocument = 11
     }
 
-    public class StructuralEngineerApplication : BaseEntity
+    public class PositionApplication : BaseEntity
     {
         [Required]
         [MaxLength(100)]
@@ -153,7 +153,7 @@ namespace PMCRMS.API.Models
         public string PinCode { get; set; } = string.Empty;
 
         [ForeignKey("ApplicationId")]
-        public virtual StructuralEngineerApplication Application { get; set; } = null!;
+        public virtual PositionApplication Application { get; set; } = null!;
     }
 
     public class SEQualification : BaseEntity
@@ -184,7 +184,7 @@ namespace PMCRMS.API.Models
         public DateTime YearOfPassing { get; set; }
 
         [ForeignKey("ApplicationId")]
-        public virtual StructuralEngineerApplication Application { get; set; } = null!;
+        public virtual PositionApplication Application { get; set; } = null!;
     }
 
     public class SEExperience : BaseEntity
@@ -211,7 +211,7 @@ namespace PMCRMS.API.Models
         public DateTime ToDate { get; set; }
 
         [ForeignKey("ApplicationId")]
-        public virtual StructuralEngineerApplication Application { get; set; } = null!;
+        public virtual PositionApplication Application { get; set; } = null!;
     }
 
     public class SEDocument : BaseEntity
@@ -248,7 +248,7 @@ namespace PMCRMS.API.Models
         public string? VerificationRemarks { get; set; }
 
         [ForeignKey("ApplicationId")]
-        public virtual StructuralEngineerApplication Application { get; set; } = null!;
+        public virtual PositionApplication Application { get; set; } = null!;
 
         [ForeignKey("VerifiedBy")]
         public virtual User? VerifiedByUser { get; set; }
