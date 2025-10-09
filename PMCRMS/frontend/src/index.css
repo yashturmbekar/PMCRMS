@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* PMC Animated Loaders */
+@import url("./styles/loaders.css");
+
 /* Professional PMC Color Palette */
 :root {
   /* Primary PMC Colors */

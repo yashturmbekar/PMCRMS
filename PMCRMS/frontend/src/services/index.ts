@@ -6,6 +6,7 @@ export { documentService } from "./documentService";
 export { statusService } from "./statusService";
 export { paymentService } from "./paymentService";
 export { reportService } from "./reportService";
+export { default as positionRegistrationService } from "./positionRegistrationService";
 
 // Export API client utilities
 export { getToken, setToken, removeToken } from "./apiClient";

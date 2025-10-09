@@ -1,6 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
+import positionRegistrationService, {
+  type PositionRegistrationRequest,
+  type Qualification as ApiQualification,
+  type Experience as ApiExperience,
+  type Address as ApiAddress,
+} from "../services/positionRegistrationService";
+import { PageLoader } from "../components";
 
 // Enums matching backend
 const PositionType = {
@@ -299,9 +305,9 @@ interface FormData {
 
 export const PositionRegistrationPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { positionType: positionParam } = useParams<{ positionType: string }>();
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [permanentSameAsLocal, setPermanentSameAsLocal] = useState(false);
@@ -336,8 +342,8 @@ export const PositionRegistrationPage = () => {
     middleName: "",
     lastName: "",
     motherName: "",
-    mobileNumber: user?.phoneNumber || "",
-    emailAddress: user?.email || "",
+    mobileNumber: "",
+    emailAddress: "",
     positionType: selectedPositionType,
     bloodGroup: "",
     height: 0,
@@ -581,6 +587,93 @@ export const PositionRegistrationPage = () => {
     }));
   };
 
+  // Map form data to API request format
+  const mapFormDataToRequest = (
+    data: FormData,
+    status: number
+  ): PositionRegistrationRequest => {
+    // Map local address
+    const localAddress: ApiAddress = {
+      addressLine1: data.currentAddress.addressLine1,
+      addressLine2: data.currentAddress.addressLine2 || undefined,
+      addressLine3: data.currentAddress.addressLine3 || undefined,
+      city: data.currentAddress.city,
+      state: data.currentAddress.state,
+      country: data.currentAddress.country,
+      pinCode: data.currentAddress.pinCode,
+    };
+
+    // Map permanent address
+    const permanentAddress: ApiAddress = permanentSameAsLocal
+      ? { ...localAddress }
+      : {
+          addressLine1: data.permanentAddress.addressLine1,
+          addressLine2: data.permanentAddress.addressLine2 || undefined,
+          addressLine3: data.permanentAddress.addressLine3 || undefined,
+          city: data.permanentAddress.city,
+          state: data.permanentAddress.state,
+          country: data.permanentAddress.country,
+          pinCode: data.permanentAddress.pinCode,
+        };
+
+    // Map qualifications
+    const qualifications: ApiQualification[] = data.qualifications
+      .filter((q) => q.instituteName.trim() !== "")
+      .map((q) => ({
+        fileId: q.fileId,
+        instituteName: q.instituteName,
+        universityName: q.universityName,
+        specialization: q.specialization,
+        degreeName: q.degreeName,
+        passingMonth: q.passingMonth,
+        yearOfPassing: parseInt(q.yearOfPassing),
+      }));
+
+    // Map experiences
+    const experiences: ApiExperience[] = data.experiences
+      .filter((e) => e.companyName.trim() !== "")
+      .map((e) => ({
+        fileId: e.fileId,
+        companyName: e.companyName,
+        position: e.position,
+        fromDate: e.fromDate,
+        toDate: e.toDate,
+      }));
+
+    // Build request
+    const request: PositionRegistrationRequest = {
+      firstName: data.firstName,
+      middleName: data.middleName || undefined,
+      lastName: data.lastName,
+      motherName: data.motherName,
+      mobileNumber: data.mobileNumber,
+      emailAddress: data.emailAddress,
+      positionType: data.positionType,
+      bloodGroup: data.bloodGroup || undefined,
+      height: data.height || undefined,
+      gender: data.gender,
+      dateOfBirth: data.dateOfBirth,
+      panCardNumber: data.panCardNumber,
+      aadharCardNumber: data.aadharCardNumber,
+      coaCardNumber: data.coaCardNumber || undefined,
+      status,
+      localAddress,
+      permanentAddress,
+      qualifications,
+      experiences,
+      documents: data.documents.map((d) => ({
+        fileId: d.fileId,
+        documentType: d.documentType,
+        fileName: d.fileName,
+        filePath: d.filePath,
+        fileSize: undefined,
+        contentType: undefined,
+      })),
+    };
+
+    return request;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -588,22 +681,29 @@ export const PositionRegistrationPage = () => {
     setSuccess("");
 
     try {
-      // TODO: Implement actual API call
-      console.log("Form Data:", formData);
+      // Map form data to API request with Submitted status (2)
+      const request = mapFormDataToRequest(formData, 2);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Call API to create application
+      const response = await positionRegistrationService.createApplication(
+        request
+      );
 
-      setSuccess("Application submitted successfully!");
+      setSuccess(
+        `Application submitted successfully! Application Number: ${
+          response.applicationNumber || "Pending"
+        }`
+      );
 
-      // Navigate to applications page after 2 seconds
+      // Navigate to dashboard after 2 seconds
       setTimeout(() => {
-        navigate("/applications");
+        navigate("/dashboard");
       }, 2000);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to submit application";
       setError(errorMessage);
+      console.error("Submission error:", err);
     } finally {
       setLoading(false);
     }
@@ -615,17 +715,23 @@ export const PositionRegistrationPage = () => {
     setSuccess("");
 
     try {
-      // TODO: Implement actual API call to save draft
-      console.log("Saving as Draft:", formData);
+      // Map form data to API request with Draft status (1)
+      const request = mapFormDataToRequest(formData, 1);
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      setSuccess(
-        "Application saved as draft successfully! You can continue editing later."
+      // Call API to create/save draft
+      const response = await positionRegistrationService.createApplication(
+        request
       );
 
-      // Navigate to applications page after 2 seconds
+      setSuccess(
+        `Application saved as draft successfully! ${
+          response.applicationNumber
+            ? `Draft #: ${response.applicationNumber}`
+            : ""
+        }`
+      );
+
+      // Navigate to dashboard after 2 seconds
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
@@ -633,6 +739,7 @@ export const PositionRegistrationPage = () => {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to save draft";
       setError(errorMessage);
+      console.error("Draft save error:", err);
     } finally {
       setLoading(false);
     }
@@ -647,6 +754,22 @@ export const PositionRegistrationPage = () => {
     const months = Math.round((total - years) * 12);
     return `${years} years and ${months} months`;
   };
+
+  // Initialize the form - simulate loading to prevent blank page
+  useEffect(() => {
+    // Small delay to ensure smooth transition
+    const timer = setTimeout(() => {
+      setInitializing(false);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show page loader during initialization
+  if (initializing) {
+    return (
+      <PageLoader message={`Loading ${config.name} Registration Form...`} />
+    );
+  }
 
   return (
     <div className="pmc-fadeIn">

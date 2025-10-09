@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { apiService } from "../services/apiService";
+import positionRegistrationService, {
+  type PositionRegistrationResponse,
+} from "../services/positionRegistrationService";
 import {
   FileText,
   CheckCircle,
   Clock,
-  XCircle,
   Calendar,
   ChevronDown,
   Plus,
+  Eye,
 } from "lucide-react";
+import { PageLoader, SectionLoader } from "../components";
 
 // Position Type Enum matching backend
 const PositionType = {
@@ -23,53 +26,34 @@ const PositionType = {
 
 type PositionTypeValue = (typeof PositionType)[keyof typeof PositionType];
 
-// Application Stage Enum matching backend
-const ApplicationStage = {
-  JUNIOR_ENGINEER_PENDING: 0,
-  DOCUMENT_VERIFICATION_PENDING: 1,
-  ASSISTANT_ENGINEER_PENDING: 2,
-  EXECUTIVE_ENGINEER_PENDING: 3,
-  CITY_ENGINEER_PENDING: 4,
-  PAYMENT_PENDING: 5,
-  CLERK_PENDING: 6,
-  EXECUTIVE_ENGINEER_SIGN_PENDING: 7,
-  CITY_ENGINEER_SIGN_PENDING: 8,
-  APPROVED: 9,
-  REJECTED: 10,
-} as const;
-
-type ApplicationStageValue =
-  (typeof ApplicationStage)[keyof typeof ApplicationStage];
-
-interface UserApplication {
-  id: number;
-  applicationNumber: string;
-  positionType: PositionTypeValue;
-  applicantName: string;
-  submissionDate: string;
-  stage: ApplicationStageValue;
-  status: string;
-}
-
 interface DashboardStats {
   totalApplications: number;
-  approvedApplications: number;
-  pendingApplications: number;
-  rejectedApplications: number;
+  submittedApplications: number;
+  draftApplications: number;
+  completedApplications: number;
 }
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [applications, setApplications] = useState<UserApplication[]>([]);
+  const [submittedApplications, setSubmittedApplications] = useState<
+    PositionRegistrationResponse[]
+  >([]);
+  const [draftApplications, setDraftApplications] = useState<
+    PositionRegistrationResponse[]
+  >([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalApplications: 0,
-    approvedApplications: 0,
-    pendingApplications: 0,
-    rejectedApplications: 0,
+    submittedApplications: 0,
+    draftApplications: 0,
+    completedApplications: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [tabLoading, setTabLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeTab, setActiveTab] = useState<"submitted" | "draft">(
+    "submitted"
+  );
 
   // Position type options
   const positionTypes = [
@@ -96,41 +80,43 @@ const Dashboard: React.FC = () => {
       try {
         setLoading(true);
 
-        // Fetch analytics from dedicated endpoint
-        const analyticsResponse =
-          await apiService.applications.getDashboardAnalytics();
-        if (analyticsResponse.success && analyticsResponse.data) {
-          setStats({
-            totalApplications: analyticsResponse.data.totalApplications,
-            approvedApplications: analyticsResponse.data.approvedApplications,
-            pendingApplications: analyticsResponse.data.pendingApplications,
-            rejectedApplications: analyticsResponse.data.rejectedApplications,
+        // Fetch all applications for the logged-in user
+        const allApplicationsResponse =
+          await positionRegistrationService.getAllApplications({
+            userId: user.id,
           });
-        }
 
-        // Fetch user's applications
-        const applicationsResponse =
-          await apiService.applications.getMyApplications(1, 100);
+        // Separate submitted and draft applications
+        const submitted = allApplicationsResponse.filter(
+          (app) => app.status === 2
+        ); // Status 2 = Submitted
+        const drafts = allApplicationsResponse.filter(
+          (app) => app.status === 1
+        ); // Status 1 = Draft
+        const completed = allApplicationsResponse.filter(
+          (app) => app.status === 23
+        ); // Status 23 = Completed
 
-        if (applicationsResponse.success && applicationsResponse.data) {
-          // Handle different response structures
-          const responseData = applicationsResponse.data as unknown as Record<
-            string,
-            unknown
-          >;
-          const userApps = (responseData.items ||
-            applicationsResponse.data) as unknown[];
-          setApplications(userApps as UserApplication[]);
-        }
+        setSubmittedApplications(submitted);
+        setDraftApplications(drafts);
+
+        // Calculate stats
+        setStats({
+          totalApplications: allApplicationsResponse.length,
+          submittedApplications: submitted.length,
+          draftApplications: drafts.length,
+          completedApplications: completed.length,
+        });
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         // Set empty state on error
-        setApplications([]);
+        setSubmittedApplications([]);
+        setDraftApplications([]);
         setStats({
           totalApplications: 0,
-          approvedApplications: 0,
-          pendingApplications: 0,
-          rejectedApplications: 0,
+          submittedApplications: 0,
+          draftApplications: 0,
+          completedApplications: 0,
         });
       } finally {
         setLoading(false);
@@ -155,51 +141,21 @@ const Dashboard: React.FC = () => {
     navigate(`/register/${positionRoutes[positionType]}`);
   };
 
-  const getStatusBadge = (stage: ApplicationStageValue) => {
-    if (stage === ApplicationStage.APPROVED) {
-      return "pmc-badge pmc-status-approved";
-    } else if (stage === ApplicationStage.REJECTED) {
-      return "pmc-badge pmc-status-rejected";
-    } else if (
-      stage === ApplicationStage.PAYMENT_PENDING ||
-      stage === ApplicationStage.CLERK_PENDING
-    ) {
-      return "pmc-badge pmc-status-pending";
-    } else {
-      return "pmc-badge pmc-status-under-review";
+  const handleTabChange = (tab: "submitted" | "draft") => {
+    if (tab !== activeTab) {
+      setTabLoading(true);
+      setActiveTab(tab);
+      // Simulate loading delay for tab content
+      setTimeout(() => {
+        setTabLoading(false);
+      }, 300);
     }
   };
 
-  const getStatusText = (stage: ApplicationStageValue): string => {
-    const stageNames: Record<ApplicationStageValue, string> = {
-      [ApplicationStage.JUNIOR_ENGINEER_PENDING]: "Junior Engineer Review",
-      [ApplicationStage.DOCUMENT_VERIFICATION_PENDING]: "Document Verification",
-      [ApplicationStage.ASSISTANT_ENGINEER_PENDING]:
-        "Assistant Engineer Review",
-      [ApplicationStage.EXECUTIVE_ENGINEER_PENDING]:
-        "Executive Engineer Review",
-      [ApplicationStage.CITY_ENGINEER_PENDING]: "City Engineer Review",
-      [ApplicationStage.PAYMENT_PENDING]: "Payment Pending",
-      [ApplicationStage.CLERK_PENDING]: "Clerk Processing",
-      [ApplicationStage.EXECUTIVE_ENGINEER_SIGN_PENDING]:
-        "Executive Engineer Signature",
-      [ApplicationStage.CITY_ENGINEER_SIGN_PENDING]: "City Engineer Signature",
-      [ApplicationStage.APPROVED]: "Approved",
-      [ApplicationStage.REJECTED]: "Rejected",
-    };
-    return stageNames[stage] || "Unknown";
-  };
-
-  const getPositionTypeLabel = (type: PositionTypeValue): string => {
-    const typeLabels: Record<PositionTypeValue, string> = {
-      [PositionType.Architect]: "Architect",
-      [PositionType.StructuralEngineer]: "Structural Engineer",
-      [PositionType.LicenceEngineer]: "Licence Engineer",
-      [PositionType.Supervisor1]: "Supervisor 1",
-      [PositionType.Supervisor2]: "Supervisor 2",
-    };
-    return typeLabels[type] || "Unknown";
-  };
+  // Show page loader for initial load
+  if (loading) {
+    return <PageLoader message="Loading Dashboard..." />;
+  }
 
   return (
     <div className="pmc-fadeIn">
@@ -296,10 +252,10 @@ const Dashboard: React.FC = () => {
                 className="pmc-text-sm pmc-font-medium"
                 style={{ opacity: 0.9, marginBottom: "4px" }}
               >
-                Approved
+                Submitted
               </p>
               <p className="pmc-text-3xl pmc-font-bold">
-                {loading ? "..." : stats.approvedApplications}
+                {loading ? "..." : stats.submittedApplications}
               </p>
             </div>
           </div>
@@ -334,10 +290,10 @@ const Dashboard: React.FC = () => {
                 className="pmc-text-sm pmc-font-medium"
                 style={{ opacity: 0.9, marginBottom: "4px" }}
               >
-                Pending
+                Draft
               </p>
               <p className="pmc-text-3xl pmc-font-bold">
-                {loading ? "..." : stats.pendingApplications}
+                {loading ? "..." : stats.draftApplications}
               </p>
             </div>
           </div>
@@ -348,7 +304,7 @@ const Dashboard: React.FC = () => {
           style={{
             padding: "24px",
             background:
-              "linear-gradient(135deg, var(--pmc-error) 0%, #b91c1c 100%)",
+              "linear-gradient(135deg, var(--pmc-primary) 0%, #1e40af 100%)",
             border: "none",
             color: "white",
           }}
@@ -365,17 +321,17 @@ const Dashboard: React.FC = () => {
                 justifyContent: "center",
               }}
             >
-              <XCircle style={{ width: "28px", height: "28px" }} />
+              <FileText style={{ width: "28px", height: "28px" }} />
             </div>
             <div style={{ flex: 1 }}>
               <p
                 className="pmc-text-sm pmc-font-medium"
                 style={{ opacity: 0.9, marginBottom: "4px" }}
               >
-                Rejected
+                Completed
               </p>
               <p className="pmc-text-3xl pmc-font-bold">
-                {loading ? "..." : stats.rejectedApplications}
+                {loading ? "..." : stats.completedApplications}
               </p>
             </div>
           </div>
@@ -493,36 +449,74 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Submitted Applications Table */}
-      <div className="pmc-table-container pmc-slideInRight">
-        <div
-          className="pmc-card-header"
-          style={{
-            padding: "20px 24px",
-            borderBottom: "1px solid var(--pmc-gray-200)",
-          }}
-        >
-          <h2 className="pmc-card-title">My Submitted Applications</h2>
-          <p className="pmc-card-subtitle">
-            Track the status of your applications
-          </p>
+      {/* Applications Tabs */}
+      <div className="pmc-card" style={{ marginBottom: "8px" }}>
+        <div style={{ display: "flex", borderBottom: "2px solid #e2e8f0" }}>
+          <button
+            onClick={() => handleTabChange("submitted")}
+            style={{
+              flex: 1,
+              padding: "16px",
+              border: "none",
+              background:
+                activeTab === "submitted"
+                  ? "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)"
+                  : "transparent",
+              borderBottom:
+                activeTab === "submitted"
+                  ? "3px solid var(--pmc-primary)"
+                  : "none",
+              color:
+                activeTab === "submitted"
+                  ? "var(--pmc-primary)"
+                  : "var(--pmc-gray-600)",
+              fontWeight: activeTab === "submitted" ? 600 : 400,
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+            }}
+          >
+            Submitted Applications ({stats.submittedApplications})
+          </button>
+          <button
+            onClick={() => handleTabChange("draft")}
+            style={{
+              flex: 1,
+              padding: "16px",
+              border: "none",
+              background:
+                activeTab === "draft"
+                  ? "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)"
+                  : "transparent",
+              borderBottom:
+                activeTab === "draft" ? "3px solid var(--pmc-primary)" : "none",
+              color:
+                activeTab === "draft"
+                  ? "var(--pmc-primary)"
+                  : "var(--pmc-gray-600)",
+              fontWeight: activeTab === "draft" ? 600 : 400,
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+            }}
+          >
+            Draft Applications ({stats.draftApplications})
+          </button>
         </div>
+      </div>
+
+      {/* Applications Table */}
+      <div className="pmc-table-container pmc-slideInRight">
         <div className="pmc-table-responsive">
-          {loading ? (
-            <div
-              style={{
-                padding: "60px 24px",
-                textAlign: "center",
-                color: "var(--pmc-gray-500)",
-              }}
-            >
-              <div
-                className="pmc-loading-spinner"
-                style={{ margin: "0 auto 16px" }}
-              ></div>
-              <p className="pmc-text-sm">Loading applications...</p>
+          {tabLoading ? (
+            <div style={{ padding: "60px 24px" }}>
+              <SectionLoader
+                message={`Loading ${activeTab} applications...`}
+                size="medium"
+              />
             </div>
-          ) : applications.length === 0 ? (
+          ) : (activeTab === "submitted"
+              ? submittedApplications
+              : draftApplications
+            ).length === 0 ? (
             <div
               style={{
                 padding: "60px 24px",
@@ -542,7 +536,7 @@ const Dashboard: React.FC = () => {
                 className="pmc-text-base pmc-font-medium"
                 style={{ marginBottom: "8px" }}
               >
-                No applications yet
+                No {activeTab} applications yet
               </p>
               <p className="pmc-text-sm">
                 Create your first application using the dropdown above
@@ -580,7 +574,7 @@ const Dashboard: React.FC = () => {
                       color: "var(--pmc-gray-700)",
                     }}
                   >
-                    Submission Date
+                    Applicant Name
                   </th>
                   <th
                     className="pmc-text-xs pmc-font-semibold"
@@ -590,7 +584,9 @@ const Dashboard: React.FC = () => {
                       color: "var(--pmc-gray-700)",
                     }}
                   >
-                    Current Stage
+                    {activeTab === "submitted"
+                      ? "Submitted Date"
+                      : "Created Date"}
                   </th>
                   <th
                     className="pmc-text-xs pmc-font-semibold"
@@ -615,7 +611,10 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {applications.map((app) => (
+                {(activeTab === "submitted"
+                  ? submittedApplications
+                  : draftApplications
+                ).map((app) => (
                   <tr key={app.id}>
                     <td
                       className="pmc-text-sm pmc-font-semibold"
@@ -627,7 +626,13 @@ const Dashboard: React.FC = () => {
                       className="pmc-text-sm pmc-font-medium"
                       style={{ color: "var(--pmc-gray-800)" }}
                     >
-                      {getPositionTypeLabel(app.positionType)}
+                      {app.positionTypeName}
+                    </td>
+                    <td
+                      className="pmc-text-sm pmc-font-medium"
+                      style={{ color: "var(--pmc-gray-800)" }}
+                    >
+                      {app.fullName}
                     </td>
                     <td
                       className="pmc-text-sm"
@@ -641,44 +646,39 @@ const Dashboard: React.FC = () => {
                         }}
                       >
                         <Calendar style={{ width: "14px", height: "14px" }} />
-                        {new Date(app.submissionDate).toLocaleDateString()}
+                        {new Date(
+                          activeTab === "submitted"
+                            ? app.submittedDate || app.createdDate
+                            : app.createdDate
+                        ).toLocaleDateString()}
                       </div>
                     </td>
-                    <td
-                      className="pmc-text-sm"
-                      style={{ color: "var(--pmc-gray-700)" }}
-                    >
-                      {getStatusText(app.stage)}
-                    </td>
                     <td>
-                      <span className={getStatusBadge(app.stage)}>
-                        {app.stage === ApplicationStage.APPROVED
-                          ? "APPROVED"
-                          : app.stage === ApplicationStage.REJECTED
-                          ? "REJECTED"
-                          : "PENDING"}
+                      <span
+                        className={
+                          app.status === 23
+                            ? "pmc-badge pmc-status-approved"
+                            : app.status === 2
+                            ? "pmc-badge pmc-status-under-review"
+                            : "pmc-badge pmc-status-pending"
+                        }
+                      >
+                        {app.statusName}
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <button
-                          className="pmc-button pmc-button-primary pmc-button-sm"
-                          onClick={() => navigate(`/applications/${app.id}`)}
-                        >
-                          View
-                        </button>
-                        {app.stage !== ApplicationStage.APPROVED &&
-                          app.stage !== ApplicationStage.REJECTED && (
-                            <button
-                              className="pmc-button pmc-button-outline pmc-button-sm"
-                              onClick={() =>
-                                navigate(`/applications/${app.id}/edit`)
-                              }
-                            >
-                              Edit
-                            </button>
-                          )}
-                      </div>
+                      <button
+                        className="pmc-button pmc-button-secondary pmc-button-sm"
+                        onClick={() => navigate(`/application/${app.id}`)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <Eye size={14} />
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))}

@@ -8,9 +8,12 @@ import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
+import ViewPositionApplication from "./pages/ViewPositionApplication";
+import LoaderShowcase from "./components/LoaderShowcase";
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { Layout } from "./components/Layout";
+import { PageLoader } from "./components";
 import "./index.css";
 
 // Proper protected route component using AuthContext
@@ -20,14 +23,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pmc-primary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <PageLoader message="Authenticating..." />;
   }
 
   if (!user) {
@@ -47,6 +43,9 @@ function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/officer-login" element={<OfficerLoginPage />} />
 
+            {/* Loader Showcase - For demo purposes */}
+            <Route path="/loaders" element={<LoaderShowcase />} />
+
             {/* Protected routes with Layout */}
             <Route
               path="/dashboard"
@@ -64,6 +63,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <PositionRegistrationPage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/application/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ViewPositionApplication />
                   </Layout>
                 </ProtectedRoute>
               }

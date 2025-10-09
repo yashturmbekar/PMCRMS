@@ -1,0 +1,635 @@
+/* ========================================
+   PMC LOADER STYLES
+   Premium animated loaders with PMC branding
+   ======================================== */
+
+/* ========================================
+   PAGE LOADER - Full Page Loading
+   ======================================== */
+
+.pmc-page-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+.pmc-page-loader-fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.pmc-page-loader-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  z-index: 2;
+}
+
+/* Logo Container with Rings */
+.pmc-logo-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Rotating Rings */
+.pmc-loader-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.8);
+  border-right-color: rgba(255, 255, 255, 0.4);
+}
+
+.pmc-loader-ring-outer {
+  width: 180px;
+  height: 180px;
+  animation: pmc-rotate 3s linear infinite;
+  border-width: 4px;
+}
+
+.pmc-loader-ring-middle {
+  width: 140px;
+  height: 140px;
+  animation: pmc-rotate-reverse 2s linear infinite,
+    pmc-pulse 2s ease-in-out infinite;
+  border-width: 3px;
+  border-top-color: rgba(255, 255, 255, 0.6);
+}
+
+.pmc-loader-ring-inner {
+  width: 100px;
+  height: 100px;
+  animation: pmc-rotate 1.5s linear infinite;
+  border-width: 2px;
+}
+
+/* Logo Wrapper */
+.pmc-logo-wrapper {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: pmc-float 3s ease-in-out infinite;
+}
+
+.pmc-logo-animated {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+  animation: pmc-logo-pulse 2s ease-in-out infinite;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+/* Loading Text */
+.pmc-loader-text {
+  text-align: center;
+  color: white;
+}
+
+.pmc-loader-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  letter-spacing: 0.5px;
+  animation: pmc-fade-in-out 2s ease-in-out infinite;
+}
+
+/* Animated Dots */
+.pmc-loader-dots {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pmc-loader-dot {
+  width: 12px;
+  height: 12px;
+  background: white;
+  border-radius: 50%;
+  animation: pmc-bounce 1.4s ease-in-out infinite;
+}
+
+.pmc-loader-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.pmc-loader-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+/* Progress Bar */
+.pmc-loader-progress-container {
+  width: 300px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.pmc-loader-progress-bar {
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+  background-size: 200% 100%;
+  animation: pmc-progress 1.5s ease-in-out infinite;
+}
+
+/* Decorative Particles */
+.pmc-loader-particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.pmc-particle {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: pmc-float-particle 8s ease-in-out infinite;
+}
+
+.pmc-particle:nth-child(1) {
+  top: 20%;
+  left: 20%;
+  animation-delay: 0s;
+  animation-duration: 7s;
+}
+
+.pmc-particle:nth-child(2) {
+  top: 40%;
+  left: 80%;
+  animation-delay: -2s;
+  animation-duration: 9s;
+}
+
+.pmc-particle:nth-child(3) {
+  top: 60%;
+  left: 30%;
+  animation-delay: -4s;
+  animation-duration: 8s;
+}
+
+.pmc-particle:nth-child(4) {
+  top: 80%;
+  left: 70%;
+  animation-delay: -1s;
+  animation-duration: 10s;
+}
+
+.pmc-particle:nth-child(5) {
+  top: 30%;
+  left: 50%;
+  animation-delay: -3s;
+  animation-duration: 7.5s;
+}
+
+.pmc-particle:nth-child(6) {
+  top: 70%;
+  left: 10%;
+  animation-delay: -5s;
+  animation-duration: 8.5s;
+}
+
+/* ========================================
+   SECTION LOADER - Component Loading
+   ======================================== */
+
+.pmc-section-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  min-height: 200px;
+}
+
+.pmc-section-loader-inline {
+  display: inline-flex;
+  padding: 20px;
+  min-height: auto;
+}
+
+.pmc-section-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Size Variants */
+.pmc-section-loader-small .pmc-section-logo-container {
+  width: 60px;
+  height: 60px;
+}
+
+.pmc-section-loader-small .pmc-section-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.pmc-section-loader-medium .pmc-section-logo-container {
+  width: 80px;
+  height: 80px;
+}
+
+.pmc-section-loader-medium .pmc-section-logo {
+  width: 56px;
+  height: 56px;
+}
+
+.pmc-section-loader-large .pmc-section-logo-container {
+  width: 120px;
+  height: 120px;
+}
+
+.pmc-section-loader-large .pmc-section-logo {
+  width: 84px;
+  height: 84px;
+}
+
+/* Section Logo Container */
+.pmc-section-logo-container {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+  animation: pmc-section-pulse 2s ease-in-out infinite;
+}
+
+.pmc-section-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 3px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: pmc-rotate 1.5s linear infinite;
+}
+
+.pmc-section-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  /* Make logo visible - remove the invert filter to show original colors */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  animation: pmc-logo-bounce 2s ease-in-out infinite;
+}
+
+/* Section Loading Text */
+.pmc-section-loader-text {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Section Dots */
+.pmc-section-loader-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.pmc-section-dot {
+  width: 8px;
+  height: 8px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: pmc-bounce 1.4s ease-in-out infinite;
+}
+
+.pmc-section-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.pmc-section-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+/* ========================================
+   MINIMAL LOADER
+   ======================================== */
+
+.pmc-section-loader-minimal {
+  padding: 24px;
+  min-height: auto;
+  gap: 12px;
+}
+
+.pmc-spinner-simple {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: pmc-rotate 1s linear infinite;
+}
+
+.pmc-section-loader-small .pmc-spinner-simple {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+}
+
+.pmc-section-loader-large .pmc-spinner-simple {
+  width: 56px;
+  height: 56px;
+  border-width: 5px;
+}
+
+.pmc-loader-text-simple {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ========================================
+   SKELETON LOADER
+   ======================================== */
+
+.pmc-skeleton-loader {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pmc-skeleton-header {
+  width: 40%;
+  height: 24px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: pmc-skeleton-loading 1.5s ease-in-out infinite;
+}
+
+.pmc-skeleton-line {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: pmc-skeleton-loading 1.5s ease-in-out infinite;
+}
+
+.pmc-skeleton-line-short {
+  width: 60%;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes pmc-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pmc-rotate-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pmc-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pmc-float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pmc-logo-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pmc-logo-bounce {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes pmc-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes pmc-fade-in-out {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes pmc-progress {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes pmc-float-particle {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.3;
+  }
+  25% {
+    transform: translate(30px, -30px) scale(1.2);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-20px, -60px) scale(0.8);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(-30px, -30px) scale(1.1);
+    opacity: 0.5;
+  }
+}
+
+@keyframes pmc-section-pulse {
+  0%,
+  100% {
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.5);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes pmc-skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+  .pmc-logo-container {
+    width: 140px;
+    height: 140px;
+  }
+
+  .pmc-loader-ring-outer {
+    width: 140px;
+    height: 140px;
+  }
+
+  .pmc-loader-ring-middle {
+    width: 110px;
+    height: 110px;
+  }
+
+  .pmc-loader-ring-inner {
+    width: 80px;
+    height: 80px;
+  }
+
+  .pmc-logo-wrapper {
+    width: 60px;
+    height: 60px;
+  }
+
+  .pmc-logo-animated {
+    width: 45px;
+    height: 45px;
+  }
+
+  .pmc-loader-title {
+    font-size: 20px;
+  }
+
+  .pmc-loader-progress-container {
+    width: 250px;
+  }
+}
+
+/* ========================================
+   DARK MODE SUPPORT
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .pmc-section-loader-text,
+  .pmc-loader-text-simple {
+    color: #94a3b8;
+  }
+
+  .pmc-skeleton-header,
+  .pmc-skeleton-line {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%;
+  }
+
+  .pmc-spinner-simple {
+    border-color: #334155;
+    border-top-color: #667eea;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .pmc-loader-ring,
+  .pmc-section-ring,
+  .pmc-spinner-simple,
+  .pmc-logo-animated,
+  .pmc-section-logo,
+  .pmc-loader-dot,
+  .pmc-section-dot,
+  .pmc-particle {
+    animation: none;
+  }
+
+  .pmc-loader-progress-bar,
+  .pmc-skeleton-header,
+  .pmc-skeleton-line {
+    animation: none;
+    background: #667eea;
+  }
+}
