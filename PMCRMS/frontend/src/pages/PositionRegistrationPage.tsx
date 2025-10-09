@@ -323,6 +323,8 @@ export const PositionRegistrationPage = () => {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [submittedApplicationNumber, setSubmittedApplicationNumber] =
     useState("");
+  const [showDraftSuccessPopup, setShowDraftSuccessPopup] = useState(false);
+  const [draftApplicationNumber, setDraftApplicationNumber] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingApplicationId, setEditingApplicationId] = useState<
     number | null
@@ -1080,6 +1082,7 @@ export const PositionRegistrationPage = () => {
 
     try {
       // Map form data to API request with Draft status (1)
+      // No validation required for draft save
       const request = mapFormDataToRequest(formData, 1);
 
       let response;
@@ -1093,91 +1096,37 @@ export const PositionRegistrationPage = () => {
         response = await positionRegistrationService.createApplication(request);
       }
 
-      setSuccess(
-        `Application saved as draft successfully! ${
-          response.applicationNumber
-            ? `Draft #: ${response.applicationNumber}`
-            : ""
-        }`
-      );
+      // Set draft application number and show success popup
+      setDraftApplicationNumber(response.applicationNumber || "DRAFT");
+      setShowDraftSuccessPopup(true);
 
-      // Navigate to dashboard after 2 seconds
+      // Navigate to dashboard after 3 seconds
       setTimeout(() => {
         navigate("/dashboard");
-      }, 2000);
+      }, 3000);
     } catch (err: unknown) {
       console.error("Draft save error:", err);
 
-      // Handle different types of errors from backend
       const error = err as {
         response?: {
-          status?: number;
           data?: {
-            errors?: Record<string, string[]>;
             message?: string;
             title?: string;
-            detail?: string;
           };
         };
         message?: string;
       };
 
-      if (error?.response?.data) {
-        const errorData = error.response.data;
+      // Show simple error message for draft save failures
+      const errorMsg =
+        error?.response?.data?.message ||
+        error?.response?.data?.title ||
+        error?.message ||
+        "Failed to save draft. Please try again.";
+      setError(errorMsg);
 
-        // Handle validation errors (400 Bad Request with errors array)
-        if (error.response.status === 400 && errorData.errors) {
-          const errors: string[] = [];
-          const fields: Record<string, string> = {};
-
-          // Extract validation errors from ASP.NET Core ModelState
-          Object.keys(errorData.errors).forEach((field) => {
-            const fieldErrors = errorData.errors?.[field];
-            if (Array.isArray(fieldErrors)) {
-              fieldErrors.forEach((errorMsg: string) => {
-                errors.push(errorMsg);
-                // Map backend field names to frontend field names
-                const fieldName = field.toLowerCase();
-                if (!fields[fieldName]) {
-                  fields[fieldName] = errorMsg;
-                }
-              });
-            }
-          });
-
-          if (errors.length > 0) {
-            setValidationErrors(errors);
-            setFieldErrors(fields);
-            setShowValidationPopup(true);
-            setError("");
-          } else if (errorData.message || errorData.title) {
-            setError(errorData.message || errorData.title || "");
-          } else {
-            setError("Validation failed. Please check your input.");
-          }
-        }
-        // Handle general error messages
-        else if (errorData.message) {
-          setError(errorData.message);
-          setShowValidationPopup(true);
-          setValidationErrors([errorData.message]);
-        }
-        // Handle exception messages
-        else if (errorData.title || errorData.detail) {
-          const errorMsg = errorData.detail || errorData.title || "";
-          setError(errorMsg);
-          setShowValidationPopup(true);
-          setValidationErrors([errorMsg]);
-        } else {
-          setError("Failed to save draft. Please try again.");
-        }
-      } else if (error.message) {
-        setError(error.message);
-        setShowValidationPopup(true);
-        setValidationErrors([error.message]);
-      } else {
-        setError("Failed to save draft. Please try again.");
-      }
+      // Scroll to top to see error message
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setLoading(false);
     }
@@ -4045,6 +3994,110 @@ export const PositionRegistrationPage = () => {
                 width: "40px",
                 height: "40px",
                 border: "4px solid #10b981",
+                borderTopColor: "transparent",
+                borderRadius: "50%",
+                margin: "0 auto",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            <p
+              style={{
+                marginTop: "16px",
+                fontSize: "14px",
+                color: "#64748b",
+              }}
+            >
+              Redirecting to dashboard...
+            </p>
+            <style>
+              {`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              `}
+            </style>
+          </div>
+        </div>
+      )}
+
+      {/* Draft Success Popup */}
+      {showDraftSuccessPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "16px",
+              maxWidth: "500px",
+              width: "100%",
+              padding: "40px",
+              textAlign: "center",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            <div
+              style={{
+                width: "80px",
+                height: "80px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                margin: "0 auto 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "40px",
+              }}
+            >
+              💾
+            </div>
+            <h2
+              style={{
+                fontSize: "28px",
+                fontWeight: "700",
+                color: "#3b82f6",
+                marginBottom: "16px",
+              }}
+            >
+              Draft Saved Successfully!
+            </h2>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#64748b",
+                marginBottom: "8px",
+              }}
+            >
+              Your application has been saved as draft.
+            </p>
+            <p
+              style={{
+                fontSize: "18px",
+                fontWeight: "600",
+                color: "#1e40af",
+                marginBottom: "24px",
+              }}
+            >
+              Draft Number:{" "}
+              <span style={{ color: "#3b82f6" }}>{draftApplicationNumber}</span>
+            </p>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "4px solid #3b82f6",
                 borderTopColor: "transparent",
                 borderRadius: "50%",
                 margin: "0 auto",
