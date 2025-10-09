@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using Serilog;
 using PMCRMS.API.Data;
+using PMCRMS.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,7 +104,9 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Register application services
-// TODO: Add service registrations here
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IDataSeeder, DataSeeder>();
+// TODO: Add more service registrations here
 
 var app = builder.Build();
 
@@ -135,16 +138,22 @@ app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Timestamp = Dat
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PMCRMSDbContext>();
+    var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeeder>();
     
     try
     {
         Log.Information("Applying database migrations...");
         context.Database.Migrate();
         Log.Information("Database migrations applied successfully.");
+        
+        // Seed officer passwords
+        Log.Information("Seeding officer passwords...");
+        await dataSeeder.SeedOfficerPasswordsAsync();
+        Log.Information("Officer password seeding completed.");
     }
     catch (Exception ex)
     {
-        Log.Error(ex, "An error occurred while applying database migrations.");
+        Log.Error(ex, "An error occurred while applying database migrations or seeding data.");
     }
 }
 

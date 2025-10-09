@@ -35,6 +35,21 @@ namespace PMCRMS.API.Models
         [MaxLength(255)]
         public string? Address { get; set; }
         
+        // Password hash for officer login (only for non-applicant users)
+        [MaxLength(500)]
+        public string? PasswordHash { get; set; }
+        
+        // Employee ID for officers
+        [MaxLength(50)]
+        public string? EmployeeId { get; set; }
+        
+        // Last login tracking
+        public DateTime? LastLoginAt { get; set; }
+        
+        public int LoginAttempts { get; set; } = 0;
+        
+        public DateTime? LockedUntil { get; set; }
+        
         // Navigation properties
         public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
         public virtual ICollection<ApplicationStatus> StatusUpdates { get; set; } = new List<ApplicationStatus>();

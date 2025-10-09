@@ -1,5 +1,6 @@
 ﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiService } from "../services/apiService";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -17,17 +18,27 @@ const LoginPage: React.FC = () => {
     setSuccess("");
 
     try {
-      // Simulate API call to send OTP
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await apiService.auth.sendOtp(email, "LOGIN");
 
-      // TODO: Call actual API endpoint: POST /api/auth/send-otp
-      // const response = await apiService.sendOtp({ email, purpose: "LOGIN" });
-
-      setSuccess("OTP sent successfully to your email!");
-      setStep("otp");
+      if (response.success) {
+        setSuccess(response.message || "OTP sent successfully to your email!");
+        setStep("otp");
+      } else {
+        throw new Error(
+          response.message || "Failed to send OTP. Please try again."
+        );
+      }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to send OTP";
+      let errorMessage = "Failed to send OTP";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: { message?: string } };
+        };
+        errorMessage =
+          axiosError.response?.data?.message || "Failed to send OTP";
+      }
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -40,21 +51,35 @@ const LoginPage: React.FC = () => {
     setError("");
 
     try {
-      // Simulate API call to verify OTP
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await apiService.auth.verifyOtp({
+        identifier: email,
+        otpCode: otp,
+        purpose: "LOGIN",
+      });
 
-      // TODO: Call actual API endpoint: POST /api/auth/verify-otp
-      // const response = await apiService.verifyOtp({ identifier: email, otpCode: otp, purpose: "LOGIN" });
+      if (response.success && response.data) {
+        // Store token and user data
+        localStorage.setItem("pmcrms_token", response.data.token);
+        localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
 
-      // Mock OTP verification (accept any 6-digit OTP for demo)
-      if (otp.length === 6) {
+        // Navigate to dashboard
         navigate("/dashboard");
       } else {
-        throw new Error("Invalid OTP code. Please enter a 6-digit code.");
+        throw new Error(
+          response.message || "OTP verification failed. Please try again."
+        );
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "OTP verification failed";
+      let errorMessage = "OTP verification failed";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: { message?: string } };
+        };
+        errorMessage =
+          axiosError.response?.data?.message || "OTP verification failed";
+      }
       setError(errorMessage);
     } finally {
       setLoading(false);

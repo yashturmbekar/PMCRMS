@@ -259,15 +259,17 @@ export interface LoginRequest {
 }
 
 export interface OtpVerificationRequest {
-  phoneNumber: string;
-  otp: string;
+  identifier: string; // Email or phone number
+  otpCode: string;
   purpose: string;
 }
 
 export interface AuthResponse {
   token: string;
+  refreshToken?: string;
   user: User;
-  expiresIn: number;
+  expiresIn?: number;
+  expiresAt?: string;
 }
 
 // Form Types

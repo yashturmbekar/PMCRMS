@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { apiService } from "../services/apiService";
 
 const OfficerLoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -26,21 +27,35 @@ const OfficerLoginPage: React.FC = () => {
     setError("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const response = await apiService.auth.officerLogin(
+        formData.email,
+        formData.password
+      );
 
-      // Mock authentication for officer login
-      if (
-        formData.email === "officer@pmc.gov.in" &&
-        formData.password === "officer123"
-      ) {
+      if (response.success && response.data) {
+        // Store token and user data
+        localStorage.setItem("pmcrms_token", response.data.token);
+        localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
+
+        // Navigate to dashboard
         navigate("/dashboard");
       } else {
-        throw new Error("Invalid email or password");
+        throw new Error(
+          response.message || "Login failed. Please check your credentials."
+        );
       }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Login failed";
+      let errorMessage = "Login failed. Please check your credentials.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: { message?: string } };
+        };
+        errorMessage =
+          axiosError.response?.data?.message ||
+          "Login failed. Please check your credentials.";
+      }
       setError(errorMessage);
     } finally {
       setLoading(false);

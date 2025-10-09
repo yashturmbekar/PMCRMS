@@ -1,0 +1,164 @@
+# PMCRMS Root .gitignore
+
+# =========================
+# .NET Backend Artifacts
+# =========================
+**/bin/
+**/obj/
+**/*.user
+**/*.suo
+**/.vs/
+**/.vscode/
+
+# Build results
+**/[Dd]ebug/
+**/[Rr]elease/
+**/x64/
+**/x86/
+**/[Aa]rm/
+**/[Aa]rm64/
+**/bld/
+**/[Bb]in/
+**/[Oo]bj/
+**/[Ll]og/
+**/[Ll]ogs/
+
+# Build artifacts - DLL, PDB, EXE files
+*.dll
+*.pdb
+*.exe
+*.so
+*.dylib
+*.config
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio
+.vs/
+*.rsuser
+*.userosscache
+*.sln.docstates
+
+# =========================
+# Backend Logs & Data
+# =========================
+**/logs/
+**/*.log
+**/pmcrms-*.log
+
+# Uploads directory (local file storage)
+**/uploads/
+
+# =========================
+# Frontend Artifacts
+# =========================
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.cache/
+**/.parcel-cache/
+**/.next/
+**/.nuxt/
+**/.vuepress/dist/
+**/.serverless/
+**/.fusebox/
+
+# Frontend build artifacts
+**/build/
+**/coverage/
+
+# Frontend logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =========================
+# Environment Files
+# =========================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+**/appsettings.Development.json
+
+# =========================
+# OS Generated Files
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# =========================
+# IDE Files
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# =========================
+# Documentation Temp Files
+# =========================
+**/*.md~
+**/*.md.bak
+
+# =========================
+# Database Files
+# =========================
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# NuGet Packages
+# =========================
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+# =========================
+# Test Results
+# =========================
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# =========================
+# Backup Files
+# =========================
+*.bak
+*.backup
+*~
+
+# =========================
+# Temporary Files
+# =========================
+*.tmp
+*.temp
+*.cache
