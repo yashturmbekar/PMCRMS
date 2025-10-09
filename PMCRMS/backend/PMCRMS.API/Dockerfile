@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore dependencies
-COPY ["PMCRMS.API.csproj", "./"]
+COPY PMCRMS.API.csproj ./
 RUN dotnet restore "PMCRMS.API.csproj"
 
 # Copy everything else and build
