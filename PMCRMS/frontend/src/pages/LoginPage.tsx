@@ -1,158 +1,244 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export const LoginPage: React.FC = () => {
+const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("admin@ezyconstruction.com");
   const [otp, setOtp] = useState("");
-  const [isOtpSent, setIsOtpSent] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>("");
-
+  const [otpSent, setOtpSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+
+    if (!email) {
+      setError("Please enter your email address");
+      return;
+    }
+
+    setLoading(true);
     setError("");
 
     try {
-      // Simulate OTP verification
-      if (otp === "123456") {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setOtpSent(true);
+      setError("");
+    } catch {
+      setError("Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!otp) {
+      setError("Please enter the OTP");
+      return;
+    }
+
+    if (otp.length !== 6) {
+      setError("OTP must be 6 digits");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // For demo purposes, accept any 6-digit OTP
+      if (otp === "123456" || otp.length === 6) {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userEmail", email);
         navigate("/dashboard");
       } else {
         setError("Invalid OTP. Please try again.");
       }
-    } catch (err) {
+    } catch {
       setError("Login failed. Please try again.");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleChangeEmail = () => {
-    setIsOtpSent(false);
+  const handleBackToEmail = () => {
+    setOtpSent(false);
+    setOtp("");
+    setError("");
   };
 
-  const handleSendOtp = () => {
-    setIsOtpSent(true);
+  const handleResendOTP = async () => {
+    setLoading(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setError("");
+    } catch {
+      setError("Failed to resend OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="min-h-screen flex">
-        {/* Left Side - PMC Branding */}
-        <div className="flex-1 bg-gray-100 flex flex-col justify-center px-8">
-          <div className="max-w-md">
-            <div className="mb-8">
-              <img
-                src="/pmc-logo.png"
-                alt="PMC Logo"
-                className="h-24 w-auto"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = "none";
-                  target.parentElement!.innerHTML = `
-                    <div class="h-24 w-32 bg-orange-200 rounded-lg flex items-center justify-center border-2 border-orange-300">
-                      <span class="text-orange-800 font-bold text-sm">PMC LOGO</span>
-                    </div>
-                  `;
-                }}
-              />
+    <div className="min-h-screen flex">
+      {/* Left Panel - PMC Info */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-800 p-12 items-center justify-center">
+        <div className="text-center text-white max-w-md">
+          {/* Logo */}
+          <div className="w-20 h-20 mx-auto mb-6 bg-white rounded-full flex items-center justify-center">
+            <img
+              src="/pmc-logo.png"
+              alt="PMC Logo"
+              className="w-12 h-12 object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = "none";
+                const parent = target.parentElement;
+                if (parent) {
+                  parent.innerHTML =
+                    '<div class="text-blue-600 font-bold text-sm">PMC</div>';
+                }
+              }}
+            />
+          </div>
+
+          <h1 className="text-3xl font-bold mb-4">
+            Pimpri Chinchwad Municipal Corporation
+          </h1>
+
+          <p className="text-xl opacity-90 mb-8">Resource Management System</p>
+
+          <div className="text-left space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+              <span>Secure Authentication</span>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-4">
-              PMC Registration Management System
-            </h1>
-            <p className="text-gray-600 mb-2">
-              If you have any questions, feel free to call us at +91
-            </p>
-            <p className="text-gray-600 font-semibold">9284334115.</p>
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+              <span>Resource Management</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="w-2 h-2 bg-white rounded-full"></div>
+              <span>Real-time Monitoring</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Right Side - Email/OTP Form */}
-        <div className="flex-1 flex flex-col justify-center px-8">
-          <div className="max-w-md w-full mx-auto bg-gray-50 p-8 rounded-lg">
-            <form onSubmit={handleSubmit}>
-              {error && (
-                <div className="bg-red-50 border border-red-200 p-3 rounded-md mb-4">
-                  <div className="text-sm text-red-700">{error}</div>
-                </div>
-              )}
+      {/* Right Panel - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Welcome Back
+            </h2>
+            <p className="text-gray-600">Sign in to your account</p>
+          </div>
 
-              {/* Email Section */}
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Email
-                </h3>
-                <div className="mb-4">
-                  <label className="block text-sm text-gray-600 mb-2">
-                    Email id *
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    disabled={isOtpSent}
-                  />
-                </div>
-                {isOtpSent ? (
-                  <button
-                    type="button"
-                    onClick={handleChangeEmail}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm hover:bg-gray-300"
-                  >
-                    Change Email
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    className="bg-blue-500 text-white px-4 py-2 rounded text-sm hover:bg-blue-600"
-                  >
-                    Send OTP
-                  </button>
-                )}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
+          {!otpSent ? (
+            <form onSubmit={handleSendOTP} className="space-y-6">
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Email Address
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your email address"
+                  required
+                />
               </div>
 
-              {/* OTP Section */}
-              {isOtpSent && (
-                <div className="mb-6">
-                  <p className="text-sm text-gray-600 mb-4">
-                    OTP sent to your email address. Please check!
-                  </p>
-                  <div className="mb-4">
-                    <label className="block text-sm text-gray-600 mb-2">
-                      One Time Password *
-                    </label>
-                    <input
-                      type="text"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter OTP"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Resend OTP in 60 seconds
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              {isOtpSent && (
-                <button
-                  type="submit"
-                  disabled={isLoading || !otp}
-                  className="w-full bg-blue-500 text-white py-3 rounded-md text-lg font-medium hover:bg-blue-600 disabled:opacity-50"
-                >
-                  {isLoading ? "SUBMITTING..." : "SUBMIT"}
-                </button>
-              )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {loading ? "Sending OTP..." : "Send OTP"}
+              </button>
             </form>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm text-blue-700">OTP sent to: {email}</p>
+                <button
+                  type="button"
+                  onClick={handleBackToEmail}
+                  className="text-blue-600 text-sm mt-1"
+                >
+                  Change email
+                </button>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="otp"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Enter OTP
+                </label>
+                <input
+                  id="otp"
+                  type="text"
+                  value={otp}
+                  onChange={(e) =>
+                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-xl"
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {loading ? "Verifying..." : "Sign In"}
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleResendOTP}
+                  disabled={loading}
+                  className="text-blue-600 text-sm"
+                >
+                  Resend OTP
+                </button>
+              </div>
+            </form>
+          )}
+
+          <div className="mt-8 text-center">
+            <p className="text-xs text-gray-500">
+              © 2024 Pimpri Chinchwad Municipal Corporation
+            </p>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default LoginPage;

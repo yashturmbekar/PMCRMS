@@ -1,179 +1,96 @@
 import {
-  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  BrowserRouter as Router,
 } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider } from "./contexts/AuthContext";
-import { Layout } from "./components/Layout";
-import { LoginPage } from "./pages/LoginPage";
-import { RegisterPage } from "./pages/RegisterPage";
-import { VerifyOtpPage } from "./pages/VerifyOtpPage";
-import { DashboardPage } from "./pages/DashboardPage";
-import { ApplicationsPage } from "./pages/ApplicationsPage";
-import { CreateApplicationPage } from "./pages/CreateApplicationPage";
-import { ApplicationDetailsPage } from "./pages/ApplicationDetailsPage";
-import { DocumentsPage } from "./pages/DocumentsPage";
-import { UsersPage } from "./pages/UsersPage";
-import { ReportsPage } from "./pages/ReportsPage";
-import { SettingsPage } from "./pages/SettingsPage";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import LoginPage from "./pages/LoginPage";
+import Dashboard from "./pages/Dashboard";
 import "./index.css";
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+// Simple protected route component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const token = localStorage.getItem("auth-token");
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <div className="App">
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/verify-otp" element={<VerifyOtpPage />} />
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
 
-              {/* Protected routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <DashboardPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-              <Route
-                path="/applications"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <ApplicationsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-              <Route
-                path="/applications/new"
-                element={
-                  <ProtectedRoute allowedRoles={["Applicant"]}>
-                    <Layout>
-                      <CreateApplicationPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/applications/:id"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <ApplicationDetailsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/documents"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <DocumentsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/users"
-                element={
-                  <ProtectedRoute
-                    allowedRoles={[
-                      "Admin",
-                      "JuniorEngineer",
-                      "AssistantEngineer",
-                      "ExecutiveEngineer",
-                      "CityEngineer",
-                    ]}
-                  >
-                    <Layout>
-                      <UsersPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/reports"
-                element={
-                  <ProtectedRoute
-                    allowedRoles={[
-                      "Admin",
-                      "ExecutiveEngineer",
-                      "CityEngineer",
-                    ]}
-                  >
-                    <Layout>
-                      <ReportsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <SettingsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-              {/* 404 fallback */}
-              <Route
-                path="*"
-                element={
-                  <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                    <div className="text-center">
-                      <h1 className="text-4xl font-bold text-gray-900 mb-4">
-                        404
-                      </h1>
-                      <p className="text-gray-600 mb-4">Page not found</p>
-                      <a
-                        href="/dashboard"
-                        className="text-blue-600 hover:text-blue-500"
+          {/* 404 fallback */}
+          <Route
+            path="*"
+            element={
+              <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center pmc-fadeIn">
+                  <div className="mb-8">
+                    <div className="w-24 h-24 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                      <svg
+                        className="w-12 h-12 text-blue-600"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
                       >
-                        Go to Dashboard
-                      </a>
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
                     </div>
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                      404
+                    </h1>
+                    <p className="text-gray-600 mb-6">Page not found</p>
                   </div>
-                }
-              />
-            </Routes>
-          </div>
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+                  <a
+                    href="/dashboard"
+                    className="pmc-button pmc-button-primary"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Back to Dashboard
+                  </a>
+                </div>
+              </div>
+            }
+          />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

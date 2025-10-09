@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PMCRMS.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+515c24a147d8b6aa772fb47cc3fa57b572c12a94")]
 [assembly: System.Reflection.AssemblyProductAttribute("PMCRMS.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PMCRMS.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
