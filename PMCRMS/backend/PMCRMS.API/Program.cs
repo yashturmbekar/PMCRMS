@@ -20,72 +20,56 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
-// Get connection string - Railway compatibility
-var connectionString = BuildConnectionString();
+// Database Configuration (Railway compatible)
+string connectionString;
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_PUBLIC_URL") 
+    ?? Environment.GetEnvironmentVariable("DATABASE_URL");
 
-string BuildConnectionString()
+if (!string.IsNullOrEmpty(databaseUrl))
 {
-    // Try Railway-style individual components first (most reliable)
-    var pgHost = Environment.GetEnvironmentVariable("PGHOST");
-    var pgPort = Environment.GetEnvironmentVariable("PGPORT");
-    var pgUser = Environment.GetEnvironmentVariable("PGUSER");
-    var pgPassword = Environment.GetEnvironmentVariable("PGPASSWORD");
-    var pgDatabase = Environment.GetEnvironmentVariable("PGDATABASE");
-
-    if (!string.IsNullOrEmpty(pgHost) && !string.IsNullOrEmpty(pgUser) && !string.IsNullOrEmpty(pgPassword))
+    try
     {
-        var port = string.IsNullOrEmpty(pgPort) ? "5432" : pgPort;
-        var database = string.IsNullOrEmpty(pgDatabase) ? "railway" : pgDatabase;
-        var connString = $"Host={pgHost};Port={port};Database={database};Username={pgUser};Password={pgPassword};SSL Mode=Prefer;Trust Server Certificate=true";
-        Log.Information("Built connection string from Railway PG components");
-        return connString;
+        // Parse DATABASE_URL format: postgresql://user:password@host:port/database
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        var username = userInfo[0];
+        var password = userInfo.Length > 1 ? userInfo[1] : "";
+        
+        connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;Include Error Detail=true;Timeout=30;Command Timeout=30;Pooling=true;MinPoolSize=1;MaxPoolSize=20";
+        
+        Log.Information("Using database connection from environment variable. Host: {Host}, Database: {Database}", uri.Host, uri.AbsolutePath.Trim('/'));
     }
-
-    // Try DATABASE_URL
-    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-    if (!string.IsNullOrEmpty(databaseUrl))
+    catch (Exception ex)
     {
-        try
-        {
-            // Parse Railway DATABASE_URL format: postgresql://user:password@host:port/database
-            var uri = new Uri(databaseUrl.Replace("postgres://", "postgresql://"));
-            var host = uri.Host;
-            var port = uri.Port;
-            var database = uri.AbsolutePath.TrimStart('/');
-            var userInfo = uri.UserInfo.Split(':');
-            var username = Uri.UnescapeDataString(userInfo[0]);
-            var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
-
-            var connString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Prefer;Trust Server Certificate=true";
-            Log.Information("Parsed DATABASE_URL successfully");
-            return connString;
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Failed to parse DATABASE_URL, falling back to config");
-        }
+        Log.Error(ex, "Failed to parse database URL from environment variable: {DatabaseUrl}", databaseUrl);
+        throw new InvalidOperationException("Invalid database URL format", ex);
     }
-
-    // Fallback to configuration
-    var configConnString = builder.Configuration.GetConnectionString("DefaultConnection");
-    if (!string.IsNullOrEmpty(configConnString))
-    {
-        Log.Information("Using DefaultConnection from configuration");
-        return configConnString;
-    }
-
-    throw new InvalidOperationException("Database connection string is not configured. Set DATABASE_URL or PG* environment variables");
 }
-
-if (string.IsNullOrWhiteSpace(connectionString))
+else
 {
-    throw new InvalidOperationException("Database connection string could not be built");
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+        ?? throw new InvalidOperationException("No database connection string configured");
+    Log.Information("Using database connection from configuration file");
 }
-
-Log.Information("Database connection configured successfully");
 
 builder.Services.AddDbContext<PMCRMSDbContext>(options =>
-    options.UseNpgsql(connectionString));
+{
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(10),
+            errorCodesToAdd: null);
+        npgsqlOptions.CommandTimeout(30);
+    });
+    
+    // Only enable sensitive data logging in development
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
 
 builder.Services.AddControllers();
 
