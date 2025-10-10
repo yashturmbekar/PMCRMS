@@ -177,7 +177,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Check permissions
-                if (userRole == UserRole.Applicant && application.ApplicantId != userId)
+                if (userRole == UserRole.User && application.ApplicantId != userId)
                 {
                     return Forbid();
                 }

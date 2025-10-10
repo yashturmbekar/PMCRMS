@@ -37,7 +37,7 @@ namespace PMCRMS.API.Services
 
                 // Get all officer accounts (non-Applicant users) without passwords
                 var officers = await _context.Users
-                    .Where(u => u.Role != UserRole.Applicant && string.IsNullOrEmpty(u.PasswordHash))
+                    .Where(u => u.Role != UserRole.User && string.IsNullOrEmpty(u.PasswordHash))
                     .ToListAsync();
 
                 if (!officers.Any())

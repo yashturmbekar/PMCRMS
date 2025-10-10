@@ -741,6 +741,7 @@ body {
   border: 1px solid var(--pmc-gray-200);
   overflow: hidden;
   transition: all 0.3s ease;
+  padding: 24px;
 }
 
 .pmc-card:hover {

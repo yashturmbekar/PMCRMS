@@ -44,6 +44,7 @@ namespace PMCRMS.API.DTOs
         public DateTime? AcceptedAt { get; set; }
         public DateTime ExpiresAt { get; set; }
         public string InvitedByName { get; set; } = string.Empty;
+        public string InvitedBy { get; set; } = string.Empty; // Alias for InvitedByName
         public bool IsExpired { get; set; }
         public int? UserId { get; set; }
     }
@@ -90,6 +91,23 @@ namespace PMCRMS.API.DTOs
         public int ApplicationsProcessed { get; set; }
     }
 
+    public class OfficerListResponse
+    {
+        public List<OfficerDto> Officers { get; set; } = new List<OfficerDto>();
+        public int TotalCount { get; set; }
+        public int ActiveCount { get; set; }
+        public int InactiveCount { get; set; }
+    }
+
+    public class InvitationListResponse
+    {
+        public List<OfficerInvitationDto> Invitations { get; set; } = new List<OfficerInvitationDto>();
+        public int PendingCount { get; set; }
+        public int AcceptedCount { get; set; }
+        public int ExpiredCount { get; set; }
+        public int RevokedCount { get; set; }
+    }
+
     public class OfficerDetailDto : OfficerDto
     {
         public string? Address { get; set; }
@@ -123,8 +141,53 @@ namespace PMCRMS.API.DTOs
         public int ProcessingDays { get; set; }
         public int? MaxFileSizeMB { get; set; }
         public int? MaxFilesAllowed { get; set; }
-        public List<CustomFieldDto>? CustomFields { get; set; }
-        public List<string>? RequiredDocuments { get; set; }
+        public string? CustomFields { get; set; } // JSON string
+        public string? RequiredDocuments { get; set; } // JSON string
+        public DateTime CreatedDate { get; set; }
+        public DateTime? UpdatedDate { get; set; }
+    }
+
+    public class FormConfigurationDetailDto : FormConfigurationDto
+    {
+        public List<FormFeeHistoryDto> FeeHistory { get; set; } = new List<FormFeeHistoryDto>();
+    }
+
+    public class FormFeeHistoryDto
+    {
+        public int Id { get; set; }
+        public decimal OldBaseFee { get; set; }
+        public decimal NewBaseFee { get; set; }
+        public decimal OldProcessingFee { get; set; }
+        public decimal NewProcessingFee { get; set; }
+        public DateTime EffectiveFrom { get; set; }
+        public string ChangedBy { get; set; } = string.Empty;
+        public string? ChangeReason { get; set; }
+        public DateTime ChangedDate { get; set; }
+    }
+
+    public class UpdateFormFeesRequest
+    {
+        [Required]
+        [Range(0, double.MaxValue)]
+        public decimal BaseFee { get; set; }
+
+        [Required]
+        [Range(0, double.MaxValue)]
+        public decimal ProcessingFee { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? LateFee { get; set; }
+
+        public DateTime? EffectiveFrom { get; set; }
+
+        [MaxLength(500)]
+        public string? ChangeReason { get; set; }
+    }
+
+    public class UpdateFormCustomFieldsRequest
+    {
+        [Required]
+        public string CustomFieldsJson { get; set; } = string.Empty; // JSON string of custom fields
     }
 
     public class CustomFieldDto
@@ -140,23 +203,11 @@ namespace PMCRMS.API.DTOs
 
     public class UpdateFormConfigurationRequest
     {
-        [Required]
-        public int FormId { get; set; }
-
         [MaxLength(100)]
         public string? FormName { get; set; }
 
         [MaxLength(500)]
         public string? Description { get; set; }
-
-        [Range(0, double.MaxValue)]
-        public decimal? BaseFee { get; set; }
-
-        [Range(0, double.MaxValue)]
-        public decimal? ProcessingFee { get; set; }
-
-        [Range(0, double.MaxValue)]
-        public decimal? LateFee { get; set; }
 
         public bool? IsActive { get; set; }
 
@@ -171,12 +222,7 @@ namespace PMCRMS.API.DTOs
         [Range(1, 50)]
         public int? MaxFilesAllowed { get; set; }
 
-        public List<CustomFieldDto>? CustomFields { get; set; }
-
-        public List<string>? RequiredDocuments { get; set; }
-
-        [MaxLength(500)]
-        public string? ChangeReason { get; set; }
+        public string? RequiredDocuments { get; set; } // JSON string
     }
 
     public class CreateFormConfigurationRequest

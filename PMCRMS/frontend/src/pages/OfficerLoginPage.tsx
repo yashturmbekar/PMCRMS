@@ -33,12 +33,24 @@ const OfficerLoginPage: React.FC = () => {
       );
 
       if (response.success && response.data) {
+        console.log("Officer login successful:", response.data);
+
         // Store token and user data
         localStorage.setItem("pmcrms_token", response.data.token);
         localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
 
-        // Navigate to dashboard
-        navigate("/dashboard");
+        // Force a page reload to trigger AuthContext initialization with the new user data
+        // This ensures the AuthContext picks up the stored user from localStorage
+        console.log("User role:", response.data.user.role);
+
+        // Navigate based on role
+        if (response.data.user.role === "Admin") {
+          console.log("Navigating to /admin");
+          window.location.href = "/admin"; // Use window.location for hard navigation to ensure context refresh
+        } else {
+          console.log("Navigating to /dashboard");
+          window.location.href = "/dashboard";
+        }
       } else {
         throw new Error(
           response.message || "Login failed. Please check your credentials."
@@ -57,6 +69,7 @@ const OfficerLoginPage: React.FC = () => {
           "Login failed. Please check your credentials.";
       }
       setError(errorMessage);
+      console.error("Officer login error:", errorMessage);
     } finally {
       setLoading(false);
     }

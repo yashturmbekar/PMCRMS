@@ -63,7 +63,7 @@ namespace PMCRMS.API.Controllers
                     a.CurrentStatus.ToString().Contains("Rejected"));
 
                 // Officer statistics
-                var allOfficers = await _context.Users.Where(u => u.Role != UserRole.Applicant && u.Role != UserRole.User).ToListAsync();
+                var allOfficers = await _context.Users.Where(u => u.Role != UserRole.User && u.Role != UserRole.User).ToListAsync();
                 stats.TotalOfficers = allOfficers.Count;
                 stats.ActiveOfficers = allOfficers.Count(o => o.IsActive);
 
@@ -438,7 +438,7 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Admin {AdminId} fetching officers", adminId);
 
                 var query = _context.Users
-                    .Where(u => u.Role != UserRole.Applicant && u.Role != UserRole.User)
+                    .Where(u => u.Role != UserRole.User && u.Role != UserRole.User)
                     .AsQueryable();
 
                 if (!string.IsNullOrEmpty(role) && Enum.TryParse<UserRole>(role, out var roleEnum))
@@ -502,7 +502,7 @@ namespace PMCRMS.API.Controllers
             try
             {
                 var officer = await _context.Users.FindAsync(id);
-                if (officer == null || officer.Role == UserRole.Applicant || officer.Role == UserRole.User)
+                if (officer == null || officer.Role == UserRole.User || officer.Role == UserRole.User)
                 {
                     return NotFound(new ApiResponse
                     {
@@ -575,7 +575,7 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Admin {AdminId} updating officer {OfficerId}", adminId, id);
 
                 var officer = await _context.Users.FindAsync(id);
-                if (officer == null || officer.Role == UserRole.Applicant || officer.Role == UserRole.User)
+                if (officer == null || officer.Role == UserRole.User || officer.Role == UserRole.User)
                 {
                     return NotFound(new ApiResponse
                     {
@@ -629,7 +629,7 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Admin {AdminId} deleting officer {OfficerId}", adminId, id);
 
                 var officer = await _context.Users.FindAsync(id);
-                if (officer == null || officer.Role == UserRole.Applicant || officer.Role == UserRole.User || officer.Role == UserRole.Admin)
+                if (officer == null || officer.Role == UserRole.User || officer.Role == UserRole.User || officer.Role == UserRole.Admin)
                 {
                     return NotFound(new ApiResponse
                     {
@@ -658,6 +658,347 @@ namespace PMCRMS.API.Controllers
                 {
                     Success = false,
                     Message = "Failed to delete officer",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        #endregion
+
+        #region Form Configuration Management
+
+        [HttpGet("forms")]
+        public async Task<ActionResult<ApiResponse<List<FormConfigurationDto>>>> GetAllForms()
+        {
+            try
+            {
+                var forms = await _context.FormConfigurations
+                    .OrderBy(f => f.FormName)
+                    .ToListAsync();
+
+                var formDtos = forms.Select(f => new FormConfigurationDto
+                {
+                    Id = f.Id,
+                    FormName = f.FormName,
+                    FormType = f.FormType.ToString(),
+                    Description = f.Description,
+                    BaseFee = f.BaseFee,
+                    ProcessingFee = f.ProcessingFee,
+                    LateFee = f.LateFee,
+                    IsActive = f.IsActive,
+                    AllowOnlineSubmission = f.AllowOnlineSubmission,
+                    ProcessingDays = f.ProcessingDays,
+                    CustomFields = f.CustomFields,
+                    RequiredDocuments = f.RequiredDocuments,
+                    MaxFileSizeMB = f.MaxFileSizeMB,
+                    MaxFilesAllowed = f.MaxFilesAllowed,
+                    CreatedDate = f.CreatedDate,
+                    UpdatedDate = f.UpdatedDate
+                }).ToList();
+
+                return Ok(new ApiResponse<List<FormConfigurationDto>>
+                {
+                    Success = true,
+                    Data = formDtos,
+                    Message = "Forms retrieved successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching forms");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to fetch forms",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("forms/{id}")]
+        public async Task<ActionResult<ApiResponse<FormConfigurationDetailDto>>> GetFormDetail(int id)
+        {
+            try
+            {
+                var form = await _context.FormConfigurations
+                    .Include(f => f.FeeHistory)
+                        .ThenInclude(h => h.ChangedByUser)
+                    .FirstOrDefaultAsync(f => f.Id == id);
+
+                if (form == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Form not found"
+                    });
+                }
+
+                var feeHistoryDtos = form.FeeHistory
+                    .OrderByDescending(h => h.CreatedDate)
+                    .Select(h => new FormFeeHistoryDto
+                    {
+                        Id = h.Id,
+                        OldBaseFee = h.OldBaseFee,
+                        NewBaseFee = h.NewBaseFee,
+                        OldProcessingFee = h.OldProcessingFee,
+                        NewProcessingFee = h.NewProcessingFee,
+                        EffectiveFrom = h.EffectiveFrom,
+                        ChangedBy = h.ChangedByUser?.Name ?? "System",
+                        ChangeReason = h.ChangeReason,
+                        ChangedDate = h.CreatedDate
+                    }).ToList();
+
+                var formDetailDto = new FormConfigurationDetailDto
+                {
+                    Id = form.Id,
+                    FormName = form.FormName,
+                    FormType = form.FormType.ToString(),
+                    Description = form.Description,
+                    BaseFee = form.BaseFee,
+                    ProcessingFee = form.ProcessingFee,
+                    LateFee = form.LateFee,
+                    IsActive = form.IsActive,
+                    AllowOnlineSubmission = form.AllowOnlineSubmission,
+                    ProcessingDays = form.ProcessingDays,
+                    CustomFields = form.CustomFields,
+                    RequiredDocuments = form.RequiredDocuments,
+                    MaxFileSizeMB = form.MaxFileSizeMB,
+                    MaxFilesAllowed = form.MaxFilesAllowed,
+                    CreatedDate = form.CreatedDate,
+                    UpdatedDate = form.UpdatedDate,
+                    FeeHistory = feeHistoryDtos
+                };
+
+                return Ok(new ApiResponse<FormConfigurationDetailDto>
+                {
+                    Success = true,
+                    Data = formDetailDto,
+                    Message = "Form details retrieved successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching form details");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to fetch form details",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpPut("forms/{id}/fees")]
+        public async Task<ActionResult<ApiResponse>> UpdateFormFees(int id, [FromBody] UpdateFormFeesRequest request)
+        {
+            try
+            {
+                var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
+                _logger.LogInformation("Admin {AdminId} updating fees for form {FormId}", adminId, id);
+
+                var form = await _context.FormConfigurations.FindAsync(id);
+                if (form == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Form not found"
+                    });
+                }
+
+                // Create fee history record
+                var feeHistory = new FormFeeHistory
+                {
+                    FormConfigurationId = id,
+                    OldBaseFee = form.BaseFee,
+                    NewBaseFee = request.BaseFee,
+                    OldProcessingFee = form.ProcessingFee,
+                    NewProcessingFee = request.ProcessingFee,
+                    EffectiveFrom = request.EffectiveFrom ?? DateTime.UtcNow,
+                    ChangedByUserId = adminId,
+                    ChangeReason = request.ChangeReason,
+                    CreatedBy = User.FindFirst("email")?.Value ?? "Admin"
+                };
+
+                // Update form fees
+                form.BaseFee = request.BaseFee;
+                form.ProcessingFee = request.ProcessingFee;
+                
+                if (request.LateFee.HasValue)
+                    form.LateFee = request.LateFee.Value;
+
+                form.UpdatedDate = DateTime.UtcNow;
+                form.UpdatedBy = User.FindFirst("email")?.Value;
+
+                _context.FormFeeHistories.Add(feeHistory);
+                await _context.SaveChangesAsync();
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Form fees updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating form fees");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to update form fees",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpPut("forms/{id}/custom-fields")]
+        public async Task<ActionResult<ApiResponse>> UpdateFormCustomFields(int id, [FromBody] UpdateFormCustomFieldsRequest request)
+        {
+            try
+            {
+                var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
+                _logger.LogInformation("Admin {AdminId} updating custom fields for form {FormId}", adminId, id);
+
+                var form = await _context.FormConfigurations.FindAsync(id);
+                if (form == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Form not found"
+                    });
+                }
+
+                // Update custom fields
+                form.CustomFields = request.CustomFieldsJson;
+                form.UpdatedDate = DateTime.UtcNow;
+                form.UpdatedBy = User.FindFirst("email")?.Value;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Custom fields updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating custom fields");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to update custom fields",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpPut("forms/{id}")]
+        public async Task<ActionResult<ApiResponse>> UpdateFormConfiguration(int id, [FromBody] UpdateFormConfigurationRequest request)
+        {
+            try
+            {
+                var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
+                _logger.LogInformation("Admin {AdminId} updating form configuration {FormId}", adminId, id);
+
+                var form = await _context.FormConfigurations.FindAsync(id);
+                if (form == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Form not found"
+                    });
+                }
+
+                // Update fields
+                if (!string.IsNullOrEmpty(request.FormName))
+                    form.FormName = request.FormName;
+
+                if (!string.IsNullOrEmpty(request.Description))
+                    form.Description = request.Description;
+
+                if (request.IsActive.HasValue)
+                    form.IsActive = request.IsActive.Value;
+
+                if (request.AllowOnlineSubmission.HasValue)
+                    form.AllowOnlineSubmission = request.AllowOnlineSubmission.Value;
+
+                if (request.ProcessingDays.HasValue)
+                    form.ProcessingDays = request.ProcessingDays.Value;
+
+                if (request.MaxFileSizeMB.HasValue)
+                    form.MaxFileSizeMB = request.MaxFileSizeMB.Value;
+
+                if (request.MaxFilesAllowed.HasValue)
+                    form.MaxFilesAllowed = request.MaxFilesAllowed.Value;
+
+                if (!string.IsNullOrEmpty(request.RequiredDocuments))
+                    form.RequiredDocuments = request.RequiredDocuments;
+
+                form.UpdatedDate = DateTime.UtcNow;
+                form.UpdatedBy = User.FindFirst("email")?.Value;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Form configuration updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating form configuration");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to update form configuration",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpDelete("forms/{id}")]
+        public async Task<ActionResult<ApiResponse>> DeleteForm(int id)
+        {
+            try
+            {
+                var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
+                _logger.LogInformation("Admin {AdminId} deleting form {FormId}", adminId, id);
+
+                var form = await _context.FormConfigurations.FindAsync(id);
+                if (form == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Form not found"
+                    });
+                }
+
+                // Soft delete by deactivating
+                form.IsActive = false;
+                form.UpdatedDate = DateTime.UtcNow;
+                form.UpdatedBy = User.FindFirst("email")?.Value;
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Form deactivated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting form");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to delete form",
                     Errors = new List<string> { ex.Message }
                 });
             }

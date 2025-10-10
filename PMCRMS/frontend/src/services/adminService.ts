@@ -182,6 +182,10 @@ class AdminService {
     });
   }
 
+  async revokeInvitation(invitationId: number): Promise<ApiResponse<void>> {
+    return apiClient.post(`/Admin/revoke-invitation`, { invitationId });
+  }
+
   async deleteInvitation(invitationId: number): Promise<ApiResponse<void>> {
     return apiClient.delete(`/Admin/invitations/${invitationId}`);
   }
@@ -241,6 +245,66 @@ class AdminService {
 
   async deleteFormConfiguration(id: number): Promise<ApiResponse<void>> {
     return apiClient.delete(`/FormConfiguration/${id}`);
+  }
+
+  // Form Fee Management (Admin endpoints)
+  async getAllForms(): Promise<ApiResponse<FormConfiguration[]>> {
+    return apiClient.get("/Admin/forms");
+  }
+
+  async getFormDetail(
+    formId: number
+  ): Promise<ApiResponse<FormConfiguration & { feeHistory: unknown[] }>> {
+    return apiClient.get(`/Admin/forms/${formId}`);
+  }
+
+  async updateFormFees(
+    formId: number,
+    data: {
+      baseFee: number;
+      processingFee: number;
+      lateFee?: number;
+      effectiveFrom?: string;
+      changeReason?: string;
+    }
+  ): Promise<ApiResponse<void>> {
+    return apiClient.put(`/Admin/forms/${formId}/fees`, data);
+  }
+
+  async updateFormCustomFields(
+    formId: number,
+    customFieldsJson: string
+  ): Promise<ApiResponse<void>> {
+    return apiClient.put(`/Admin/forms/${formId}/custom-fields`, {
+      customFieldsJson,
+    });
+  }
+
+  async updateFormConfig(
+    formId: number,
+    data: {
+      formName?: string;
+      description?: string;
+      isActive?: boolean;
+      allowOnlineSubmission?: boolean;
+      processingDays?: number;
+      maxFileSizeMB?: number;
+      maxFilesAllowed?: number;
+      requiredDocuments?: string;
+    }
+  ): Promise<ApiResponse<void>> {
+    return apiClient.put(`/Admin/forms/${formId}`, data);
+  }
+
+  async deleteForm(formId: number): Promise<ApiResponse<void>> {
+    return apiClient.delete(`/Admin/forms/${formId}`);
+  }
+
+  // Get all applications for admin view
+  async getAllApplications(
+    filters?: Record<string, unknown>
+  ): Promise<ApiResponse<unknown[]>> {
+    return apiClient.get("/Applications", { params: filters });
   }
 }
 

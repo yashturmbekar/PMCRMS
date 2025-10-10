@@ -99,7 +99,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Check permissions
-                if (userRole == UserRole.Applicant && application.ApplicantId != userId)
+                if (userRole == UserRole.User && application.ApplicantId != userId)
                 {
                     return Forbid();
                 }
@@ -195,7 +195,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Check permissions
-                if (userRole == UserRole.Applicant && document.Application.ApplicantId != userId)
+                if (userRole == UserRole.User && document.Application.ApplicantId != userId)
                 {
                     return Forbid();
                 }
@@ -250,7 +250,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Check permissions - only applicant can delete their own documents, and only in draft status
-                if (userRole == UserRole.Applicant && 
+                if (userRole == UserRole.User && 
                     (document.Application.ApplicantId != userId || 
                      document.Application.CurrentStatus != ApplicationCurrentStatus.Draft))
                 {
@@ -308,7 +308,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Check permissions
-                if (userRole == UserRole.Applicant && application.ApplicantId != userId)
+                if (userRole == UserRole.User && application.ApplicantId != userId)
                 {
                     return Forbid();
                 }

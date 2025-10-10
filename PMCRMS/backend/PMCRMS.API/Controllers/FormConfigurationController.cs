@@ -5,6 +5,7 @@ using PMCRMS.API.Data;
 using PMCRMS.API.DTOs;
 using PMCRMS.API.Models;
 using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
 
 namespace PMCRMS.API.Controllers
 {
@@ -51,12 +52,8 @@ namespace PMCRMS.API.Controllers
                     ProcessingDays = f.ProcessingDays,
                     MaxFileSizeMB = f.MaxFileSizeMB,
                     MaxFilesAllowed = f.MaxFilesAllowed,
-                    CustomFields = !string.IsNullOrEmpty(f.CustomFields) 
-                        ? JsonSerializer.Deserialize<List<CustomFieldDto>>(f.CustomFields) 
-                        : new List<CustomFieldDto>(),
-                    RequiredDocuments = !string.IsNullOrEmpty(f.RequiredDocuments)
-                        ? JsonSerializer.Deserialize<List<string>>(f.RequiredDocuments)
-                        : new List<string>()
+                    CustomFields = f.CustomFields,
+                    RequiredDocuments = f.RequiredDocuments
                 }).ToList();
 
                 return Ok(new ApiResponse<List<FormConfigurationDto>>
@@ -108,12 +105,8 @@ namespace PMCRMS.API.Controllers
                     ProcessingDays = form.ProcessingDays,
                     MaxFileSizeMB = form.MaxFileSizeMB,
                     MaxFilesAllowed = form.MaxFilesAllowed,
-                    CustomFields = !string.IsNullOrEmpty(form.CustomFields)
-                        ? JsonSerializer.Deserialize<List<CustomFieldDto>>(form.CustomFields)
-                        : new List<CustomFieldDto>(),
-                    RequiredDocuments = !string.IsNullOrEmpty(form.RequiredDocuments)
-                        ? JsonSerializer.Deserialize<List<string>>(form.RequiredDocuments)
-                        : new List<string>()
+                    CustomFields = form.CustomFields,
+                    RequiredDocuments = form.RequiredDocuments
                 };
 
                 return Ok(new ApiResponse<FormConfigurationDto>
@@ -138,7 +131,7 @@ namespace PMCRMS.API.Controllers
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<FormConfigurationDto>>> CreateFormConfiguration(
-            [FromBody] CreateFormConfigurationRequest request)
+            [FromBody] FormConfigCreateRequest request)
         {
             try
             {
@@ -194,8 +187,8 @@ namespace PMCRMS.API.Controllers
                     ProcessingDays = formConfig.ProcessingDays,
                     MaxFileSizeMB = formConfig.MaxFileSizeMB,
                     MaxFilesAllowed = formConfig.MaxFilesAllowed,
-                    CustomFields = request.CustomFields,
-                    RequiredDocuments = request.RequiredDocuments
+                    CustomFields = formConfig.CustomFields,
+                    RequiredDocuments = formConfig.RequiredDocuments
                 };
 
                 return Ok(new ApiResponse<FormConfigurationDto>
@@ -221,7 +214,7 @@ namespace PMCRMS.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse>> UpdateFormConfiguration(
             int id,
-            [FromBody] UpdateFormConfigurationRequest request)
+            [FromBody] FormConfigUpdateRequest request)
         {
             try
             {
@@ -371,5 +364,82 @@ namespace PMCRMS.API.Controllers
                 });
             }
         }
+    }
+
+    // Local DTOs for FormConfigurationController to avoid conflicts with AdminController DTOs
+    public class FormConfigCreateRequest
+    {
+        [Required]
+        [MaxLength(100)]
+        public string FormName { get; set; } = string.Empty;
+
+        [Required]
+        public FormType FormType { get; set; }
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        [Required]
+        [Range(0, double.MaxValue)]
+        public decimal BaseFee { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal ProcessingFee { get; set; } = 0;
+
+        [Range(0, double.MaxValue)]
+        public decimal LateFee { get; set; } = 0;
+
+        public bool AllowOnlineSubmission { get; set; } = true;
+
+        [Range(1, 365)]
+        public int ProcessingDays { get; set; } = 30;
+
+        [Range(1, 100)]
+        public int? MaxFileSizeMB { get; set; } = 5;
+
+        [Range(1, 50)]
+        public int? MaxFilesAllowed { get; set; } = 10;
+
+        public List<CustomFieldDto>? CustomFields { get; set; }
+
+        public List<string>? RequiredDocuments { get; set; }
+    }
+
+    public class FormConfigUpdateRequest
+    {
+        [MaxLength(100)]
+        public string? FormName { get; set; }
+
+        [MaxLength(500)]
+        public string? Description { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? BaseFee { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? ProcessingFee { get; set; }
+
+        [Range(0, double.MaxValue)]
+        public decimal? LateFee { get; set; }
+
+        public bool? IsActive { get; set; }
+
+        public bool? AllowOnlineSubmission { get; set; }
+
+        [Range(1, 365)]
+        public int? ProcessingDays { get; set; }
+
+        [Range(1, 100)]
+        public int? MaxFileSizeMB { get; set; }
+
+        [Range(1, 50)]
+        public int? MaxFilesAllowed { get; set; }
+
+        public List<CustomFieldDto>? CustomFields { get; set; }
+
+        public List<string>? RequiredDocuments { get; set; }
+
+        [MaxLength(500)]
+        public string? ChangeReason { get; set; }
     }
 }

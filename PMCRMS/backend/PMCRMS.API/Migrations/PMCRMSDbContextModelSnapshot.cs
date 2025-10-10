@@ -1288,7 +1288,7 @@ namespace PMCRMS.API.Migrations
                             LoginAttempts = 0,
                             Name = "System Administrator",
                             PhoneNumber = "9999999999",
-                            Role = 16
+                            Role = 1
                         });
                 });
 

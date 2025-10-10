@@ -1,11 +1,11 @@
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace PMCRMS.API.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateAdminCredentials : Migration
+    public partial class AdminFlowImplementation : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -14,8 +14,8 @@ namespace PMCRMS.API.Migrations
                 table: "Users",
                 keyColumn: "Id",
                 keyValue: 1,
-                column: "Email",
-                value: "admin@gmail.com");
+                column: "Role",
+                value: 1);
         }
 
         /// <inheritdoc />
@@ -25,8 +25,8 @@ namespace PMCRMS.API.Migrations
                 table: "Users",
                 keyColumn: "Id",
                 keyValue: 1,
-                column: "Email",
-                value: "admin@pmcrms.gov.in");
+                column: "Role",
+                value: 16);
         }
     }
 }

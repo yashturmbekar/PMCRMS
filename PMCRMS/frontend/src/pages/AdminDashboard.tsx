@@ -116,30 +116,33 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header with gradient */}
+      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
+                  <Settings className="w-8 h-8 text-white" />
+                </div>
                 Admin Dashboard
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-2 text-blue-200 font-medium">
                 Pune Municipal Corporation - PMCRMS Management
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex gap-3">
               <button
                 onClick={() => navigate("/admin/officers")}
-                className="px-4 py-2 bg-pmc-primary text-white rounded-lg hover:bg-pmc-primary-dark flex items-center space-x-2"
+                className="pmc-button pmc-button-primary flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Invite Officer</span>
               </button>
               <button
                 onClick={() => navigate("/admin/forms")}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-2"
+                className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white rounded-lg border border-white/20 hover:bg-white/20 transition-all flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" />
                 <span>Manage Forms</span>
@@ -151,198 +154,214 @@ const AdminDashboard: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Statistics Cards */}
+        {/* Statistics Cards with enhanced styling */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Total Applications */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <div className="pmc-card group hover:shadow-xl transition-all duration-300 border-l-4 border-blue-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Total Applications
                 </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
+                <p className="text-4xl font-bold text-gray-900 mt-3">
                   {stats.totalApplications}
                 </p>
               </div>
-              <div className="bg-blue-100 p-3 rounded-full">
-                <FileText className="w-6 h-6 text-blue-600" />
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                <FileText className="w-8 h-8 text-white" />
               </div>
             </div>
           </div>
 
           {/* Pending Applications */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <div className="pmc-card group hover:shadow-xl transition-all duration-300 border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Pending Applications
                 </p>
-                <p className="text-3xl font-bold text-orange-600 mt-2">
+                <p className="text-4xl font-bold text-orange-600 mt-3">
                   {stats.pendingApplications}
                 </p>
               </div>
-              <div className="bg-orange-100 p-3 rounded-full">
-                <Clock className="w-6 h-6 text-orange-600" />
+              <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                <Clock className="w-8 h-8 text-white" />
               </div>
             </div>
           </div>
 
           {/* Approved Applications */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <div className="pmc-card group hover:shadow-xl transition-all duration-300 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Approved Applications
                 </p>
-                <p className="text-3xl font-bold text-green-600 mt-2">
+                <p className="text-4xl font-bold text-green-600 mt-3">
                   {stats.approvedApplications}
                 </p>
               </div>
-              <div className="bg-green-100 p-3 rounded-full">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+              <div className="bg-gradient-to-br from-green-500 to-green-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                <CheckCircle className="w-8 h-8 text-white" />
               </div>
             </div>
           </div>
 
           {/* Rejected Applications */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <div className="pmc-card group hover:shadow-xl transition-all duration-300 border-l-4 border-red-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">
+                <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide">
                   Rejected Applications
                 </p>
-                <p className="text-3xl font-bold text-red-600 mt-2">
+                <p className="text-4xl font-bold text-red-600 mt-3">
                   {stats.rejectedApplications}
                 </p>
               </div>
-              <div className="bg-red-100 p-3 rounded-full">
-                <XCircle className="w-6 h-6 text-red-600" />
+              <div className="bg-gradient-to-br from-red-500 to-red-600 p-4 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                <XCircle className="w-8 h-8 text-white" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Officers & Invitations Row */}
+        {/* Officers & Invitations Row with enhanced styling */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Total Officers */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Officers
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {stats.totalOfficers}
-                </p>
-                <p className="text-sm text-green-600 mt-1">
-                  {stats.activeOfficers} Active
-                </p>
+          <div className="pmc-card hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-3 rounded-xl shadow-lg">
+                <Users className="w-7 h-7 text-white" />
               </div>
-              <div className="bg-purple-100 p-3 rounded-full">
-                <Users className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Total Officers
+              </p>
+              <p className="text-4xl font-bold text-gray-900">
+                {stats.totalOfficers}
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                  {stats.activeOfficers} Active
+                </span>
               </div>
             </div>
           </div>
 
           {/* Pending Invitations */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Pending Invitations
-                </p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">
-                  {stats.pendingInvitations}
-                </p>
+          <div className="pmc-card hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+                <Mail className="w-7 h-7 text-white" />
               </div>
-              <div className="bg-blue-100 p-3 rounded-full">
-                <Mail className="w-6 h-6 text-blue-600" />
-              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Pending Invitations
+              </p>
+              <p className="text-4xl font-bold text-indigo-600">
+                {stats.pendingInvitations}
+              </p>
             </div>
           </div>
 
           {/* Revenue This Month */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Revenue This Month
-                </p>
-                <p className="text-2xl font-bold text-green-600 mt-2">
-                  {formatCurrency(stats.revenueThisMonth)}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Total: {formatCurrency(stats.totalRevenueCollected)}
-                </p>
+          <div className="pmc-card hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-green-50 to-emerald-50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="bg-gradient-to-br from-green-500 to-green-600 p-3 rounded-xl shadow-lg">
+                <DollarSign className="w-7 h-7 text-white" />
               </div>
-              <div className="bg-green-100 p-3 rounded-full">
-                <DollarSign className="w-6 h-6 text-green-600" />
-              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                Revenue This Month
+              </p>
+              <p className="text-3xl font-bold text-green-700">
+                {formatCurrency(stats.revenueThisMonth)}
+              </p>
+              <p className="text-sm text-gray-600 mt-2 font-medium">
+                Total: {formatCurrency(stats.totalRevenueCollected)}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Charts Row */}
+        {/* Charts Row with enhanced styling */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Application Trends */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-pmc-primary" />
-              Application Trends (Last 7 Days)
-            </h3>
+          <div className="pmc-card hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-2 rounded-lg shadow-md">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Application Trends (Last 7 Days)
+              </h3>
+            </div>
             <div className="space-y-3">
               {stats.applicationTrends.length > 0 ? (
                 stats.applicationTrends.map((trend, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="group flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl hover:from-blue-100 hover:to-indigo-100 transition-all border border-blue-200 hover:border-blue-400 hover:shadow-md"
                   >
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-sm font-bold text-gray-800">
                       {new Date(trend.date).toLocaleDateString("en-IN", {
                         weekday: "short",
                         month: "short",
                         day: "numeric",
                       })}
                     </span>
-                    <div className="flex items-center space-x-3">
-                      <span className="text-xs text-gray-500">
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-semibold text-gray-600 bg-white px-3 py-1 rounded-full uppercase tracking-wide">
                         {trend.status}
                       </span>
-                      <span className="text-lg font-bold text-pmc-primary">
+                      <span className="text-2xl font-bold text-blue-700 bg-blue-200 px-4 py-1 rounded-lg group-hover:scale-110 transition-transform">
                         {trend.count}
                       </span>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-gray-500 py-8">
-                  No data available
-                </p>
+                <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                  <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No data available</p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Role Distribution */}
-          <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Users className="w-5 h-5 mr-2 text-pmc-primary" />
-              Officer Role Distribution
-            </h3>
-            <div className="space-y-3">
+          <div className="pmc-card hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-2 rounded-lg shadow-md">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Officer Role Distribution
+              </h3>
+            </div>
+            <div className="space-y-4">
               {stats.roleDistribution.length > 0 ? (
                 stats.roleDistribution.map((role, index) => (
-                  <div key={index} className="space-y-1">
+                  <div key={index} className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
+                      <span className="text-sm font-bold text-gray-800">
                         {getRoleLabel(role.role)}
                       </span>
-                      <span className="text-sm text-gray-600">
-                        {role.activeCount} / {role.count}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                          {role.activeCount} Active
+                        </span>
+                        <span className="text-sm font-semibold text-gray-600 bg-gray-200 px-3 py-1 rounded-full">
+                          {role.count} Total
+                        </span>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="relative w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
                       <div
-                        className="bg-pmc-primary h-2 rounded-full transition-all duration-300"
+                        className="absolute top-0 left-0 h-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500 ease-out shadow-md"
                         style={{
                           width: `${
                             role.count > 0
@@ -352,67 +371,91 @@ const AdminDashboard: React.FC = () => {
                         }}
                       ></div>
                     </div>
+                    <p className="text-xs text-gray-600 font-medium">
+                      {role.count > 0
+                        ? ((role.activeCount / role.count) * 100).toFixed(1)
+                        : 0}
+                      % Active Rate
+                    </p>
                   </div>
                 ))
               ) : (
-                <p className="text-center text-gray-500 py-8">
-                  No officers registered yet
-                </p>
+                <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">
+                    No officers registered yet
+                  </p>
+                </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Quick Actions
-          </h3>
+        {/* Quick Actions with enhanced styling */}
+        <div className="pmc-card hover:shadow-xl transition-all duration-300">
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-2 rounded-lg shadow-md">
+              <Settings className="w-6 h-6 text-white" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">Quick Actions</h3>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <button
               onClick={() => navigate("/admin/applications")}
-              className="p-4 border border-gray-300 rounded-lg hover:border-pmc-primary hover:bg-blue-50 transition-colors text-left"
+              className="group bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl p-6 hover:from-blue-500 hover:to-blue-600 hover:border-blue-600 transition-all duration-300 hover:shadow-xl hover:scale-105 text-left"
             >
-              <FileText className="w-6 h-6 text-pmc-primary mb-2" />
-              <h4 className="font-semibold text-gray-900">All Applications</h4>
-              <p className="text-sm text-gray-600 mt-1">
+              <div className="bg-blue-500 p-3 rounded-lg mb-4 inline-block group-hover:bg-white transition-colors shadow-md">
+                <FileText className="w-7 h-7 text-white group-hover:text-blue-600" />
+              </div>
+              <h4 className="font-bold text-lg text-blue-900 group-hover:text-white transition-colors mb-2">
+                All Applications
+              </h4>
+              <p className="text-sm text-blue-700 group-hover:text-blue-100 transition-colors">
                 View and manage all applications
               </p>
             </button>
 
             <button
               onClick={() => navigate("/admin/officers")}
-              className="p-4 border border-gray-300 rounded-lg hover:border-pmc-primary hover:bg-blue-50 transition-colors text-left"
+              className="group bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl p-6 hover:from-purple-500 hover:to-purple-600 hover:border-purple-600 transition-all duration-300 hover:shadow-xl hover:scale-105 text-left"
             >
-              <Users className="w-6 h-6 text-pmc-primary mb-2" />
-              <h4 className="font-semibold text-gray-900">
+              <div className="bg-purple-500 p-3 rounded-lg mb-4 inline-block group-hover:bg-white transition-colors shadow-md">
+                <Users className="w-7 h-7 text-white group-hover:text-purple-600" />
+              </div>
+              <h4 className="font-bold text-lg text-purple-900 group-hover:text-white transition-colors mb-2">
                 Officer Management
               </h4>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-purple-700 group-hover:text-purple-100 transition-colors">
                 Invite and manage officers
               </p>
             </button>
 
             <button
               onClick={() => navigate("/admin/forms")}
-              className="p-4 border border-gray-300 rounded-lg hover:border-pmc-primary hover:bg-blue-50 transition-colors text-left"
+              className="group bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-xl p-6 hover:from-green-500 hover:to-green-600 hover:border-green-600 transition-all duration-300 hover:shadow-xl hover:scale-105 text-left"
             >
-              <Settings className="w-6 h-6 text-pmc-primary mb-2" />
-              <h4 className="font-semibold text-gray-900">
+              <div className="bg-green-500 p-3 rounded-lg mb-4 inline-block group-hover:bg-white transition-colors shadow-md">
+                <Settings className="w-7 h-7 text-white group-hover:text-green-600" />
+              </div>
+              <h4 className="font-bold text-lg text-green-900 group-hover:text-white transition-colors mb-2">
                 Form Configuration
               </h4>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-green-700 group-hover:text-green-100 transition-colors">
                 Manage forms, fees, and fields
               </p>
             </button>
 
             <button
               onClick={() => navigate("/admin/reports")}
-              className="p-4 border border-gray-300 rounded-lg hover:border-pmc-primary hover:bg-blue-50 transition-colors text-left"
+              className="group bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-200 rounded-xl p-6 hover:from-orange-500 hover:to-orange-600 hover:border-orange-600 transition-all duration-300 hover:shadow-xl hover:scale-105 text-left"
             >
-              <TrendingUp className="w-6 h-6 text-pmc-primary mb-2" />
-              <h4 className="font-semibold text-gray-900">Reports</h4>
-              <p className="text-sm text-gray-600 mt-1">
+              <div className="bg-orange-500 p-3 rounded-lg mb-4 inline-block group-hover:bg-white transition-colors shadow-md">
+                <TrendingUp className="w-7 h-7 text-white group-hover:text-orange-600" />
+              </div>
+              <h4 className="font-bold text-lg text-orange-900 group-hover:text-white transition-colors mb-2">
+                Reports
+              </h4>
+              <p className="text-sm text-orange-700 group-hover:text-orange-100 transition-colors">
                 Generate and view reports
               </p>
             </button>

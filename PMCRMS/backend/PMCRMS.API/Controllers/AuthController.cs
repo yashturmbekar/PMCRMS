@@ -62,7 +62,7 @@ namespace PMCRMS.API.Controllers
                 if (existingUser != null)
                 {
                     // Only allow OTP login for applicants
-                    if (existingUser.Role != UserRole.Applicant)
+                    if (existingUser.Role != UserRole.User)
                     {
                         _logger.LogWarning("OTP login attempted for officer account: {Email}", request.Email);
                         return BadRequest(new ApiResponse
@@ -269,7 +269,7 @@ namespace PMCRMS.API.Controllers
                         Email = isEmail ? request.Identifier : $"{Guid.NewGuid().ToString().Substring(0, 8)}@temp.pmcrms.gov.in",
                         PhoneNumber = !isEmail ? request.Identifier : null, // Null for email-only users
                         Name = userName,
-                        Role = UserRole.Applicant,
+                        Role = UserRole.User,
                         IsActive = true,
                         CreatedBy = "OTP_Registration",
                         CreatedDate = DateTime.UtcNow
@@ -364,6 +364,76 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
+        /// Seed admin password manually (Development only)
+        /// </summary>
+        [HttpPost("seed-admin-password")]
+        public async Task<ActionResult<ApiResponse>> SeedAdminPassword()
+        {
+            try
+            {
+                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                if (!environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This endpoint is only available in development environment",
+                        Errors = new List<string> { "Unauthorized" }
+                    });
+                }
+
+                // Find admin user
+                var admin = await _context.Users
+                    .FirstOrDefaultAsync(u => u.Email == "admin@gmail.com" && u.Role == UserRole.Admin);
+
+                if (admin == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Admin user not found",
+                        Errors = new List<string> { "User not found" }
+                    });
+                }
+
+                // Set default password
+                var defaultPassword = "admin@123";
+                admin.PasswordHash = _passwordHasher.HashPassword(defaultPassword);
+                admin.EmployeeId = "ADMIN001";
+                admin.IsActive = true;
+                admin.UpdatedBy = "PasswordSeeder";
+                admin.UpdatedDate = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Admin password seeded successfully for {Email}", admin.Email);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Admin password seeded successfully",
+                    Data = new
+                    {
+                        Email = admin.Email,
+                        Password = defaultPassword,
+                        Role = admin.Role.ToString(),
+                        EmployeeId = admin.EmployeeId
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error seeding admin password");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to seed admin password",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>
         /// Officer login with email and password
         /// </summary>
         [HttpPost("officer-login")]
@@ -371,6 +441,7 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
+                _logger.LogInformation("=== Officer Login Attempt Started ===");
                 _logger.LogInformation("Officer login attempt for: {Email}", request.Email);
 
                 // Find user by email
@@ -387,6 +458,13 @@ namespace PMCRMS.API.Controllers
                         Errors = new List<string> { "Authentication failed" }
                     });
                 }
+
+                _logger.LogInformation("User found - ID: {UserId}, Name: {Name}, Role: {Role}, IsActive: {IsActive}", 
+                    user.Id, user.Name, user.Role, user.IsActive);
+                _logger.LogInformation("User PasswordHash exists: {HasPassword}, Length: {Length}", 
+                    !string.IsNullOrEmpty(user.PasswordHash), user.PasswordHash?.Length ?? 0);
+                _logger.LogInformation("User EmployeeId: {EmployeeId}, LoginAttempts: {LoginAttempts}", 
+                    user.EmployeeId, user.LoginAttempts);
 
                 // Check if account is locked
                 if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.UtcNow)
@@ -414,7 +492,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Verify this is an officer account (not Applicant)
-                if (user.Role == UserRole.Applicant)
+                if (user.Role == UserRole.User)
                 {
                     _logger.LogWarning("Officer login attempted on applicant account: {Email}", request.Email);
                     return BadRequest(new ApiResponse
@@ -437,8 +515,14 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
+                _logger.LogInformation("Attempting password verification for user: {Email}", request.Email);
+                _logger.LogInformation("Password provided length: {Length}", request.Password?.Length ?? 0);
+                
                 // Verify password
-                if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
+                var passwordVerificationResult = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+                _logger.LogInformation("Password verification result: {Result}", passwordVerificationResult);
+                
+                if (!passwordVerificationResult)
                 {
                     // Increment login attempts
                     user.LoginAttempts++;
@@ -471,13 +555,18 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
+                _logger.LogInformation("Password verified successfully! Proceeding with login for user: {Email}", request.Email);
+                
                 // Reset login attempts on successful login
                 user.LoginAttempts = 0;
                 user.LastLoginAt = DateTime.UtcNow;
                 user.UpdatedBy = user.Email;
                 await _context.SaveChangesAsync();
 
+                _logger.LogInformation("User login attempts reset and last login updated");
+
                 // Generate JWT token
+                _logger.LogInformation("Generating JWT token for user: {UserId}", user.Id);
                 var token = GenerateJwtToken(user);
                 var refreshToken = Guid.NewGuid().ToString();
 
@@ -501,6 +590,7 @@ namespace PMCRMS.API.Controllers
                 };
 
                 _logger.LogInformation("Officer {UserId} ({Role}) logged in successfully", user.Id, user.Role);
+                _logger.LogInformation("=== Officer Login Successful - Token Generated ===");
 
                 return Ok(new ApiResponse<LoginResponse>
                 {

@@ -4,22 +4,21 @@ namespace PMCRMS.API.Models
 {
     public enum UserRole
     {
-        Applicant = 1,
+        Admin = 1,
         User = 2,
-        Clerk = 3,
-        JuniorArchitect = 4,
-        AssistantArchitect = 5,
-        JuniorLicenceEngineer = 6,
-        AssistantLicenceEngineer = 7,
-        JuniorStructuralEngineer = 8,
-        AssistantStructuralEngineer = 9,
-        JuniorSupervisor1 = 10,
-        AssistantSupervisor1 = 11,
-        JuniorSupervisor2 = 12,
-        AssistantSupervisor2 = 13,
-        ExecutiveEngineer = 14,
-        CityEngineer = 15,
-        Admin = 16
+        JuniorArchitect = 3,
+        AssistantArchitect = 4,
+        JuniorLicenceEngineer = 5,
+        AssistantLicenceEngineer = 6,
+        JuniorStructuralEngineer = 7,
+        AssistantStructuralEngineer = 8,
+        JuniorSupervisor1 = 9,
+        AssistantSupervisor1 = 10,
+        JuniorSupervisor2 = 11,
+        AssistantSupervisor2 = 12,
+        ExecutiveEngineer = 13,
+        CityEngineer = 14,
+        Clerk = 15
     }
 
     public class User : BaseEntity
@@ -36,7 +35,7 @@ namespace PMCRMS.API.Models
         [MaxLength(15)]
         public string? PhoneNumber { get; set; }
         
-        public UserRole Role { get; set; } = UserRole.Applicant;
+        public UserRole Role { get; set; } = UserRole.User;
         
         public bool IsActive { get; set; } = true;
         
