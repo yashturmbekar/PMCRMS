@@ -28,41 +28,69 @@ namespace PMCRMS.API.Services
             _configuration = configuration;
             _logger = logger;
 
+            // Log environment variable availability
+            var envSmtpHost = Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST");
+            var envSmtpPort = Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT");
+            var envUsername = Environment.GetEnvironmentVariable("EMAIL_USERNAME");
+            var envPassword = Environment.GetEnvironmentVariable("EMAIL_PASSWORD");
+            var envFrom = Environment.GetEnvironmentVariable("EMAIL_FROM");
+            var envFromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME");
+            var envUseSsl = Environment.GetEnvironmentVariable("EMAIL_USE_SSL");
+            var envRequiresAuth = Environment.GetEnvironmentVariable("EMAIL_REQUIRES_AUTH");
+
+            _logger.LogInformation("=== EMAIL CONFIGURATION DEBUG ===");
+            _logger.LogInformation("ENV EMAIL_SMTP_HOST: {Value}", envSmtpHost ?? "NOT SET");
+            _logger.LogInformation("ENV EMAIL_SMTP_PORT: {Value}", envSmtpPort ?? "NOT SET");
+            _logger.LogInformation("ENV EMAIL_USERNAME: {Value}", envUsername ?? "NOT SET");
+            _logger.LogInformation("ENV EMAIL_PASSWORD: {Value}", string.IsNullOrEmpty(envPassword) ? "NOT SET" : "***SET***");
+            _logger.LogInformation("ENV EMAIL_FROM: {Value}", envFrom ?? "NOT SET");
+            _logger.LogInformation("ENV EMAIL_FROM_NAME: {Value}", envFromName ?? "NOT SET");
+            _logger.LogInformation("ENV EMAIL_USE_SSL: {Value}", envUseSsl ?? "NOT SET");
+            _logger.LogInformation("ENV EMAIL_REQUIRES_AUTH: {Value}", envRequiresAuth ?? "NOT SET");
+
             // Load email settings from environment variables first, then fallback to configuration
-            _smtpHost = Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST") 
+            _smtpHost = envSmtpHost 
                 ?? _configuration["EmailSettings:SmtpHost"] 
                 ?? "smtp.gmail.com";
             
-            _smtpPort = int.Parse(Environment.GetEnvironmentVariable("EMAIL_SMTP_PORT") 
+            _smtpPort = int.Parse(envSmtpPort 
                 ?? _configuration["EmailSettings:SmtpPort"] 
                 ?? "587");
             
-            _username = Environment.GetEnvironmentVariable("EMAIL_USERNAME") 
+            _username = envUsername 
                 ?? _configuration["EmailSettings:Username"] 
                 ?? "";
             
-            _password = Environment.GetEnvironmentVariable("EMAIL_PASSWORD") 
+            _password = envPassword 
                 ?? _configuration["EmailSettings:Password"] 
                 ?? "";
             
-            _fromEmail = Environment.GetEnvironmentVariable("EMAIL_FROM") 
+            _fromEmail = envFrom 
                 ?? _configuration["EmailSettings:FromEmail"] 
                 ?? "noreply@pmcrms.gov.in";
             
-            _fromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME") 
+            _fromName = envFromName 
                 ?? _configuration["EmailSettings:FromName"] 
                 ?? "PMCRMS";
             
-            _useSsl = bool.Parse(Environment.GetEnvironmentVariable("EMAIL_USE_SSL") 
+            _useSsl = bool.Parse(envUseSsl 
                 ?? _configuration["EmailSettings:UseSsl"] 
                 ?? "true");
             
-            _requiresAuth = bool.Parse(Environment.GetEnvironmentVariable("EMAIL_REQUIRES_AUTH") 
+            _requiresAuth = bool.Parse(envRequiresAuth 
                 ?? _configuration["EmailSettings:RequiresAuthentication"] 
                 ?? "true");
 
-            _logger.LogInformation("Email service configured - Host: {Host}, Port: {Port}, From: {From}, SSL: {SSL}, Auth: {Auth}", 
-                _smtpHost, _smtpPort, _fromEmail, _useSsl, _requiresAuth);
+            _logger.LogInformation("=== FINAL EMAIL CONFIGURATION ===");
+            _logger.LogInformation("SMTP Host: {Host}", _smtpHost);
+            _logger.LogInformation("SMTP Port: {Port}", _smtpPort);
+            _logger.LogInformation("Username: {Username}", _username);
+            _logger.LogInformation("Password: {Password}", string.IsNullOrEmpty(_password) ? "EMPTY" : $"SET (length: {_password.Length})");
+            _logger.LogInformation("From Email: {FromEmail}", _fromEmail);
+            _logger.LogInformation("From Name: {FromName}", _fromName);
+            _logger.LogInformation("Use SSL: {UseSsl}", _useSsl);
+            _logger.LogInformation("Requires Auth: {RequiresAuth}", _requiresAuth);
+            _logger.LogInformation("=================================");
         }
 
         public async Task<bool> SendOtpEmailAsync(string toEmail, string otpCode, string purpose)
@@ -107,7 +135,12 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                _logger.LogInformation("Attempting to send email to {Email}", toEmail);
+                _logger.LogInformation("=== SENDING EMAIL ===");
+                _logger.LogInformation("To: {Email}", toEmail);
+                _logger.LogInformation("Subject: {Subject}", subject);
+                _logger.LogInformation("Using SMTP: {Host}:{Port}", _smtpHost, _smtpPort);
+                _logger.LogInformation("From: {FromEmail} ({FromName})", _fromEmail, _fromName);
+                _logger.LogInformation("SSL: {SSL}, Auth: {Auth}", _useSsl, _requiresAuth);
 
                 using var mailMessage = new MailMessage
                 {
@@ -119,6 +152,8 @@ namespace PMCRMS.API.Services
 
                 mailMessage.To.Add(toEmail);
 
+                _logger.LogInformation("Mail message created. Creating SMTP client...");
+
                 using var smtpClient = new SmtpClient(_smtpHost, _smtpPort)
                 {
                     EnableSsl = _useSsl,
@@ -129,8 +164,11 @@ namespace PMCRMS.API.Services
 
                 if (_requiresAuth)
                 {
+                    _logger.LogInformation("Setting credentials for authentication (Username: {Username})", _username);
                     smtpClient.Credentials = new NetworkCredential(_username, _password);
                 }
+
+                _logger.LogInformation("Attempting to connect and send email...");
 
                 // Use Task.Run with timeout to avoid hanging indefinitely
                 var sendTask = smtpClient.SendMailAsync(mailMessage);
@@ -140,22 +178,27 @@ namespace PMCRMS.API.Services
                 if (completedTask == timeoutTask)
                 {
                     _logger.LogError("Email send operation timed out after 15 seconds for {Email}", toEmail);
+                    _logger.LogError("Timeout details - Host: {Host}, Port: {Port}, SSL: {SSL}", _smtpHost, _smtpPort, _useSsl);
                     return false;
                 }
 
                 await sendTask; // This will throw if there was an error
                 
-                _logger.LogInformation("Email sent successfully to {Email}", toEmail);
+                _logger.LogInformation("✓ Email sent successfully to {Email}", toEmail);
                 return true;
             }
             catch (SmtpException smtpEx)
             {
-                _logger.LogError(smtpEx, "SMTP error sending email to {Email}: {Message}", toEmail, smtpEx.Message);
+                _logger.LogError(smtpEx, "✗ SMTP error sending email to {Email}", toEmail);
+                _logger.LogError("SMTP Error Code: {StatusCode}", smtpEx.StatusCode);
+                _logger.LogError("SMTP Config - Host: {Host}, Port: {Port}, SSL: {SSL}, Auth: {Auth}", 
+                    _smtpHost, _smtpPort, _useSsl, _requiresAuth);
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending email to {Email}", toEmail);
+                _logger.LogError(ex, "✗ General error sending email to {Email}", toEmail);
+                _logger.LogError("Error type: {ErrorType}", ex.GetType().Name);
                 return false;
             }
         }
