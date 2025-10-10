@@ -6,6 +6,7 @@ import { documentService } from "./documentService";
 import { statusService } from "./statusService";
 import { paymentService } from "./paymentService";
 import { reportService } from "./reportService";
+import { notificationService } from "./notificationService";
 import { getToken, setToken, removeToken } from "./apiClient";
 import type {
   User,
@@ -24,6 +25,7 @@ class ApiService {
   status = statusService;
   payments = paymentService;
   reports = reportService;
+  notifications = notificationService;
 
   // Convenience methods for backward compatibility and auth management
   async login(data: LoginRequest): Promise<AuthResponse> {

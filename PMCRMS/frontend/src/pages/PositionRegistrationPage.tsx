@@ -2875,6 +2875,11 @@ export const PositionRegistrationPage = () => {
                             )
                           }
                           readOnly
+                          disabled
+                          style={{
+                            backgroundColor: "#f1f5f9",
+                            cursor: "not-allowed",
+                          }}
                         />
                       </div>
                     </div>
@@ -3111,9 +3116,8 @@ export const PositionRegistrationPage = () => {
                   <p style={{ marginBottom: "12px" }}>
                     Self Declaration -{" "}
                     <a
-                      href="/files/self-declaration-form.pdf"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href="/Self Declaration.pdf"
+                      download="Self_Declaration_Form.pdf"
                       style={{ color: "#0c4a6e", fontWeight: 600 }}
                     >
                       Download Self Declaration Form

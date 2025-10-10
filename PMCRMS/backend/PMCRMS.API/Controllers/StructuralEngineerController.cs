@@ -312,7 +312,7 @@ namespace PMCRMS.API.Controllers
         [Authorize(Roles = "Admin,JuniorEngineer,AssistantEngineer,ExecutiveEngineer,CityEngineer")]
         public async Task<ActionResult<ApiResponse>> UpdateStatus(
             int id,
-            [FromBody] UpdateApplicationStatusRequest request)
+            [FromBody] UpdatePositionApplicationStatusRequest request)
         {
             try
             {

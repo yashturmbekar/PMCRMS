@@ -21,6 +21,12 @@ namespace PMCRMS.API.DTOs
         public decimal? EstimatedCost { get; set; }
     }
 
+    public class AssignOfficerRequest
+    {
+        public int OfficerId { get; set; }
+        public string? Remarks { get; set; }
+    }
+
     public class AddCommentRequest
     {
         public string Comment { get; set; } = string.Empty;
@@ -42,6 +48,10 @@ namespace PMCRMS.API.DTOs
         public decimal BuiltUpArea { get; set; }
         public decimal? EstimatedCost { get; set; }
         public string CurrentStatus { get; set; } = string.Empty;
+        public int? AssignedOfficerId { get; set; }
+        public string? AssignedOfficerName { get; set; }
+        public string? AssignedOfficerDesignation { get; set; }
+        public DateTime? AssignedDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime? CertificateIssuedDate { get; set; }

@@ -8,6 +8,10 @@ namespace PMCRMS.API.Services
         Task<bool> SendOtpEmailAsync(string toEmail, string otpCode, string purpose);
         Task<bool> SendEmailAsync(string toEmail, string subject, string body);
         Task<bool> SendApplicationSubmissionEmailAsync(string toEmail, string applicantName, string applicationNumber, string applicationType, string applicationId, string viewUrl);
+        Task<bool> SendApplicationStatusUpdateEmailAsync(string toEmail, string applicantName, string applicationNumber, string status, string assignedTo, string assignedRole, string remarks, string viewUrl);
+        Task<bool> SendApplicationApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string approvedBy, string approvedRole, string remarks, string viewUrl);
+        Task<bool> SendApplicationRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectedBy, string rejectedRole, string remarks, string viewUrl);
+        Task<bool> SendAssignmentNotificationEmailAsync(string toEmail, string officerName, string applicationNumber, string applicationType, string applicantName, string assignedBy, string viewUrl);
     }
 
     public class EmailService : IEmailService
@@ -146,6 +150,95 @@ namespace PMCRMS.API.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending application submission email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendApplicationStatusUpdateEmailAsync(
+            string toEmail,
+            string applicantName,
+            string applicationNumber,
+            string status,
+            string assignedTo,
+            string assignedRole,
+            string remarks,
+            string viewUrl)
+        {
+            try
+            {
+                var subject = $"Application Status Updated - {applicationNumber}";
+                var body = GenerateStatusUpdateEmailBody(applicantName, applicationNumber, status, assignedTo, assignedRole, remarks, viewUrl);
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending status update email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendApplicationApprovalEmailAsync(
+            string toEmail,
+            string applicantName,
+            string applicationNumber,
+            string approvedBy,
+            string approvedRole,
+            string remarks,
+            string viewUrl)
+        {
+            try
+            {
+                var subject = $"Application Approved - {applicationNumber}";
+                var body = GenerateApprovalEmailBody(applicantName, applicationNumber, approvedBy, approvedRole, remarks, viewUrl);
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending approval email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendApplicationRejectionEmailAsync(
+            string toEmail,
+            string applicantName,
+            string applicationNumber,
+            string rejectedBy,
+            string rejectedRole,
+            string remarks,
+            string viewUrl)
+        {
+            try
+            {
+                var subject = $"Application Requires Attention - {applicationNumber}";
+                var body = GenerateRejectionEmailBody(applicantName, applicationNumber, rejectedBy, rejectedRole, remarks, viewUrl);
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending rejection email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendAssignmentNotificationEmailAsync(
+            string toEmail,
+            string officerName,
+            string applicationNumber,
+            string applicationType,
+            string applicantName,
+            string assignedBy,
+            string viewUrl)
+        {
+            try
+            {
+                var subject = $"New Application Assigned - {applicationNumber}";
+                var body = GenerateAssignmentEmailBody(officerName, applicationNumber, applicationType, applicantName, assignedBy, viewUrl);
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending assignment notification email to {Email}", toEmail);
                 return false;
             }
         }
@@ -621,6 +714,428 @@ namespace PMCRMS.API.Services
 </body>
 </html>
 ";
+        }
+
+        private string GenerateStatusUpdateEmailBody(
+            string applicantName,
+            string applicationNumber,
+            string status,
+            string assignedTo,
+            string assignedRole,
+            string remarks,
+            string viewUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        {GetCommonEmailStyles()}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        {GetEmailHeader()}
+        <div class='content'>
+            <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>🔄</div>
+            <div class='status-badge' style='background-color: #3b82f6; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Status Updated</div>
+            
+            <h2>Dear {applicantName},</h2>
+            <p>Your application status has been updated. Please review the details below:</p>
+            
+            <div class='info-box'>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{applicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Current Status:</div>
+                    <div class='info-value'><span style='color: #3b82f6; font-weight: bold;'>{status}</span></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Assigned To:</div>
+                    <div class='info-value'>{assignedTo} ({assignedRole})</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Updated On:</div>
+                    <div class='info-value'>{DateTime.UtcNow:MMMM dd, yyyy h:mm tt} UTC</div>
+                </div>
+                {(!string.IsNullOrEmpty(remarks) ? $@"
+                <div class='info-row'>
+                    <div class='info-label'>Remarks:</div>
+                    <div class='info-value'>{remarks}</div>
+                </div>" : "")}
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{viewUrl}' class='btn-primary'>View Application Details</a>
+            </div>
+            
+            <p>If you have any questions, please contact our support team.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        {GetEmailFooter()}
+    </div>
+</body>
+</html>";
+        }
+
+        private string GenerateApprovalEmailBody(
+            string applicantName,
+            string applicationNumber,
+            string approvedBy,
+            string approvedRole,
+            string remarks,
+            string viewUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        {GetCommonEmailStyles()}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        {GetEmailHeader()}
+        <div class='content'>
+            <div class='checkmark' style='font-size: 64px; color: #10b981; text-align: center; margin: 10px 0;'>✓</div>
+            <div class='success-badge' style='background-color: #10b981; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Application Approved</div>
+            
+            <h2>Congratulations {applicantName}!</h2>
+            <p>We are pleased to inform you that your application has been <strong>approved</strong>.</p>
+            
+            <div class='info-box' style='background-color: #f0fdf4; border-color: #10b981;'>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{applicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Status:</div>
+                    <div class='info-value'><span style='color: #10b981; font-weight: bold;'>✓ APPROVED</span></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Approved By:</div>
+                    <div class='info-value'>{approvedBy} ({approvedRole})</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Approval Date:</div>
+                    <div class='info-value'>{DateTime.UtcNow:MMMM dd, yyyy h:mm tt} UTC</div>
+                </div>
+                {(!string.IsNullOrEmpty(remarks) ? $@"
+                <div class='info-row'>
+                    <div class='info-label'>Remarks:</div>
+                    <div class='info-value'>{remarks}</div>
+                </div>" : "")}
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{viewUrl}' class='btn-primary' style='background-color: #10b981;'>View Approval Details</a>
+            </div>
+            
+            <div class='info-notice'>
+                <strong>📋 Next Steps:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li>Download your approval certificate from the application portal</li>
+                    <li>Keep the application number for future reference</li>
+                    <li>Follow any additional instructions provided in the approval</li>
+                </ul>
+            </div>
+            
+            <p>Thank you for using PMCRMS.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        {GetEmailFooter()}
+    </div>
+</body>
+</html>";
+        }
+
+        private string GenerateRejectionEmailBody(
+            string applicantName,
+            string applicationNumber,
+            string rejectedBy,
+            string rejectedRole,
+            string remarks,
+            string viewUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        {GetCommonEmailStyles()}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        {GetEmailHeader()}
+        <div class='content'>
+            <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>⚠️</div>
+            <div class='warning-badge' style='background-color: #ef4444; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Action Required</div>
+            
+            <h2>Dear {applicantName},</h2>
+            <p>Your application requires attention and modifications. Please review the feedback provided below:</p>
+            
+            <div class='info-box' style='background-color: #fef2f2; border-color: #ef4444;'>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{applicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Status:</div>
+                    <div class='info-value'><span style='color: #ef4444; font-weight: bold;'>⚠ Requires Revision</span></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Reviewed By:</div>
+                    <div class='info-value'>{rejectedBy} ({rejectedRole})</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Review Date:</div>
+                    <div class='info-value'>{DateTime.UtcNow:MMMM dd, yyyy h:mm tt} UTC</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Feedback/Remarks:</div>
+                    <div class='info-value'><strong>{remarks}</strong></div>
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{viewUrl}' class='btn-primary' style='background-color: #ef4444;'>View Full Details & Resubmit</a>
+            </div>
+            
+            <div class='warning' style='background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 15px 0;'>
+                <strong>📋 What to do next:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li>Review the feedback/remarks carefully</li>
+                    <li>Make the necessary corrections to your application</li>
+                    <li>Upload any additional documents if required</li>
+                    <li>Resubmit your application for review</li>
+                </ul>
+            </div>
+            
+            <p>If you have any questions or need clarification, please contact our support team.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        {GetEmailFooter()}
+    </div>
+</body>
+</html>";
+        }
+
+        private string GenerateAssignmentEmailBody(
+            string officerName,
+            string applicationNumber,
+            string applicationType,
+            string applicantName,
+            string assignedBy,
+            string viewUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        {GetCommonEmailStyles()}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        {GetEmailHeader()}
+        <div class='content'>
+            <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>📋</div>
+            <div class='assignment-badge' style='background-color: #8b5cf6; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>New Assignment</div>
+            
+            <h2>Dear {officerName},</h2>
+            <p>A new application has been assigned to you for review and processing.</p>
+            
+            <div class='info-box' style='background-color: #f5f3ff; border-color: #8b5cf6;'>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{applicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Application Type:</div>
+                    <div class='info-value'>{applicationType}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Applicant Name:</div>
+                    <div class='info-value'>{applicantName}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Assigned By:</div>
+                    <div class='info-value'>{assignedBy}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Assigned On:</div>
+                    <div class='info-value'>{DateTime.UtcNow:MMMM dd, yyyy h:mm tt} UTC</div>
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{viewUrl}' class='btn-primary' style='background-color: #8b5cf6;'>Review Application</a>
+            </div>
+            
+            <div class='info-notice' style='background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 15px 0;'>
+                <strong>📋 Your Action Items:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li>Review all submitted documents and information</li>
+                    <li>Verify compliance with regulations</li>
+                    <li>Provide feedback or approve the application</li>
+                    <li>Update the status accordingly</li>
+                </ul>
+            </div>
+            
+            <p>Please review the application at your earliest convenience.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS System</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        {GetEmailFooter()}
+    </div>
+</body>
+</html>";
+        }
+
+        private string GetCommonEmailStyles()
+        {
+            return @"
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .header {
+            background-color: #0c4a6e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .logo-container {
+            margin-bottom: 15px;
+        }
+        .badge {
+            background-color: #f59e0b;
+            color: white;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }
+        .header h1 {
+            margin: 10px 0 5px 0;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }
+        .info-box {
+            background-color: #f0f9ff;
+            border: 2px solid #0c4a6e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .info-row {
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #0c4a6e;
+            min-width: 180px;
+        }
+        .info-value {
+            color: #333;
+        }
+        .btn-primary {
+            display: inline-block;
+            background-color: #0c4a6e;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }
+        .info-notice {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 15px 0;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 15px 0;
+        }";
+        }
+
+        private string GetEmailHeader()
+        {
+            return $@"
+        <div class='header'>
+            <div class='logo-container'>
+                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+            </div>
+            <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
+            <h1>Pune Municipal Corporation</h1>
+            <p>Permit Management & Certificate Recommendation System</p>
+        </div>";
+        }
+
+        private string GetEmailFooter()
+        {
+            return @"
+        <div class='footer'>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>For support, please visit our website or contact us at support@pmcrms.gov.in</p>
+            <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
+        </div>";
         }
     }
 }

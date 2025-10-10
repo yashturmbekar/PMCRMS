@@ -16,6 +16,7 @@ namespace PMCRMS.API.Data
         public DbSet<ApplicationComment> ApplicationComments { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
         
         // Position Application entities
         public DbSet<PositionApplication> PositionApplications { get; set; }
@@ -126,6 +127,24 @@ namespace PMCRMS.API.Data
             modelBuilder.Entity<OtpVerification>(entity =>
             {
                 entity.HasIndex(e => new { e.Identifier, e.Purpose, e.IsActive });
+            });
+
+            // Configure Notification entity
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.Property(e => e.Priority).HasConversion<int>();
+                entity.HasIndex(e => new { e.UserId, e.IsRead });
+                entity.HasIndex(e => e.CreatedDate);
+                
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.Application)
+                    .WithMany()
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure PositionApplication entity

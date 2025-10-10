@@ -11,8 +11,8 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
 } from "lucide-react";
+import NotificationBell from "./NotificationBell";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -156,32 +156,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             <div className="pmc-header-actions">
-              {/* Notifications */}
-              <button
-                className="pmc-button pmc-button-icon pmc-button-sm"
-                style={{
-                  background: "rgba(255, 255, 255, 0.1)",
-                  border: "1px solid rgba(255, 255, 255, 0.2)",
-                  position: "relative",
-                }}
-                title="Notifications"
-              >
-                <Bell className="h-5 w-5" style={{ color: "white" }} />
-                <span
-                  className="pmc-badge pmc-badge-error pmc-badge-sm"
-                  style={{
-                    position: "absolute",
-                    top: "-4px",
-                    right: "-4px",
-                    minWidth: "18px",
-                    height: "18px",
-                    padding: "2px 6px",
-                    fontSize: "10px",
-                  }}
-                >
-                  3
-                </span>
-              </button>
+              {/* Notification Bell */}
+              <NotificationBell />
 
               {/* Profile section */}
               <div className="pmc-user-menu">

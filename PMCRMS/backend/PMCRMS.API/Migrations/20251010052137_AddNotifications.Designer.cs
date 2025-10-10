@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMCRMS.API.Data;
@@ -11,9 +12,11 @@ using PMCRMS.API.Data;
 namespace PMCRMS.API.Migrations
 {
     [DbContext(typeof(PMCRMSDbContext))]
-    partial class PMCRMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251010052137_AddNotifications")]
+    partial class AddNotifications
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -41,20 +44,6 @@ namespace PMCRMS.API.Migrations
                     b.Property<string>("AppointmentRemarks")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
-
-                    b.Property<DateTime?>("AssignedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("AssignedOfficerDesignation")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<int?>("AssignedOfficerId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("AssignedOfficerName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<decimal>("BuiltUpArea")
                         .HasColumnType("decimal(10,2)");

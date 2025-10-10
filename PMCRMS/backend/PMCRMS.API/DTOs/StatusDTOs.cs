@@ -7,6 +7,13 @@ namespace PMCRMS.API.DTOs
         public string? RejectionReason { get; set; }
     }
 
+    public class UpdateApplicationStatusRequest
+    {
+        public string Status { get; set; } = string.Empty;
+        public string? Remarks { get; set; }
+        public int? AssignedOfficerId { get; set; }
+    }
+
     public class WorkflowDto
     {
         public string ApplicationType { get; set; } = string.Empty;

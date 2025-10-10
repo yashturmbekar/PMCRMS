@@ -89,6 +89,17 @@ namespace PMCRMS.API.Models
         
         [MaxLength(1000)]
         public string? Remarks { get; set; }
+
+        // Current assigned officer
+        public int? AssignedOfficerId { get; set; }
+
+        [MaxLength(100)]
+        public string? AssignedOfficerName { get; set; }
+
+        [MaxLength(50)]
+        public string? AssignedOfficerDesignation { get; set; }
+
+        public DateTime? AssignedDate { get; set; }
         
         // Foreign Keys
         [ForeignKey("ApplicantId")]

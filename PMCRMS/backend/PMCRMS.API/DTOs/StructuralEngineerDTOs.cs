@@ -241,7 +241,7 @@ namespace PMCRMS.API.DTOs
         public string? VerificationRemarks { get; set; }
     }
 
-    public class UpdateApplicationStatusRequest
+    public class UpdatePositionApplicationStatusRequest
     {
         [Required]
         public int Status { get; set; }

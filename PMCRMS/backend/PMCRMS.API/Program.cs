@@ -214,6 +214,7 @@ builder.Services.AddHttpClient(); // For Brevo API
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<PdfService>(); // PDF Generation Service
 // TODO: Add more service registrations here
 

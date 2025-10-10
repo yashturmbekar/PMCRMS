@@ -43,6 +43,12 @@ export interface Application {
   submissionDate: string;
   lastUpdatedDate: string;
 
+  // Assigned Officer Details
+  assignedOfficerId?: number;
+  assignedOfficerName?: string;
+  assignedOfficerDesignation?: string;
+  assignedDate?: string;
+
   // Property Details
   propertyDetails: {
     surveyNumber: string;
@@ -303,12 +309,68 @@ export interface DashboardStats {
 // Notification Types
 export interface Notification {
   id: number;
+  userId: number;
+  type: NotificationType;
   title: string;
   message: string;
-  type: "info" | "success" | "warning" | "error";
+  applicationId?: number;
+  applicationNumber?: string;
   isRead: boolean;
+  readAt?: string;
+  actionUrl?: string;
+  actorName?: string;
+  actorRole?: string;
+  priority: NotificationPriority;
   createdDate: string;
+}
+
+export type NotificationType =
+  | "Submission"
+  | "Assignment"
+  | "Approval"
+  | "Rejection"
+  | "StatusChange"
+  | "Comment"
+  | "DocumentUpdate"
+  | "PaymentReceived";
+
+export const NotificationTypes = {
+  Submission: "Submission" as const,
+  Assignment: "Assignment" as const,
+  Approval: "Approval" as const,
+  Rejection: "Rejection" as const,
+  StatusChange: "StatusChange" as const,
+  Comment: "Comment" as const,
+  DocumentUpdate: "DocumentUpdate" as const,
+  PaymentReceived: "PaymentReceived" as const,
+};
+
+export type NotificationPriority = "Low" | "Normal" | "High" | "Urgent";
+
+export const NotificationPriorities = {
+  Low: 0,
+  Normal: 1,
+  High: 2,
+  Urgent: 3,
+};
+
+export interface NotificationSummary {
+  totalUnread: number;
+  totalNotifications: number;
+  recentNotifications: Notification[];
+}
+
+export interface CreateNotificationRequest {
   userId: number;
+  type: NotificationType;
+  title: string;
+  message: string;
+  applicationId?: number;
+  applicationNumber?: string;
+  actionUrl?: string;
+  actorName?: string;
+  actorRole?: string;
+  priority?: NotificationPriority;
 }
 
 // Search and Filter Types

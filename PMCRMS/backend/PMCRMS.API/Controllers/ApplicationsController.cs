@@ -16,17 +16,20 @@ namespace PMCRMS.API.Controllers
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<ApplicationsController> _logger;
         private readonly Services.IEmailService _emailService;
+        private readonly Services.INotificationService _notificationService;
         private readonly IConfiguration _configuration;
 
         public ApplicationsController(
             PMCRMSDbContext context, 
             ILogger<ApplicationsController> logger,
             Services.IEmailService emailService,
+            Services.INotificationService notificationService,
             IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
+            _notificationService = notificationService;
             _configuration = configuration;
         }
 
@@ -70,6 +73,10 @@ namespace PMCRMS.API.Controllers
                     BuiltUpArea = app.BuiltUpArea,
                     EstimatedCost = app.EstimatedCost,
                     CurrentStatus = app.CurrentStatus.ToString(),
+                    AssignedOfficerId = app.AssignedOfficerId,
+                    AssignedOfficerName = app.AssignedOfficerName,
+                    AssignedOfficerDesignation = app.AssignedOfficerDesignation,
+                    AssignedDate = app.AssignedDate,
                     CreatedAt = app.CreatedDate,
                     UpdatedAt = app.UpdatedDate ?? app.CreatedDate,
                     CertificateIssuedDate = app.CertificateIssuedDate,
@@ -147,6 +154,10 @@ namespace PMCRMS.API.Controllers
                     BuiltUpArea = application.BuiltUpArea,
                     EstimatedCost = application.EstimatedCost,
                     CurrentStatus = application.CurrentStatus.ToString(),
+                    AssignedOfficerId = application.AssignedOfficerId,
+                    AssignedOfficerName = application.AssignedOfficerName,
+                    AssignedOfficerDesignation = application.AssignedOfficerDesignation,
+                    AssignedDate = application.AssignedDate,
                     CreatedAt = application.CreatedDate,
                     UpdatedAt = application.UpdatedDate ?? application.CreatedDate,
                     CertificateIssuedDate = application.CertificateIssuedDate,
@@ -249,6 +260,10 @@ namespace PMCRMS.API.Controllers
                     BuiltUpArea = application.BuiltUpArea,
                     EstimatedCost = application.EstimatedCost,
                     CurrentStatus = application.CurrentStatus.ToString(),
+                    AssignedOfficerId = application.AssignedOfficerId,
+                    AssignedOfficerName = application.AssignedOfficerName,
+                    AssignedOfficerDesignation = application.AssignedOfficerDesignation,
+                    AssignedDate = application.AssignedDate,
                     CreatedAt = application.CreatedDate,
                     UpdatedAt = application.UpdatedDate ?? application.CreatedDate
                 };
@@ -326,6 +341,237 @@ namespace PMCRMS.API.Controllers
                 {
                     Success = false,
                     Message = "Failed to retrieve applications",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Update application status and assign officer
+        /// </summary>
+        [HttpPut("{id}/status")]
+        [Authorize(Roles = "Admin,JuniorEngineer,AssistantEngineer,ExecutiveEngineer,CityEngineer")]
+        public async Task<ActionResult<ApiResponse>> UpdateApplicationStatus(
+            int id,
+            [FromBody] UpdateApplicationStatusRequest request)
+        {
+            try
+            {
+                var application = await _context.Applications
+                    .Include(a => a.Applicant)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+
+                if (application == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Application not found"
+                    });
+                }
+
+                var userId = GetCurrentUserId();
+                var currentUserName = User.FindFirst("name")?.Value ?? "System";
+                var currentUserRole = GetCurrentUserRole().ToString();
+
+                // Parse the new status
+                if (!Enum.TryParse<ApplicationCurrentStatus>(request.Status, out var newStatus))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid status value"
+                    });
+                }
+
+                // Update application status
+                var oldStatus = application.CurrentStatus;
+                application.CurrentStatus = newStatus;
+                application.Remarks = request.Remarks;
+
+                // Update assigned officer if provided
+                if (request.AssignedOfficerId.HasValue)
+                {
+                    var assignedOfficer = await _context.Users.FindAsync(request.AssignedOfficerId.Value);
+                    if (assignedOfficer != null)
+                    {
+                        application.AssignedOfficerId = request.AssignedOfficerId;
+                        application.AssignedOfficerName = assignedOfficer.Name;
+                        application.AssignedOfficerDesignation = assignedOfficer.Role.ToString();
+                        application.AssignedDate = DateTime.UtcNow;
+
+                        // Notify the assigned officer
+                        await _notificationService.NotifyOfficerAssignmentAsync(
+                            assignedOfficer.Id,
+                            application.ApplicationNumber,
+                            application.Id,
+                            application.Type.ToString(),
+                            application.Applicant.Name,
+                            currentUserName
+                        );
+                    }
+                }
+
+                // Add status history record
+                var statusHistory = new ApplicationStatus
+                {
+                    ApplicationId = application.Id,
+                    Status = newStatus,
+                    UpdatedByUserId = userId,
+                    Remarks = request.Remarks ?? string.Empty,
+                    StatusDate = DateTime.UtcNow,
+                    CreatedBy = currentUserName
+                };
+
+                _context.ApplicationStatuses.Add(statusHistory);
+                await _context.SaveChangesAsync();
+
+                // Send appropriate notifications based on status
+                var assignedTo = application.AssignedOfficerName ?? "Pending Assignment";
+                var assignedRole = application.AssignedOfficerDesignation ?? "";
+
+                if (newStatus.ToString().Contains("Approved"))
+                {
+                    await _notificationService.NotifyApplicationApprovalAsync(
+                        application.ApplicantId,
+                        application.ApplicationNumber,
+                        application.Id,
+                        currentUserName,
+                        currentUserRole,
+                        request.Remarks ?? "Your application has been approved"
+                    );
+                }
+                else if (newStatus.ToString().Contains("Rejected"))
+                {
+                    await _notificationService.NotifyApplicationRejectionAsync(
+                        application.ApplicantId,
+                        application.ApplicationNumber,
+                        application.Id,
+                        currentUserName,
+                        currentUserRole,
+                        request.Remarks ?? "Your application requires revision"
+                    );
+                }
+                else
+                {
+                    await _notificationService.NotifyApplicationStatusChangeAsync(
+                        application.ApplicantId,
+                        application.ApplicationNumber,
+                        application.Id,
+                        newStatus.ToString(),
+                        assignedTo,
+                        assignedRole,
+                        request.Remarks ?? "",
+                        currentUserName,
+                        currentUserRole
+                    );
+                }
+
+                _logger.LogInformation(
+                    "Application {ApplicationNumber} status updated from {OldStatus} to {NewStatus} by {User}",
+                    application.ApplicationNumber, oldStatus, newStatus, currentUserName);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Application status updated successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating application status for application {Id}", id);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error updating application status",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Assign application to an officer
+        /// </summary>
+        [HttpPut("{id}/assign")]
+        [Authorize(Roles = "Admin,ExecutiveEngineer,CityEngineer")]
+        public async Task<ActionResult<ApiResponse>> AssignOfficer(
+            int id,
+            [FromBody] AssignOfficerRequest request)
+        {
+            try
+            {
+                var application = await _context.Applications
+                    .Include(a => a.Applicant)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+
+                if (application == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Application not found"
+                    });
+                }
+
+                var assignedOfficer = await _context.Users.FindAsync(request.OfficerId);
+                if (assignedOfficer == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer not found"
+                    });
+                }
+
+                var currentUserName = User.FindFirst("name")?.Value ?? "System";
+
+                application.AssignedOfficerId = request.OfficerId;
+                application.AssignedOfficerName = assignedOfficer.Name;
+                application.AssignedOfficerDesignation = assignedOfficer.Role.ToString();
+                application.AssignedDate = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                // Notify the assigned officer
+                await _notificationService.NotifyOfficerAssignmentAsync(
+                    assignedOfficer.Id,
+                    application.ApplicationNumber,
+                    application.Id,
+                    application.Type.ToString(),
+                    application.Applicant.Name,
+                    currentUserName
+                );
+
+                // Notify the applicant
+                await _notificationService.NotifyApplicationStatusChangeAsync(
+                    application.ApplicantId,
+                    application.ApplicationNumber,
+                    application.Id,
+                    application.CurrentStatus.ToString(),
+                    assignedOfficer.Name,
+                    assignedOfficer.Role.ToString(),
+                    $"Your application has been assigned to {assignedOfficer.Name} for review.",
+                    currentUserName,
+                    GetCurrentUserRole().ToString()
+                );
+
+                _logger.LogInformation(
+                    "Application {ApplicationNumber} assigned to officer {OfficerName} by {AssignedBy}",
+                    application.ApplicationNumber, assignedOfficer.Name, currentUserName);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = $"Application assigned to {assignedOfficer.Name} successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error assigning officer for application {Id}", id);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error assigning officer",
                     Errors = new List<string> { ex.Message }
                 });
             }
