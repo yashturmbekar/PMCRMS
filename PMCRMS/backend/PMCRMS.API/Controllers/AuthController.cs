@@ -267,7 +267,7 @@ namespace PMCRMS.API.Controllers
                     user = new User
                     {
                         Email = isEmail ? request.Identifier : $"{Guid.NewGuid().ToString().Substring(0, 8)}@temp.pmcrms.gov.in",
-                        PhoneNumber = !isEmail ? request.Identifier : "0000000000", // Temporary phone number
+                        PhoneNumber = !isEmail ? request.Identifier : null, // Null for email-only users
                         Name = userName,
                         Role = UserRole.Applicant,
                         IsActive = true,

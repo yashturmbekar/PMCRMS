@@ -32,7 +32,10 @@ namespace PMCRMS.API.Data
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasIndex(e => e.Email).IsUnique();
-                entity.HasIndex(e => e.PhoneNumber).IsUnique();
+                // Unique index on PhoneNumber, but allow multiple nulls
+                entity.HasIndex(e => e.PhoneNumber)
+                    .IsUnique()
+                    .HasFilter("\"PhoneNumber\" IS NOT NULL");
                 entity.Property(e => e.Role).HasConversion<int>();
             });
 

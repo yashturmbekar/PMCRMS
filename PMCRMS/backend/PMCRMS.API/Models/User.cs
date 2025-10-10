@@ -24,9 +24,8 @@ namespace PMCRMS.API.Models
         [MaxLength(255)]
         public string Email { get; set; } = string.Empty;
         
-        [Required]
         [MaxLength(15)]
-        public string PhoneNumber { get; set; } = string.Empty;
+        public string? PhoneNumber { get; set; }
         
         public UserRole Role { get; set; } = UserRole.Applicant;
         
