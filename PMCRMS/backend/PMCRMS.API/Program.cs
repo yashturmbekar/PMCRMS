@@ -210,6 +210,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Register application services
+builder.Services.AddHttpClient(); // For Brevo API
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
 builder.Services.AddScoped<IEmailService, EmailService>();

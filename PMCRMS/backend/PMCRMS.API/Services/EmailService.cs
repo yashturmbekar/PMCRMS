@@ -14,6 +14,7 @@ namespace PMCRMS.API.Services
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
+        private readonly IHttpClientFactory _httpClientFactory;
         private readonly string _smtpHost;
         private readonly int _smtpPort;
         private readonly string _username;
@@ -22,11 +23,20 @@ namespace PMCRMS.API.Services
         private readonly string _fromName;
         private readonly bool _useSsl;
         private readonly bool _requiresAuth;
+        private readonly string? _brevoApiKey;
+        private readonly bool _useBrevoApi;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
+
+            // Check for Brevo API key first (preferred method)
+            _brevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY")
+                ?? _configuration["EmailSettings:BrevoApiKey"];
+            
+            _useBrevoApi = !string.IsNullOrEmpty(_brevoApiKey);
 
             // Log environment variable availability
             var envSmtpHost = Environment.GetEnvironmentVariable("EMAIL_SMTP_HOST");
@@ -39,6 +49,7 @@ namespace PMCRMS.API.Services
             var envRequiresAuth = Environment.GetEnvironmentVariable("EMAIL_REQUIRES_AUTH");
 
             _logger.LogInformation("=== EMAIL CONFIGURATION DEBUG ===");
+            _logger.LogInformation("ENV BREVO_API_KEY: {Value}", _brevoApiKey != null ? "***SET***" : "NOT SET");
             _logger.LogInformation("ENV EMAIL_SMTP_HOST: {Value}", envSmtpHost ?? "NOT SET");
             _logger.LogInformation("ENV EMAIL_SMTP_PORT: {Value}", envSmtpPort ?? "NOT SET");
             _logger.LogInformation("ENV EMAIL_USERNAME: {Value}", envUsername ?? "NOT SET");
@@ -82,6 +93,8 @@ namespace PMCRMS.API.Services
                 ?? "true");
 
             _logger.LogInformation("=== FINAL EMAIL CONFIGURATION ===");
+            _logger.LogInformation("Primary Method: {Method}", _useBrevoApi ? "Brevo API" : "SMTP");
+            _logger.LogInformation("Brevo API Key: {HasKey}", _brevoApiKey != null ? "SET" : "NOT SET");
             _logger.LogInformation("SMTP Host: {Host}", _smtpHost);
             _logger.LogInformation("SMTP Port: {Port}", _smtpPort);
             _logger.LogInformation("Username: {Username}", _username);
@@ -133,9 +146,79 @@ namespace PMCRMS.API.Services
 
         public async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
         {
+            // Try Brevo API first if configured
+            if (_useBrevoApi)
+            {
+                _logger.LogInformation("Attempting to send email via Brevo API...");
+                var apiResult = await SendViaBrevoApiAsync(toEmail, subject, body);
+                
+                if (apiResult)
+                {
+                    _logger.LogInformation("✓ Email sent successfully via Brevo API");
+                    return true;
+                }
+                
+                _logger.LogWarning("Brevo API failed, falling back to SMTP...");
+            }
+
+            // Fallback to SMTP
+            return await SendViaSmtpAsync(toEmail, subject, body);
+        }
+
+        private async Task<bool> SendViaBrevoApiAsync(string toEmail, string subject, string body)
+        {
             try
             {
-                _logger.LogInformation("=== SENDING EMAIL ===");
+                _logger.LogInformation("=== SENDING EMAIL VIA BREVO API ===");
+                _logger.LogInformation("To: {Email}", toEmail);
+                _logger.LogInformation("Subject: {Subject}", subject);
+                _logger.LogInformation("From: {FromEmail} ({FromName})", _fromEmail, _fromName);
+
+                using var httpClient = _httpClientFactory.CreateClient();
+                httpClient.BaseAddress = new Uri("https://api.brevo.com/v3/");
+                httpClient.DefaultRequestHeaders.Add("api-key", _brevoApiKey);
+                httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+                var payload = new
+                {
+                    sender = new { name = _fromName, email = _fromEmail },
+                    to = new[] { new { email = toEmail } },
+                    subject = subject,
+                    htmlContent = body
+                };
+
+                var jsonContent = System.Text.Json.JsonSerializer.Serialize(payload);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                _logger.LogInformation("Making API request to Brevo...");
+
+                var response = await httpClient.PostAsync("smtp/email", content);
+                var responseBody = await response.Content.ReadAsStringAsync();
+
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("✓ Brevo API: Email sent successfully. Response: {Response}", responseBody);
+                    return true;
+                }
+                else
+                {
+                    _logger.LogError("✗ Brevo API: Failed to send email. Status: {Status}, Response: {Response}", 
+                        response.StatusCode, responseBody);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "✗ Brevo API: Error sending email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        private async Task<bool> SendViaSmtpAsync(string toEmail, string subject, string body)
+        {
+            try
+            {
+                _logger.LogInformation("=== SENDING EMAIL VIA SMTP ===");
                 _logger.LogInformation("To: {Email}", toEmail);
                 _logger.LogInformation("Subject: {Subject}", subject);
                 _logger.LogInformation("Using SMTP: {Host}:{Port}", _smtpHost, _smtpPort);
