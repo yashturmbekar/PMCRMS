@@ -600,6 +600,15 @@ namespace PMCRMS.API.Controllers
             var audience = jwtSettings["Audience"] ?? "PMCRMS.Client";
             var expiryHours = int.Parse(jwtSettings["ExpiryHours"] ?? "24");
 
+            // Validate JWT secret key length
+            if (secretKey.Length < 32)
+            {
+                _logger.LogError("JWT SecretKey is too short. Current length: {Length} characters. Required: at least 32 characters (256 bits) for HS256 algorithm.", secretKey.Length);
+                throw new InvalidOperationException($"JWT SecretKey must be at least 32 characters long. Current length: {secretKey.Length}");
+            }
+
+            _logger.LogInformation("JWT SecretKey validation passed. Length: {Length} characters", secretKey.Length);
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
