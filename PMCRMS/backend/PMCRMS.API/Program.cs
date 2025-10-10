@@ -24,12 +24,29 @@ builder.Host.UseSerilog();
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-if (string.IsNullOrEmpty(connectionString))
+// Log the connection string status for debugging (mask sensitive parts)
+Log.Information("DATABASE_URL from env: {HasValue}", !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL")));
+Log.Information("DefaultConnection from config: {HasValue}", !string.IsNullOrEmpty(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+if (string.IsNullOrWhiteSpace(connectionString))
 {
+    Log.Error("DATABASE_URL is empty or null. Cannot start application.");
     throw new InvalidOperationException("Database connection string is not configured. Set DATABASE_URL environment variable or DefaultConnection in appsettings.json");
 }
 
-Log.Information("Database connection string configured");
+// Convert postgres:// to postgresql:// if needed (Railway compatibility)
+if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) && 
+    !connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+{
+    connectionString = connectionString.Replace("postgres://", "postgresql://", StringComparison.OrdinalIgnoreCase);
+    Log.Information("Converted connection string from postgres:// to postgresql://");
+}
+
+// Log masked connection string for debugging
+var maskedConnectionString = connectionString.Length > 20 
+    ? $"{connectionString.Substring(0, 20)}...{connectionString.Substring(connectionString.Length - 10)}" 
+    : "too short";
+Log.Information("Database connection string configured: {MaskedString}", maskedConnectionString);
 
 builder.Services.AddDbContext<PMCRMSDbContext>(options =>
     options.UseNpgsql(connectionString));
