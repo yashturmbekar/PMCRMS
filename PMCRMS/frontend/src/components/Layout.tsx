@@ -27,6 +27,12 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  {
+    name: "Admin Dashboard",
+    href: "/admin",
+    icon: Settings,
+    roles: ["Admin"],
+  },
   { name: "Applications", href: "/applications", icon: FileText },
   { name: "Documents", href: "/documents", icon: Upload },
   {
@@ -35,8 +41,16 @@ const navigation: NavItem[] = [
     icon: Users,
     roles: [
       "Admin",
-      "JuniorEngineer",
-      "AssistantEngineer",
+      "JuniorArchitect",
+      "AssistantArchitect",
+      "JuniorLicenceEngineer",
+      "AssistantLicenceEngineer",
+      "JuniorStructuralEngineer",
+      "AssistantStructuralEngineer",
+      "JuniorSupervisor1",
+      "AssistantSupervisor1",
+      "JuniorSupervisor2",
+      "AssistantSupervisor2",
       "ExecutiveEngineer",
       "CityEngineer",
     ],

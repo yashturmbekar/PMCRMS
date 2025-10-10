@@ -27,7 +27,7 @@ namespace PMCRMS.API.Services
 
         /// <summary>
         /// Seeds default passwords for officer accounts
-        /// Password format: "pmcrms@[role]123"  e.g., "pmcrms@admin123"
+        /// Password format: "admin@123" for admin, "pmcrms@[role]123" for others
         /// </summary>
         public async Task SeedOfficerPasswordsAsync()
         {
@@ -85,12 +85,20 @@ namespace PMCRMS.API.Services
         {
             return role switch
             {
-                UserRole.Admin => "pmcrms@admin123",
-                UserRole.JuniorEngineer => "pmcrms@je123",
-                UserRole.AssistantEngineer => "pmcrms@ae123",
+                UserRole.Admin => "admin@123",
+                UserRole.Clerk => "pmcrms@clerk123",
+                UserRole.JuniorArchitect => "pmcrms@ja123",
+                UserRole.AssistantArchitect => "pmcrms@aa123",
+                UserRole.JuniorLicenceEngineer => "pmcrms@jle123",
+                UserRole.AssistantLicenceEngineer => "pmcrms@ale123",
+                UserRole.JuniorStructuralEngineer => "pmcrms@jse123",
+                UserRole.AssistantStructuralEngineer => "pmcrms@ase123",
+                UserRole.JuniorSupervisor1 => "pmcrms@js1_123",
+                UserRole.AssistantSupervisor1 => "pmcrms@as1_123",
+                UserRole.JuniorSupervisor2 => "pmcrms@js2_123",
+                UserRole.AssistantSupervisor2 => "pmcrms@as2_123",
                 UserRole.ExecutiveEngineer => "pmcrms@ee123",
                 UserRole.CityEngineer => "pmcrms@ce123",
-                UserRole.Clerk => "pmcrms@clerk123",
                 _ => "pmcrms@officer123"
             };
         }
@@ -100,11 +108,19 @@ namespace PMCRMS.API.Services
             var roleCode = role switch
             {
                 UserRole.Admin => "ADM",
-                UserRole.JuniorEngineer => "JE",
-                UserRole.AssistantEngineer => "AE",
+                UserRole.Clerk => "CLK",
+                UserRole.JuniorArchitect => "JA",
+                UserRole.AssistantArchitect => "AA",
+                UserRole.JuniorLicenceEngineer => "JLE",
+                UserRole.AssistantLicenceEngineer => "ALE",
+                UserRole.JuniorStructuralEngineer => "JSE",
+                UserRole.AssistantStructuralEngineer => "ASE",
+                UserRole.JuniorSupervisor1 => "JS1",
+                UserRole.AssistantSupervisor1 => "AS1",
+                UserRole.JuniorSupervisor2 => "JS2",
+                UserRole.AssistantSupervisor2 => "AS2",
                 UserRole.ExecutiveEngineer => "EE",
                 UserRole.CityEngineer => "CE",
-                UserRole.Clerk => "CLK",
                 _ => "OFF"
             };
 

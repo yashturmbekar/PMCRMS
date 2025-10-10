@@ -7,6 +7,8 @@ import {
 import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import OfficerManagement from "./pages/OfficerManagement";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import ViewPositionApplication from "./pages/ViewPositionApplication";
 import LoaderShowcase from "./components/LoaderShowcase";
@@ -34,6 +36,25 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   return <>{children}</>;
 };
 
+// Admin-only protected route
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageLoader message="Authenticating..." />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role !== "Admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <AuthProvider>
@@ -47,6 +68,28 @@ function App() {
 
               {/* Loader Showcase - For demo purposes */}
               <Route path="/loaders" element={<LoaderShowcase />} />
+
+              {/* Admin routes */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <AdminDashboard />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/officers"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <OfficerManagement />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
 
               {/* Protected routes with Layout */}
               <Route

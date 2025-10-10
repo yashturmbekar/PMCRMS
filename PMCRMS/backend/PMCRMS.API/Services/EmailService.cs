@@ -12,6 +12,7 @@ namespace PMCRMS.API.Services
         Task<bool> SendApplicationApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string approvedBy, string approvedRole, string remarks, string viewUrl);
         Task<bool> SendApplicationRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectedBy, string rejectedRole, string remarks, string viewUrl);
         Task<bool> SendAssignmentNotificationEmailAsync(string toEmail, string officerName, string applicationNumber, string applicationType, string applicantName, string assignedBy, string viewUrl);
+        Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string temporaryPassword, string loginUrl);
     }
 
     public class EmailService : IEmailService
@@ -239,6 +240,27 @@ namespace PMCRMS.API.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending assignment notification email to {Email}", toEmail);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendOfficerInvitationEmailAsync(
+            string toEmail,
+            string officerName,
+            string role,
+            string employeeId,
+            string temporaryPassword,
+            string loginUrl)
+        {
+            try
+            {
+                var subject = "Invitation to Join PMCRMS - Officer Account Created";
+                var body = GenerateOfficerInvitationEmailBody(officerName, role, employeeId, temporaryPassword, loginUrl);
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending officer invitation email to {Email}", toEmail);
                 return false;
             }
         }
@@ -1000,6 +1022,94 @@ namespace PMCRMS.API.Services
             
             <p>Best regards,<br>
             <strong>PMCRMS System</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        {GetEmailFooter()}
+    </div>
+</body>
+</html>";
+        }
+
+        private string GenerateOfficerInvitationEmailBody(
+            string officerName,
+            string role,
+            string employeeId,
+            string temporaryPassword,
+            string loginUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        {GetCommonEmailStyles()}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        {GetEmailHeader()}
+        <div class='content'>
+            <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>🎉</div>
+            <div class='success-badge' style='background-color: #10b981; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Welcome to PMCRMS!</div>
+            
+            <h2>Dear {officerName},</h2>
+            <p>Welcome to the Pune Municipal Corporation Permit Management & Certificate Recommendation Management System (PMCRMS). An officer account has been created for you.</p>
+            
+            <div class='info-box' style='background-color: #f0f9ff; border-color: #0c4a6e;'>
+                <div class='info-row'>
+                    <div class='info-label'>Employee ID:</div>
+                    <div class='info-value'><strong>{employeeId}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Role:</div>
+                    <div class='info-value'><span style='color: #0c4a6e; font-weight: bold;'>{role}</span></div>
+                </div>
+            </div>
+
+            <div class='info-box' style='background-color: #fef3c7; border: 2px solid #f59e0b;'>
+                <h3 style='margin: 0 0 15px 0; color: #f59e0b;'>🔐 Login Credentials</h3>
+                <div class='info-row'>
+                    <div class='info-label'>Employee ID:</div>
+                    <div class='info-value'><strong>{employeeId}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Temporary Password:</div>
+                    <div class='info-value'><code style='background-color: #ffffff; padding: 8px 12px; border-radius: 4px; font-size: 16px; font-family: monospace; font-weight: bold; color: #f59e0b;'>{temporaryPassword}</code></div>
+                </div>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{loginUrl}' class='btn-primary' style='background-color: #10b981;'>Login to PMCRMS</a>
+            </div>
+            
+            <div class='warning' style='background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 15px 0;'>
+                <strong>⚠️ Important Security Notice:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li><strong>Change your password immediately</strong> after first login</li>
+                    <li>This temporary password will expire in <strong>7 days</strong></li>
+                    <li>Never share your credentials with anyone</li>
+                    <li>Use a strong, unique password for your account</li>
+                    <li>Contact IT support if you suspect unauthorized access</li>
+                </ul>
+            </div>
+
+            <div class='info-notice' style='background-color: #f0f9ff; border-left: 4px solid #0c4a6e; padding: 12px; margin: 15px 0;'>
+                <strong>📋 Getting Started:</strong>
+                <ol style='margin: 5px 0; padding-left: 20px;'>
+                    <li>Click the 'Login to PMCRMS' button above</li>
+                    <li>Enter your email and temporary password</li>
+                    <li>Change your password when prompted</li>
+                    <li>Complete your profile information</li>
+                    <li>Start reviewing assigned applications</li>
+                </ol>
+            </div>
+            
+            <p>If you have any questions or need assistance, please contact the system administrator or IT support team.</p>
+            
+            <p>We look forward to working with you!</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Admin Team</strong><br>
             Pune Municipal Corporation</p>
         </div>
         {GetEmailFooter()}

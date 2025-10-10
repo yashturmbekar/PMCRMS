@@ -17,6 +17,9 @@ namespace PMCRMS.API.Data
         public DbSet<Payment> Payments { get; set; }
         public DbSet<OtpVerification> OtpVerifications { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<OfficerInvitation> OfficerInvitations { get; set; }
+        public DbSet<FormConfiguration> FormConfigurations { get; set; }
+        public DbSet<FormFeeHistory> FormFeeHistories { get; set; }
         
         // Position Application entities
         public DbSet<PositionApplication> PositionApplications { get; set; }
@@ -206,81 +209,135 @@ namespace PMCRMS.API.Data
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
+            // Configure OfficerInvitation entity
+            modelBuilder.Entity<OfficerInvitation>(entity =>
+            {
+                entity.HasIndex(e => e.Email);
+                entity.HasIndex(e => e.EmployeeId).IsUnique();
+                entity.Property(e => e.Role).HasConversion<int>();
+                entity.Property(e => e.Status).HasConversion<int>();
+                
+                entity.HasOne(e => e.InvitedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.InvitedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure FormConfiguration entity
+            modelBuilder.Entity<FormConfiguration>(entity =>
+            {
+                entity.HasIndex(e => e.FormType).IsUnique();
+                entity.Property(e => e.FormType).HasConversion<int>();
+            });
+
+            // Configure FormFeeHistory entity
+            modelBuilder.Entity<FormFeeHistory>(entity =>
+            {
+                entity.HasOne(e => e.FormConfiguration)
+                    .WithMany(e => e.FeeHistory)
+                    .HasForeignKey(e => e.FormConfigurationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.ChangedByUser)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChangedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
             // Seed initial data
             SeedData(modelBuilder);
         }
 
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Seed default admin user
+            // Seed default admin user only
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
                     Id = 1,
                     Name = "System Administrator",
-                    Email = "admin@pmcrms.gov.in",
+                    Email = "admin@gmail.com",
                     PhoneNumber = "9999999999",
                     Role = UserRole.Admin,
                     IsActive = true,
+                    EmployeeId = "ADMIN001",
                     CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     CreatedBy = "System"
                 }
             );
 
-            // Seed sample officers
-            modelBuilder.Entity<User>().HasData(
-                new User
+            // Seed default form configurations
+            modelBuilder.Entity<FormConfiguration>().HasData(
+                new FormConfiguration
+                {
+                    Id = 1,
+                    FormName = "Building Permit Application",
+                    FormType = FormType.BuildingPermit,
+                    Description = "Application for new building construction or major renovation",
+                    BaseFee = 5000m,
+                    ProcessingFee = 1000m,
+                    LateFee = 500m,
+                    IsActive = true,
+                    AllowOnlineSubmission = true,
+                    ProcessingDays = 30,
+                    MaxFileSizeMB = 10,
+                    MaxFilesAllowed = 15,
+                    CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedBy = "System"
+                },
+                new FormConfiguration
                 {
                     Id = 2,
-                    Name = "Junior Engineer",
-                    Email = "je@pmcrms.gov.in",
-                    PhoneNumber = "9999999998",
-                    Role = UserRole.JuniorEngineer,
+                    FormName = "Structural Engineer License",
+                    FormType = FormType.StructuralEngineerLicense,
+                    Description = "Application for Structural Engineer registration",
+                    BaseFee = 2500m,
+                    ProcessingFee = 500m,
+                    LateFee = 250m,
                     IsActive = true,
+                    AllowOnlineSubmission = true,
+                    ProcessingDays = 15,
+                    MaxFileSizeMB = 5,
+                    MaxFilesAllowed = 10,
                     CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     CreatedBy = "System"
                 },
-                new User
+                new FormConfiguration
                 {
                     Id = 3,
-                    Name = "Assistant Engineer",
-                    Email = "ae@pmcrms.gov.in",
-                    PhoneNumber = "9999999997",
-                    Role = UserRole.AssistantEngineer,
+                    FormName = "Architect License",
+                    FormType = FormType.ArchitectLicense,
+                    Description = "Application for Architect registration",
+                    BaseFee = 2500m,
+                    ProcessingFee = 500m,
+                    LateFee = 250m,
                     IsActive = true,
+                    AllowOnlineSubmission = true,
+                    ProcessingDays = 15,
+                    MaxFileSizeMB = 5,
+                    MaxFilesAllowed = 10,
                     CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     CreatedBy = "System"
                 },
-                new User
+                new FormConfiguration
                 {
                     Id = 4,
-                    Name = "Executive Engineer",
-                    Email = "ee@pmcrms.gov.in",
-                    PhoneNumber = "9999999996",
-                    Role = UserRole.ExecutiveEngineer,
+                    FormName = "Occupancy Certificate",
+                    FormType = FormType.OccupancyCertificate,
+                    Description = "Application for Occupancy Certificate",
+                    BaseFee = 3000m,
+                    ProcessingFee = 750m,
+                    LateFee = 300m,
                     IsActive = true,
-                    CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    CreatedBy = "System"
-                },
-                new User
-                {
-                    Id = 5,
-                    Name = "City Engineer",
-                    Email = "ce@pmcrms.gov.in",
-                    PhoneNumber = "9999999995",
-                    Role = UserRole.CityEngineer,
-                    IsActive = true,
-                    CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    CreatedBy = "System"
-                },
-                new User
-                {
-                    Id = 6,
-                    Name = "Clerk",
-                    Email = "clerk@pmcrms.gov.in",
-                    PhoneNumber = "9999999994",
-                    Role = UserRole.Clerk,
-                    IsActive = true,
+                    AllowOnlineSubmission = true,
+                    ProcessingDays = 20,
+                    MaxFileSizeMB = 10,
+                    MaxFilesAllowed = 12,
                     CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     CreatedBy = "System"
                 }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMCRMS.API.Data;
@@ -11,9 +12,11 @@ using PMCRMS.API.Data;
 namespace PMCRMS.API.Migrations
 {
     [DbContext(typeof(PMCRMSDbContext))]
-    partial class PMCRMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251010090805_AddAdminFlowModels")]
+    partial class AddAdminFlowModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1282,7 +1285,7 @@ namespace PMCRMS.API.Migrations
                             Id = 1,
                             CreatedBy = "System",
                             CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "admin@gmail.com",
+                            Email = "admin@pmcrms.gov.in",
                             EmployeeId = "ADMIN001",
                             IsActive = true,
                             LoginAttempts = 0,

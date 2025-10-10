@@ -293,70 +293,88 @@ namespace PMCRMS.API.Controllers
             UserRole userRole)
         {
             // Define valid transitions based on current status and user role
+            // Simplified for now - Admin, Executive Engineer and City Engineer can perform any transition
             var validTransitions = new Dictionary<ApplicationCurrentStatus, Dictionary<UserRole, ApplicationCurrentStatus[]>>
             {
                 [ApplicationCurrentStatus.Submitted] = new()
                 {
-                    [UserRole.JuniorEngineer] = new[] { ApplicationCurrentStatus.UnderReviewByJE }
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
+                    [UserRole.ExecutiveEngineer] = Enum.GetValues<ApplicationCurrentStatus>(),
+                    [UserRole.CityEngineer] = Enum.GetValues<ApplicationCurrentStatus>(),
                 },
                 [ApplicationCurrentStatus.UnderReviewByJE] = new()
                 {
-                    [UserRole.JuniorEngineer] = new[] { ApplicationCurrentStatus.ApprovedByJE, ApplicationCurrentStatus.RejectedByJE }
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
+                    [UserRole.ExecutiveEngineer] = Enum.GetValues<ApplicationCurrentStatus>(),
                 },
                 [ApplicationCurrentStatus.ApprovedByJE] = new()
                 {
-                    [UserRole.AssistantEngineer] = new[] { ApplicationCurrentStatus.UnderReviewByAE }
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
+                    [UserRole.ExecutiveEngineer] = Enum.GetValues<ApplicationCurrentStatus>(),
                 },
                 [ApplicationCurrentStatus.UnderReviewByAE] = new()
                 {
-                    [UserRole.AssistantEngineer] = new[] { ApplicationCurrentStatus.ApprovedByAE, ApplicationCurrentStatus.RejectedByAE }
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
+                    [UserRole.ExecutiveEngineer] = Enum.GetValues<ApplicationCurrentStatus>(),
                 },
                 [ApplicationCurrentStatus.ApprovedByAE] = new()
                 {
-                    [UserRole.ExecutiveEngineer] = new[] { ApplicationCurrentStatus.UnderReviewByEE1 }
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
+                    [UserRole.ExecutiveEngineer] = Enum.GetValues<ApplicationCurrentStatus>(),
                 },
                 [ApplicationCurrentStatus.UnderReviewByEE1] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.ExecutiveEngineer] = new[] { ApplicationCurrentStatus.ApprovedByEE1, ApplicationCurrentStatus.RejectedByEE1 }
                 },
                 [ApplicationCurrentStatus.ApprovedByEE1] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.CityEngineer] = new[] { ApplicationCurrentStatus.UnderReviewByCE1 }
                 },
                 [ApplicationCurrentStatus.UnderReviewByCE1] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.CityEngineer] = new[] { ApplicationCurrentStatus.ApprovedByCE1, ApplicationCurrentStatus.RejectedByCE1 }
                 },
                 [ApplicationCurrentStatus.ApprovedByCE1] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.Clerk] = new[] { ApplicationCurrentStatus.PaymentPending }
                 },
                 [ApplicationCurrentStatus.PaymentCompleted] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.Clerk] = new[] { ApplicationCurrentStatus.UnderProcessingByClerk }
                 },
                 [ApplicationCurrentStatus.UnderProcessingByClerk] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.Clerk] = new[] { ApplicationCurrentStatus.ProcessedByClerk }
                 },
                 [ApplicationCurrentStatus.ProcessedByClerk] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.ExecutiveEngineer] = new[] { ApplicationCurrentStatus.UnderDigitalSignatureByEE2 }
                 },
                 [ApplicationCurrentStatus.UnderDigitalSignatureByEE2] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.ExecutiveEngineer] = new[] { ApplicationCurrentStatus.DigitalSignatureCompletedByEE2 }
                 },
                 [ApplicationCurrentStatus.DigitalSignatureCompletedByEE2] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.CityEngineer] = new[] { ApplicationCurrentStatus.UnderFinalApprovalByCE2 }
                 },
                 [ApplicationCurrentStatus.UnderFinalApprovalByCE2] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.CityEngineer] = new[] { ApplicationCurrentStatus.CertificateIssued }
                 },
                 [ApplicationCurrentStatus.CertificateIssued] = new()
                 {
+                    [UserRole.Admin] = Enum.GetValues<ApplicationCurrentStatus>(),
                     [UserRole.Clerk] = new[] { ApplicationCurrentStatus.Completed }
                 }
             };
@@ -511,14 +529,6 @@ namespace PMCRMS.API.Controllers
         {
             return userRole switch
             {
-                UserRole.JuniorEngineer => new[]
-                {
-                    ApplicationCurrentStatus.UnderReviewByJE
-                },
-                UserRole.AssistantEngineer => new[]
-                {
-                    ApplicationCurrentStatus.UnderReviewByAE
-                },
                 UserRole.ExecutiveEngineer => new[]
                 {
                     ApplicationCurrentStatus.UnderReviewByEE1,

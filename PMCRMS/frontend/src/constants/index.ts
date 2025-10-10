@@ -11,6 +11,7 @@ export const UNAUTH_ROUTES = [
   "/auth/send-otp",
   "/auth/verify-otp",
   "/auth/login",
+  "/auth/officer-login",
   "/auth/register",
 ];
 

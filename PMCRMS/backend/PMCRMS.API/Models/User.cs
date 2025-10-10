@@ -5,12 +5,21 @@ namespace PMCRMS.API.Models
     public enum UserRole
     {
         Applicant = 1,
-        JuniorEngineer = 2,
-        AssistantEngineer = 3,
-        ExecutiveEngineer = 4,
-        CityEngineer = 5,
-        Clerk = 6,
-        Admin = 7
+        User = 2,
+        Clerk = 3,
+        JuniorArchitect = 4,
+        AssistantArchitect = 5,
+        JuniorLicenceEngineer = 6,
+        AssistantLicenceEngineer = 7,
+        JuniorStructuralEngineer = 8,
+        AssistantStructuralEngineer = 9,
+        JuniorSupervisor1 = 10,
+        AssistantSupervisor1 = 11,
+        JuniorSupervisor2 = 12,
+        AssistantSupervisor2 = 13,
+        ExecutiveEngineer = 14,
+        CityEngineer = 15,
+        Admin = 16
     }
 
     public class User : BaseEntity
