@@ -126,6 +126,37 @@ if (!string.IsNullOrEmpty(frontendUrl))
     {
         origins.Add(frontendUrl);
     }
+    
+    // Also add HTTPS version if HTTP provided, and vice versa
+    if (frontendUrl.StartsWith("https://"))
+    {
+        var httpVersion = frontendUrl.Replace("https://", "http://");
+        if (!origins.Contains(httpVersion))
+        {
+            origins.Add(httpVersion);
+        }
+    }
+    else if (frontendUrl.StartsWith("http://"))
+    {
+        var httpsVersion = frontendUrl.Replace("http://", "https://");
+        if (!origins.Contains(httpsVersion))
+        {
+            origins.Add(httpsVersion);
+        }
+    }
+}
+
+// Also read from CorsSettings:AllowedOrigins in config
+var configOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>();
+if (configOrigins != null && configOrigins.Length > 0)
+{
+    foreach (var origin in configOrigins)
+    {
+        if (!string.IsNullOrEmpty(origin) && !origins.Contains(origin))
+        {
+            origins.Add(origin);
+        }
+    }
 }
 
 builder.Services.AddCors(options =>

@@ -1,4 +1,4 @@
-# PMCRMS Copilot Instructions
+<!-- # PMCRMS Copilot Instructions
 
 ## Project Overview
 
@@ -7,7 +7,7 @@ PMCRMS (Permit Management and Certificate Recommendation Management System) is a
 ## Architecture & Technology Stack
 
 ### Backend (.NET 9 Web API)
-- **Location**: `PMCRMS/backend/PMCRMS.API/`  
+- **Location**: `PMCRMS/backend/PMCRMS.API/`
 - **Database**: PostgreSQL with Entity Framework Core 9.0
 - **Authentication**: JWT tokens with OTP-based passwordless login
 - **Logging**: Serilog with structured logging to files and console
@@ -38,7 +38,7 @@ PMCRMS.API/
 └── Properties/          # launchSettings.json for dev environment
 ```
 
-### Frontend Structure  
+### Frontend Structure
 ```
 src/
 ├── components/          # Reusable UI components
@@ -67,14 +67,14 @@ public class User : BaseEntity
     [Required]
     [MaxLength(100)]
     public string Name { get; set; } = string.Empty;
-    
+
     [Required]
     [EmailAddress]
     [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
-    
+
     public UserRole Role { get; set; } = UserRole.Applicant;
-    
+
     // Navigation properties
     public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
 }
@@ -141,10 +141,10 @@ public class CreateApplicationRequest
     [Required]
     [MaxLength(100)]
     public string ProjectTitle { get; set; } = string.Empty;
-    
+
     [Required]
     public string ApplicationType { get; set; } = string.Empty;
-    
+
     [Range(0.1, double.MaxValue)]
     public decimal PlotArea { get; set; }
 }
@@ -173,10 +173,10 @@ interface ApplicationCardProps {
   className?: string;
 }
 
-const ApplicationCard: React.FC<ApplicationCardProps> = ({ 
-  application, 
+const ApplicationCard: React.FC<ApplicationCardProps> = ({
+  application,
   onStatusUpdate,
-  className = "" 
+  className = ""
 }) => {
   return (
     <div className={`pmc-card p-6 ${className}`}>
@@ -214,7 +214,7 @@ class ApiService {
       return config;
     });
 
-    // Error handling interceptor  
+    // Error handling interceptor
     this.api.interceptors.response.use(
       (response) => response,
       (error) => {
@@ -247,13 +247,13 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 // Controller logging examples
-_logger.LogInformation("User {UserId} attempting login with identifier {Identifier}", 
+_logger.LogInformation("User {UserId} attempting login with identifier {Identifier}",
     user.Id, request.Identifier);
 
-_logger.LogWarning("Invalid OTP attempt for {Identifier}. Attempt count: {AttemptCount}", 
+_logger.LogWarning("Invalid OTP attempt for {Identifier}. Attempt count: {AttemptCount}",
     otpVerification.Identifier, otpVerification.AttemptCount);
 
-_logger.LogError(ex, "Database error while creating application for user {UserId}", 
+_logger.LogError(ex, "Database error while creating application for user {UserId}",
     User.FindFirst("user_id")?.Value);
 ```
 
@@ -289,7 +289,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         entity.HasIndex(e => e.ApplicationNumber).IsUnique();
         entity.Property(e => e.Type).HasConversion<int>();
-        
+
         entity.HasOne(e => e.Applicant)
             .WithMany(e => e.Applications)
             .HasForeignKey(e => e.ApplicantId)
@@ -340,7 +340,7 @@ cd "PMCRMS/backend/PMCRMS.API"
 dotnet restore
 dotnet build
 
-# Database operations  
+# Database operations
 dotnet ef migrations add MigrationName
 dotnet ef database update
 dotnet ef database drop --force  # Reset database
@@ -453,7 +453,7 @@ npm run lint:fix
 - Add database indexes for frequently queried columns
 - Implement caching for static data (roles, statuses)
 
-### Frontend Optimization  
+### Frontend Optimization
 - Use React.memo for expensive components
 - Implement code splitting with lazy loading
 - Optimize bundle size with proper imports
@@ -493,7 +493,7 @@ npm run lint:fix
 
 ### 🚧 In Progress / TODO
 - File upload system (`DocumentController`)
-- Payment integration (`PaymentController`) 
+- Payment integration (`PaymentController`)
 - Email/SMS OTP delivery services
 - Repository pattern implementation
 - Comprehensive error handling
@@ -506,11 +506,11 @@ npm run lint:fix
 - `Controllers/AuthController.cs` - OTP-based authentication implementation
 - `Models/User.cs` - User roles and entity structure
 
-### Frontend Architecture  
+### Frontend Architecture
 - `src/App.tsx` - Routing and protected route setup
 - `src/contexts/AuthContext.tsx` - Authentication state management
 - `src/services/apiService.ts` - Centralized API communication
 
 ### Configuration
 - `appsettings.json` - JWT, CORS, and database connection settings
-- `package.json` - Frontend dependencies and build scripts
+- `package.json` - Frontend dependencies and build scripts -->

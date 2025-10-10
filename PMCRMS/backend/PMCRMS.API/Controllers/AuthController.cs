@@ -120,26 +120,37 @@ namespace PMCRMS.API.Controllers
                     _logger.LogInformation("OTP email sent successfully to {Email}", request.Email);
                 }
                 
-                // Log OTP for development/testing (Remove in production)
-                _logger.LogInformation("OTP generated for {Identifier}: {OTP} (Remove this log in production)", request.Email, otpCode);
+                // Log OTP only in development
+                var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+                if (environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("OTP generated for {Identifier}: {OTP} (Development mode only)", request.Email, otpCode);
+                }
 
                 var isNewUser = existingUser == null;
                 var message = isNewUser 
                     ? $"OTP sent to {request.Email}. A new account will be created upon verification."
                     : $"OTP sent successfully to {request.Email}";
 
+                // Response data - include OTP only in development
+                var responseData = new Dictionary<string, object>
+                {
+                    { "ExpiresIn", 300 }, // 5 minutes in seconds
+                    { "ExpiresAt", otpVerification.ExpiryTime },
+                    { "IsNewUser", isNewUser },
+                    { "EmailSent", emailSent }
+                };
+
+                if (environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
+                {
+                    responseData.Add("OtpCode", otpCode);
+                }
+
                 return Ok(new ApiResponse
                 {
                     Success = true,
                     Message = message,
-                    Data = new { 
-                        ExpiresIn = 300, // 5 minutes in seconds
-                        ExpiresAt = otpVerification.ExpiryTime,
-                        IsNewUser = isNewUser,
-                        EmailSent = emailSent,
-                        // Remove in production - for testing only
-                        OtpCode = otpCode
-                    }
+                    Data = responseData
                 });
             }
             catch (Exception ex)
