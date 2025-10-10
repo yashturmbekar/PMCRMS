@@ -25,6 +25,7 @@ namespace PMCRMS.API.Services
         private readonly bool _requiresAuth;
         private readonly string? _brevoApiKey;
         private readonly bool _useBrevoApi;
+        private readonly string _baseUrl;
 
         public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
         {
@@ -91,6 +92,11 @@ namespace PMCRMS.API.Services
             _requiresAuth = bool.Parse(envRequiresAuth 
                 ?? _configuration["EmailSettings:RequiresAuthentication"] 
                 ?? "true");
+
+            // Get base URL for email images
+            _baseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
+                ?? _configuration["AppSettings:BaseUrl"]
+                ?? "http://localhost:5086";
 
             _logger.LogInformation("=== FINAL EMAIL CONFIGURATION ===");
             _logger.LogInformation("Primary Method: {Method}", _useBrevoApi ? "Brevo API" : "SMTP");
@@ -318,15 +324,6 @@ namespace PMCRMS.API.Services
         .logo-container {{
             margin-bottom: 15px;
         }}
-        .logo {{
-            width: 80px;
-            height: 80px;
-            background-color: white;
-            border-radius: 50%;
-            display: inline-block;
-            padding: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-        }}
         .badge {{
             background-color: #f59e0b;
             color: white;
@@ -387,12 +384,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <div class='logo'>
-                    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='60' height='60'>
-                        <circle cx='50' cy='50' r='45' fill='#0c4a6e'/>
-                        <text x='50' y='60' font-family='Arial, sans-serif' font-size='36' font-weight='bold' fill='white' text-anchor='middle'>PMC</text>
-                    </svg>
-                </div>
+                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -467,15 +459,6 @@ namespace PMCRMS.API.Services
         }}
         .logo-container {{
             margin-bottom: 15px;
-        }}
-        .logo {{
-            width: 80px;
-            height: 80px;
-            background-color: white;
-            border-radius: 50%;
-            display: inline-block;
-            padding: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
         }}
         .badge {{
             background-color: #f59e0b;
@@ -575,12 +558,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <div class='logo'>
-                    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='60' height='60'>
-                        <circle cx='50' cy='50' r='45' fill='#0c4a6e'/>
-                        <text x='50' y='60' font-family='Arial, sans-serif' font-size='36' font-weight='bold' fill='white' text-anchor='middle'>PMC</text>
-                    </svg>
-                </div>
+                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
