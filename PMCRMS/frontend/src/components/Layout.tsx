@@ -120,53 +120,184 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Main content */}
       <div className="flex flex-col flex-1" style={{ overflow: "hidden" }}>
         {/* Top navigation - PMC Header */}
-        <div className="pmc-header pmc-fadeInDown">
-          <div className="pmc-header-content" style={{ padding: "16px 32px" }}>
-            <button
-              type="button"
-              className="lg:hidden pmc-button pmc-button-icon pmc-button-sm"
-              style={{
-                marginRight: "16px",
-                background: "rgba(255, 255, 255, 0.1)",
-                border: "1px solid rgba(255, 255, 255, 0.2)",
-              }}
-              onClick={() => setSidebarOpen(true)}
-            >
-              <Menu className="h-5 w-5" style={{ color: "white" }} />
-            </button>
+        <div
+          className="pmc-header pmc-fadeInDown"
+          style={{
+            background: "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.15)",
+            borderBottom: "3px solid #fbbf24",
+            position: "sticky",
+            top: 0,
+            zIndex: 30,
+          }}
+        >
+          <div
+            className="pmc-header-content"
+            style={{
+              padding: "16px 32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <button
+                type="button"
+                className="lg:hidden pmc-button pmc-button-icon pmc-button-sm"
+                style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  backdropFilter: "blur(10px)",
+                  transition: "all 0.3s ease",
+                }}
+                onClick={() => setSidebarOpen(true)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background =
+                    "rgba(255, 255, 255, 0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    "rgba(255, 255, 255, 0.15)";
+                }}
+              >
+                <Menu className="h-5 w-5" style={{ color: "white" }} />
+              </button>
 
-            <div className="pmc-header-brand">
-              <div className="pmc-header-logo">
-                <img
-                  src="/pmc-logo.png"
-                  alt="PMC Logo"
+              <div
+                className="pmc-header-brand"
+                style={{ display: "flex", alignItems: "center", gap: "12px" }}
+              >
+                <div
+                  className="pmc-header-logo"
                   style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "contain",
+                    width: "52px",
+                    height: "52px",
+                    background: "white",
+                    borderRadius: "12px",
+                    padding: "8px",
+                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                />
-              </div>
-              <div>
-                <h1 className="pmc-header-title">PMCRMS</h1>
-                <p className="pmc-header-subtitle">
-                  Pune Municipal Corporation
-                </p>
+                >
+                  <img
+                    src="/pmc-logo.png"
+                    alt="PMC Logo"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+                <div>
+                  <h1
+                    className="pmc-header-title"
+                    style={{
+                      fontSize: "20px",
+                      fontWeight: "700",
+                      color: "white",
+                      margin: 0,
+                      lineHeight: "1.2",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    PMCRMS
+                  </h1>
+                  <p
+                    className="pmc-header-subtitle"
+                    style={{
+                      fontSize: "12px",
+                      color: "rgba(255, 255, 255, 0.9)",
+                      margin: 0,
+                      fontWeight: "500",
+                    }}
+                  >
+                    Pune Municipal Corporation
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="pmc-header-actions">
+            <div
+              className="pmc-header-actions"
+              style={{ display: "flex", alignItems: "center", gap: "16px" }}
+            >
               {/* Notification Bell */}
-              <NotificationBell />
+              <div style={{ position: "relative" }}>
+                <NotificationBell />
+              </div>
 
               {/* Profile section */}
-              <div className="pmc-user-menu">
-                <div className="pmc-user-avatar">
+              <div
+                className="pmc-user-menu"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "8px 16px",
+                  background: "rgba(255, 255, 255, 0.15)",
+                  borderRadius: "12px",
+                  backdropFilter: "blur(10px)",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  transition: "all 0.3s ease",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background =
+                    "rgba(255, 255, 255, 0.25)";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    "rgba(255, 255, 255, 0.15)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
+                <div
+                  className="pmc-user-avatar"
+                  style={{
+                    width: "36px",
+                    height: "36px",
+                    borderRadius: "10px",
+                    background:
+                      "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "16px",
+                    fontWeight: "700",
+                    color: "white",
+                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                  }}
+                >
                   {user?.name?.charAt(0).toUpperCase() || "U"}
                 </div>
-                <div className="pmc-user-info">
-                  <p className="pmc-user-name">{user?.name || "User"}</p>
-                  <p className="pmc-user-role">{user?.role || "Member"}</p>
+                <div className="pmc-user-info" style={{ textAlign: "left" }}>
+                  <p
+                    className="pmc-user-name"
+                    style={{
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "white",
+                      margin: 0,
+                      lineHeight: "1.2",
+                    }}
+                  >
+                    {user?.name || "User"}
+                  </p>
+                  <p
+                    className="pmc-user-role"
+                    style={{
+                      fontSize: "11px",
+                      color: "rgba(255, 255, 255, 0.8)",
+                      margin: 0,
+                      fontWeight: "500",
+                    }}
+                  >
+                    {user?.role || "Applicant"}
+                  </p>
                 </div>
               </div>
 
@@ -174,8 +305,30 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button
                 onClick={handleLogout}
                 className="pmc-button pmc-button-danger pmc-button-sm pmc-button-icon"
-                style={{ background: "rgba(220, 38, 38, 0.9)" }}
+                style={{
+                  background: "rgba(220, 38, 38, 0.9)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                  padding: "10px",
+                  borderRadius: "10px",
+                  transition: "all 0.3s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                }}
                 title="Logout"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#b91c1c";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(0, 0, 0, 0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(220, 38, 38, 0.9)";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 8px rgba(0, 0, 0, 0.2)";
+                }}
               >
                 <LogOut className="h-5 w-5" />
               </button>

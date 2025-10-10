@@ -1,8 +1,8 @@
-﻿import React, { createContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';
-import { notificationService } from '../services/notificationService';
-import { useAuth } from '../hooks/useAuth';
-import type { Notification, NotificationSummary } from '../types';
+﻿import React, { createContext, useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import { notificationService } from "../services/notificationService";
+import { useAuth } from "../hooks/useAuth";
+import type { Notification, NotificationSummary } from "../types";
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -16,9 +16,13 @@ interface NotificationContextType {
   deleteNotification: (id: number) => Promise<void>;
 }
 
-export const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+export const NotificationContext = createContext<
+  NotificationContextType | undefined
+>(undefined);
 
-export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [summary, setSummary] = useState<NotificationSummary | null>(null);
@@ -34,7 +38,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         setNotifications(response.data);
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
+      console.error("Error fetching notifications:", error);
     } finally {
       setLoading(false);
     }
@@ -49,7 +53,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         setUnreadCount(response.data.totalUnread || 0);
       }
     } catch (error) {
-      console.error('Error fetching summary:', error);
+      console.error("Error fetching summary:", error);
     }
   };
 
@@ -61,7 +65,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         await fetchNotifications();
       }
     } catch (error) {
-      console.error('Error marking as read:', error);
+      console.error("Error marking as read:", error);
     }
   };
 
@@ -73,7 +77,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         await fetchNotifications();
       }
     } catch (error) {
-      console.error('Error marking all as read:', error);
+      console.error("Error marking all as read:", error);
     }
   };
 
@@ -85,15 +89,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         await fetchSummary();
       }
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      console.error("Error deleting notification:", error);
     }
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: number | null = null;
     if (user) {
       fetchSummary();
-      interval = setInterval(fetchSummary, 30000);
+      interval = setInterval(fetchSummary, 30000) as unknown as number;
     }
     return () => {
       if (interval) clearInterval(interval);
@@ -101,7 +105,19 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [user]);
 
   return (
-    <NotificationContext.Provider value={{ notifications, summary, unreadCount, loading, fetchNotifications, fetchSummary, markAsRead, markAllAsRead, deleteNotification }}>
+    <NotificationContext.Provider
+      value={{
+        notifications,
+        summary,
+        unreadCount,
+        loading,
+        fetchNotifications,
+        fetchSummary,
+        markAsRead,
+        markAllAsRead,
+        deleteNotification,
+      }}
+    >
       {children}
     </NotificationContext.Provider>
   );

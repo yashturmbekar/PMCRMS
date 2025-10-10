@@ -145,7 +145,8 @@ const NotificationBell: React.FC = () => {
             </button>
           </div>
           <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-            {summary?.recentNotifications?.length > 0 ? (
+            {summary?.recentNotifications &&
+            summary.recentNotifications.length > 0 ? (
               summary.recentNotifications.map((notification) => (
                 <div
                   key={notification.id}
@@ -229,32 +230,33 @@ const NotificationBell: React.FC = () => {
               </div>
             )}
           </div>
-          {summary?.recentNotifications?.length > 0 && (
-            <div
-              style={{
-                padding: "12px 16px",
-                borderTop: "1px solid #e5e7eb",
-                backgroundColor: "#f9fafb",
-              }}
-            >
-              <button
-                onClick={handleViewAll}
+          {summary?.recentNotifications &&
+            summary.recentNotifications.length > 0 && (
+              <div
                 style={{
-                  width: "100%",
-                  padding: "8px",
-                  backgroundColor: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  cursor: "pointer",
+                  padding: "12px 16px",
+                  borderTop: "1px solid #e5e7eb",
+                  backgroundColor: "#f9fafb",
                 }}
               >
-                View All Notifications
-              </button>
-            </div>
-          )}
+                <button
+                  onClick={handleViewAll}
+                  style={{
+                    width: "100%",
+                    padding: "8px",
+                    backgroundColor: "#3b82f6",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  View All Notifications
+                </button>
+              </div>
+            )}
         </div>
       )}
     </div>
