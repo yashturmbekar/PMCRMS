@@ -708,18 +708,140 @@ export const PositionRegistrationPage = () => {
     // Set attemptedSubmit first to trigger validation UI
     setAttemptedSubmit(true);
 
-    // Basic frontend validation - check if required fields are filled
-    const hasEmptyFields =
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.motherName ||
-      !formData.mobileNumber ||
-      !formData.emailAddress ||
-      !formData.dateOfBirth;
+    // Comprehensive frontend validation
+    const errors: string[] = [];
 
-    if (hasEmptyFields) {
-      // Don't show popup for frontend validation, only inline errors
-      setError("Please fill in all required fields");
+    // Personal Details validation
+    if (!formData.firstName) errors.push("First name is required");
+    if (!formData.lastName) errors.push("Last name is required");
+    if (!formData.motherName) errors.push("Mother name is required");
+    if (!formData.mobileNumber) errors.push("Mobile number is required");
+    if (!formData.emailAddress) errors.push("Email address is required");
+    if (!formData.dateOfBirth) errors.push("Date of birth is required");
+    if (!formData.bloodGroup) errors.push("Blood group is required");
+    if (!formData.height || formData.height <= 0)
+      errors.push("Height is required");
+
+    // Local Address validation
+    if (!formData.currentAddress.addressLine1)
+      errors.push("Local address line 1 is required");
+    if (!formData.currentAddress.addressLine2)
+      errors.push("Local address line 2 is required");
+    if (!formData.currentAddress.city) errors.push("Local city is required");
+    if (!formData.currentAddress.state) errors.push("Local state is required");
+    if (!formData.currentAddress.country)
+      errors.push("Local country is required");
+    if (!formData.currentAddress.pinCode)
+      errors.push("Local postal code is required");
+
+    // Permanent Address validation (if not same as local)
+    if (!permanentSameAsLocal) {
+      if (!formData.permanentAddress.addressLine1)
+        errors.push("Permanent address line 1 is required");
+      if (!formData.permanentAddress.addressLine2)
+        errors.push("Permanent address line 2 is required");
+      if (!formData.permanentAddress.city)
+        errors.push("Permanent city is required");
+      if (!formData.permanentAddress.state)
+        errors.push("Permanent state is required");
+      if (!formData.permanentAddress.country)
+        errors.push("Permanent country is required");
+      if (!formData.permanentAddress.pinCode)
+        errors.push("Permanent postal code is required");
+    }
+
+    // PAN validation
+    if (!formData.panCardNumber) errors.push("PAN card number is required");
+    const panDoc = formData.documents.find(
+      (d) => d.documentType === SEDocumentType.PanCard
+    );
+    if (!panDoc) errors.push("PAN card document upload is required");
+
+    // Aadhar validation
+    if (!formData.aadharCardNumber) errors.push("Aadhar number is required");
+    const aadharDoc = formData.documents.find(
+      (d) => d.documentType === SEDocumentType.AadharCard
+    );
+    if (!aadharDoc) errors.push("Aadhar card document upload is required");
+
+    // Qualifications validation
+    if (config.sections.qualifications) {
+      formData.qualifications.forEach((qual, index) => {
+        if (!qual.instituteName)
+          errors.push(`Qualification ${index + 1}: Institute name is required`);
+        if (!qual.universityName)
+          errors.push(
+            `Qualification ${index + 1}: University name is required`
+          );
+        if (!qual.degreeName)
+          errors.push(`Qualification ${index + 1}: Degree name is required`);
+        if (!qual.yearOfPassing)
+          errors.push(`Qualification ${index + 1}: Passing year is required`);
+      });
+    }
+
+    // Experience validation
+    if (config.sections.experience) {
+      formData.experiences.forEach((exp, index) => {
+        if (!exp.companyName)
+          errors.push(`Experience ${index + 1}: Company name is required`);
+        if (!exp.position)
+          errors.push(`Experience ${index + 1}: Position is required`);
+        if (!exp.fromDate)
+          errors.push(`Experience ${index + 1}: From date is required`);
+        if (!exp.toDate)
+          errors.push(`Experience ${index + 1}: To date is required`);
+      });
+    }
+
+    // Property Tax Receipt validation
+    if (config.sections.propertyTaxReceipt) {
+      const propertyTaxDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.PropertyTaxReceipt
+      );
+      if (!propertyTaxDoc)
+        errors.push(
+          "Property tax receipt / rent agreement / electricity bill is required"
+        );
+    }
+
+    // ISSE Certificate validation
+    if (config.sections.isseCertificate) {
+      const isseDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.ISSECertificate
+      );
+      if (!isseDoc) errors.push("ISSE certificate is required");
+    }
+
+    // COA Certificate validation
+    if (config.sections.coaCertificate) {
+      const coaDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.COACertificate
+      );
+      if (!coaDoc)
+        errors.push("Council of Architecture certificate is required");
+    }
+
+    // Self Declaration validation
+    if (config.sections.selfDeclaration) {
+      const selfDecDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.SelfDeclaration
+      );
+      if (!selfDecDoc) errors.push("Self declaration document is required");
+    }
+
+    // Profile Picture validation
+    if (config.sections.profilePicture) {
+      const profilePicDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.ProfilePicture
+      );
+      if (!profilePicDoc) errors.push("Profile picture is required");
+    }
+
+    if (errors.length > 0) {
+      setError(
+        "Please fill in all required fields and scroll through the form to see validation errors"
+      );
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -1721,7 +1843,11 @@ export const PositionRegistrationPage = () => {
                     Blood Group
                   </label>
                   <select
-                    className="pmc-input pmc-select"
+                    className={`pmc-input pmc-select ${
+                      attemptedSubmit && !formData.bloodGroup
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.bloodGroup}
                     onChange={(e) =>
                       handleInputChange("bloodGroup", e.target.value)
@@ -1735,6 +1861,11 @@ export const PositionRegistrationPage = () => {
                       </option>
                     ))}
                   </select>
+                  {attemptedSubmit && !formData.bloodGroup && (
+                    <span className="pmc-text-error">
+                      Blood group is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -1743,13 +1874,22 @@ export const PositionRegistrationPage = () => {
                   <input
                     type="number"
                     step="0.1"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      (!formData.height || formData.height <= 0)
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.height || ""}
                     onChange={(e) =>
                       handleInputChange("height", parseFloat(e.target.value))
                     }
                     required
                   />
+                  {attemptedSubmit &&
+                    (!formData.height || formData.height <= 0) && (
+                      <span className="pmc-text-error">Height is required</span>
+                    )}
                 </div>
               </div>
 
@@ -1825,7 +1965,15 @@ export const PositionRegistrationPage = () => {
                     </label>
                     <input
                       type="file"
-                      className="pmc-input"
+                      className={`pmc-input ${
+                        attemptedSubmit &&
+                        !formData.documents.find(
+                          (d) =>
+                            d.documentType === SEDocumentType.PropertyTaxReceipt
+                        )
+                          ? "pmc-input-error"
+                          : ""
+                      }`}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1839,6 +1987,16 @@ export const PositionRegistrationPage = () => {
                       accept=".pdf,.jpg,.jpeg,.png"
                     />
                     <span className="pmc-help-text">Max file size: 500KB</span>
+                    {attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) =>
+                          d.documentType === SEDocumentType.PropertyTaxReceipt
+                      ) && (
+                        <span className="pmc-text-error">
+                          Property tax receipt / rent agreement / electricity
+                          bill is required
+                        </span>
+                      )}
                   </div>
                 )}
                 {config.sections.isseCertificate && (
@@ -1849,7 +2007,15 @@ export const PositionRegistrationPage = () => {
                     </label>
                     <input
                       type="file"
-                      className="pmc-input"
+                      className={`pmc-input ${
+                        attemptedSubmit &&
+                        !formData.documents.find(
+                          (d) =>
+                            d.documentType === SEDocumentType.ISSECertificate
+                        )
+                          ? "pmc-input-error"
+                          : ""
+                      }`}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1863,6 +2029,14 @@ export const PositionRegistrationPage = () => {
                       accept=".pdf"
                     />
                     <span className="pmc-help-text">Max file size: 500KB</span>
+                    {attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.ISSECertificate
+                      ) && (
+                        <span className="pmc-text-error">
+                          ISSE certificate is required
+                        </span>
+                      )}
                   </div>
                 )}
                 {config.sections.coaCertificate && (
@@ -1873,7 +2047,15 @@ export const PositionRegistrationPage = () => {
                     </label>
                     <input
                       type="file"
-                      className="pmc-input"
+                      className={`pmc-input ${
+                        attemptedSubmit &&
+                        !formData.documents.find(
+                          (d) =>
+                            d.documentType === SEDocumentType.COACertificate
+                        )
+                          ? "pmc-input-error"
+                          : ""
+                      }`}
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1887,6 +2069,14 @@ export const PositionRegistrationPage = () => {
                       accept=".pdf"
                     />
                     <span className="pmc-help-text">Max file size: 500KB</span>
+                    {attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.COACertificate
+                      ) && (
+                        <span className="pmc-text-error">
+                          Council of Architecture certificate is required
+                        </span>
+                      )}
                   </div>
                 )}
               </div>
@@ -1941,7 +2131,11 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.currentAddress.addressLine1
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.currentAddress.addressLine1}
                     onChange={(e) =>
                       handleAddressChange(
@@ -1952,6 +2146,11 @@ export const PositionRegistrationPage = () => {
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.currentAddress.addressLine1 && (
+                    <span className="pmc-text-error">
+                      Local address line 1 is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -1959,7 +2158,11 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.currentAddress.addressLine2
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.currentAddress.addressLine2}
                     onChange={(e) =>
                       handleAddressChange(
@@ -1970,6 +2173,11 @@ export const PositionRegistrationPage = () => {
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.currentAddress.addressLine2 && (
+                    <span className="pmc-text-error">
+                      Local address line 2 is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label">Address Line</label>
@@ -2004,6 +2212,12 @@ export const PositionRegistrationPage = () => {
                         e.target.value
                       )
                     }
+                    disabled
+                    readOnly
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
                     required
                   />
                 </div>
@@ -2011,7 +2225,11 @@ export const PositionRegistrationPage = () => {
                   <label className="pmc-label pmc-label-required">State</label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.currentAddress.state
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.currentAddress.state}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2022,12 +2240,19 @@ export const PositionRegistrationPage = () => {
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.currentAddress.state && (
+                    <span className="pmc-text-error">State is required</span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">City</label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.currentAddress.city
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.currentAddress.city}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2038,6 +2263,9 @@ export const PositionRegistrationPage = () => {
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.currentAddress.city && (
+                    <span className="pmc-text-error">City is required</span>
+                  )}
                 </div>
               </div>
 
@@ -2048,7 +2276,11 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.currentAddress.pinCode
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.currentAddress.pinCode}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2059,6 +2291,11 @@ export const PositionRegistrationPage = () => {
                     }
                     required
                   />
+                  {attemptedSubmit && !formData.currentAddress.pinCode && (
+                    <span className="pmc-text-error">
+                      Postal code is required
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -2133,7 +2370,13 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !permanentSameAsLocal &&
+                      !formData.permanentAddress.addressLine1
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.permanentAddress.addressLine1}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2145,6 +2388,13 @@ export const PositionRegistrationPage = () => {
                     disabled={permanentSameAsLocal}
                     required
                   />
+                  {attemptedSubmit &&
+                    !permanentSameAsLocal &&
+                    !formData.permanentAddress.addressLine1 && (
+                      <span className="pmc-text-error">
+                        Permanent address line 1 is required
+                      </span>
+                    )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -2152,7 +2402,13 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !permanentSameAsLocal &&
+                      !formData.permanentAddress.addressLine2
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.permanentAddress.addressLine2}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2164,6 +2420,13 @@ export const PositionRegistrationPage = () => {
                     disabled={permanentSameAsLocal}
                     required
                   />
+                  {attemptedSubmit &&
+                    !permanentSameAsLocal &&
+                    !formData.permanentAddress.addressLine2 && (
+                      <span className="pmc-text-error">
+                        Permanent address line 2 is required
+                      </span>
+                    )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label">Address</label>
@@ -2199,7 +2462,12 @@ export const PositionRegistrationPage = () => {
                         e.target.value
                       )
                     }
-                    disabled={permanentSameAsLocal}
+                    disabled
+                    readOnly
+                    style={{
+                      backgroundColor: "#f1f5f9",
+                      cursor: "not-allowed",
+                    }}
                     required
                   />
                 </div>
@@ -2207,7 +2475,13 @@ export const PositionRegistrationPage = () => {
                   <label className="pmc-label pmc-label-required">State</label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !permanentSameAsLocal &&
+                      !formData.permanentAddress.state
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.permanentAddress.state}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2219,12 +2493,23 @@ export const PositionRegistrationPage = () => {
                     disabled={permanentSameAsLocal}
                     required
                   />
+                  {attemptedSubmit &&
+                    !permanentSameAsLocal &&
+                    !formData.permanentAddress.state && (
+                      <span className="pmc-text-error">State is required</span>
+                    )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">City</label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !permanentSameAsLocal &&
+                      !formData.permanentAddress.city
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.permanentAddress.city}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2236,6 +2521,11 @@ export const PositionRegistrationPage = () => {
                     disabled={permanentSameAsLocal}
                     required
                   />
+                  {attemptedSubmit &&
+                    !permanentSameAsLocal &&
+                    !formData.permanentAddress.city && (
+                      <span className="pmc-text-error">City is required</span>
+                    )}
                 </div>
               </div>
 
@@ -2246,7 +2536,13 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !permanentSameAsLocal &&
+                      !formData.permanentAddress.pinCode
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.permanentAddress.pinCode}
                     onChange={(e) =>
                       handleAddressChange(
@@ -2258,6 +2554,13 @@ export const PositionRegistrationPage = () => {
                     disabled={permanentSameAsLocal}
                     required
                   />
+                  {attemptedSubmit &&
+                    !permanentSameAsLocal &&
+                    !formData.permanentAddress.pinCode && (
+                      <span className="pmc-text-error">
+                        Postal code is required
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -2311,7 +2614,11 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.panCardNumber
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.panCardNumber}
                     onChange={(e) =>
                       handleInputChange(
@@ -2324,6 +2631,11 @@ export const PositionRegistrationPage = () => {
                     placeholder="ABCDE1234F"
                     required
                   />
+                  {attemptedSubmit && !formData.panCardNumber && (
+                    <span className="pmc-text-error">
+                      PAN card number is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -2331,7 +2643,14 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="file"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.PanCard
+                      )
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -2345,6 +2664,14 @@ export const PositionRegistrationPage = () => {
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
                   />
+                  {attemptedSubmit &&
+                    !formData.documents.find(
+                      (d) => d.documentType === SEDocumentType.PanCard
+                    ) && (
+                      <span className="pmc-text-error">
+                        PAN card document is required
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -2398,7 +2725,11 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="text"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit && !formData.aadharCardNumber
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     value={formData.aadharCardNumber}
                     onChange={(e) =>
                       handleInputChange(
@@ -2411,6 +2742,11 @@ export const PositionRegistrationPage = () => {
                     placeholder="123456789012"
                     required
                   />
+                  {attemptedSubmit && !formData.aadharCardNumber && (
+                    <span className="pmc-text-error">
+                      Aadhar number is required
+                    </span>
+                  )}
                 </div>
                 <div className="pmc-form-group">
                   <label className="pmc-label pmc-label-required">
@@ -2418,7 +2754,14 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="file"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.AadharCard
+                      )
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -2432,6 +2775,14 @@ export const PositionRegistrationPage = () => {
                     accept=".pdf,.jpg,.jpeg,.png"
                     required
                   />
+                  {attemptedSubmit &&
+                    !formData.documents.find(
+                      (d) => d.documentType === SEDocumentType.AadharCard
+                    ) && (
+                      <span className="pmc-text-error">
+                        Aadhar card document is required
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -2549,7 +2900,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="text"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !qual.instituteName
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={qual.instituteName}
                           onChange={(e) =>
                             handleQualificationChange(
@@ -2560,6 +2915,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !qual.instituteName && (
+                          <span className="pmc-text-error">
+                            Institute name is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2567,7 +2927,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="text"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !qual.universityName
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={qual.universityName}
                           onChange={(e) =>
                             handleQualificationChange(
@@ -2578,6 +2942,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !qual.universityName && (
+                          <span className="pmc-text-error">
+                            University name is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2611,7 +2980,16 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="file"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit &&
+                            !formData.documents.find(
+                              (d) =>
+                                d.documentType === SEDocumentType.Marksheet &&
+                                d.fileId === qual.fileId
+                            )
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -2624,6 +3002,16 @@ export const PositionRegistrationPage = () => {
                           }}
                           accept=".pdf"
                         />
+                        {attemptedSubmit &&
+                          !formData.documents.find(
+                            (d) =>
+                              d.documentType === SEDocumentType.Marksheet &&
+                              d.fileId === qual.fileId
+                          ) && (
+                            <span className="pmc-text-error">
+                              Marksheet is required
+                            </span>
+                          )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2631,7 +3019,17 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="file"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit &&
+                            !formData.documents.find(
+                              (d) =>
+                                d.documentType ===
+                                  SEDocumentType.DegreeCertificate &&
+                                d.fileId === `${qual.fileId}_CERT`
+                            )
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -2644,6 +3042,17 @@ export const PositionRegistrationPage = () => {
                           }}
                           accept=".pdf"
                         />
+                        {attemptedSubmit &&
+                          !formData.documents.find(
+                            (d) =>
+                              d.documentType ===
+                                SEDocumentType.DegreeCertificate &&
+                              d.fileId === `${qual.fileId}_CERT`
+                          ) && (
+                            <span className="pmc-text-error">
+                              Certificate is required
+                            </span>
+                          )}
                       </div>
                     </div>
 
@@ -2654,7 +3063,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="text"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !qual.degreeName
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={qual.degreeName}
                           onChange={(e) =>
                             handleQualificationChange(
@@ -2665,6 +3078,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !qual.degreeName && (
+                          <span className="pmc-text-error">
+                            Degree name is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2695,7 +3113,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="number"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !qual.yearOfPassing
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={qual.yearOfPassing.split("-")[0] || ""}
                           onChange={(e) =>
                             handleQualificationChange(
@@ -2708,6 +3130,11 @@ export const PositionRegistrationPage = () => {
                           max={new Date().getFullYear()}
                           required
                         />
+                        {attemptedSubmit && !qual.yearOfPassing && (
+                          <span className="pmc-text-error">
+                            Passing year is required
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2828,7 +3255,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="text"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !exp.companyName
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={exp.companyName}
                           onChange={(e) =>
                             handleExperienceChange(
@@ -2839,6 +3270,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !exp.companyName && (
+                          <span className="pmc-text-error">
+                            Company name is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2846,7 +3282,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="text"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !exp.position
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={exp.position}
                           onChange={(e) =>
                             handleExperienceChange(
@@ -2857,6 +3297,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !exp.position && (
+                          <span className="pmc-text-error">
+                            Position is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2891,7 +3336,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="date"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !exp.fromDate
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={exp.fromDate.split("T")[0] || ""}
                           onChange={(e) =>
                             handleExperienceChange(
@@ -2902,6 +3351,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !exp.fromDate && (
+                          <span className="pmc-text-error">
+                            From date is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label pmc-label-required">
@@ -2909,7 +3363,11 @@ export const PositionRegistrationPage = () => {
                         </label>
                         <input
                           type="date"
-                          className="pmc-input"
+                          className={`pmc-input ${
+                            attemptedSubmit && !exp.toDate
+                              ? "pmc-input-error"
+                              : ""
+                          }`}
                           value={exp.toDate.split("T")[0] || ""}
                           onChange={(e) =>
                             handleExperienceChange(
@@ -2920,6 +3378,11 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         />
+                        {attemptedSubmit && !exp.toDate && (
+                          <span className="pmc-text-error">
+                            To date is required
+                          </span>
+                        )}
                       </div>
                       <div className="pmc-form-group">
                         <label className="pmc-label">&nbsp;</label>
@@ -2940,7 +3403,17 @@ export const PositionRegistrationPage = () => {
                       </label>
                       <input
                         type="file"
-                        className="pmc-input"
+                        className={`pmc-input ${
+                          attemptedSubmit &&
+                          !formData.documents.find(
+                            (d) =>
+                              d.documentType ===
+                                SEDocumentType.ExperienceCertificate &&
+                              d.fileId === exp.fileId
+                          )
+                            ? "pmc-input-error"
+                            : ""
+                        }`}
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -2953,6 +3426,17 @@ export const PositionRegistrationPage = () => {
                         }}
                         accept=".pdf"
                       />
+                      {attemptedSubmit &&
+                        !formData.documents.find(
+                          (d) =>
+                            d.documentType ===
+                              SEDocumentType.ExperienceCertificate &&
+                            d.fileId === exp.fileId
+                        ) && (
+                          <span className="pmc-text-error">
+                            Experience certificate is required
+                          </span>
+                        )}
                     </div>
 
                     {exp.yearsOfExperience > 0 && (
@@ -3128,7 +3612,14 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="file"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.SelfDeclaration
+                      )
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -3142,6 +3633,14 @@ export const PositionRegistrationPage = () => {
                     accept=".pdf"
                     required
                   />
+                  {attemptedSubmit &&
+                    !formData.documents.find(
+                      (d) => d.documentType === SEDocumentType.SelfDeclaration
+                    ) && (
+                      <span className="pmc-text-error">
+                        Self declaration document is required
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -3196,7 +3695,14 @@ export const PositionRegistrationPage = () => {
                   </label>
                   <input
                     type="file"
-                    className="pmc-input"
+                    className={`pmc-input ${
+                      attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.ProfilePicture
+                      )
+                        ? "pmc-input-error"
+                        : ""
+                    }`}
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
@@ -3210,6 +3716,14 @@ export const PositionRegistrationPage = () => {
                     accept=".jpg,.jpeg,.png"
                     required
                   />
+                  {attemptedSubmit &&
+                    !formData.documents.find(
+                      (d) => d.documentType === SEDocumentType.ProfilePicture
+                    ) && (
+                      <span className="pmc-text-error">
+                        Profile picture is required
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
