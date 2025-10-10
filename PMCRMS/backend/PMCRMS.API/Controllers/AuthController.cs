@@ -594,11 +594,23 @@ namespace PMCRMS.API.Controllers
 
         private string GenerateJwtToken(User user)
         {
-            var jwtSettings = _configuration.GetSection("JwtSettings");
-            var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey is not configured");
-            var issuer = jwtSettings["Issuer"] ?? "PMCRMS.API";
-            var audience = jwtSettings["Audience"] ?? "PMCRMS.Client";
-            var expiryHours = int.Parse(jwtSettings["ExpiryHours"] ?? "24");
+            // Read JWT settings from environment variables first, then fall back to appsettings.json
+            var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+                ?? _configuration["JwtSettings:SecretKey"] 
+                ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+            
+            var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+                ?? _configuration["JwtSettings:Issuer"] 
+                ?? "PMCRMS.API";
+            
+            var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+                ?? _configuration["JwtSettings:Audience"] 
+                ?? "PMCRMS.Client";
+            
+            var expiryHours = int.Parse(
+                Environment.GetEnvironmentVariable("JWT_EXPIRY_HOURS") 
+                ?? _configuration["JwtSettings:ExpiryHours"] 
+                ?? "24");
 
             // Validate JWT secret key length
             if (secretKey.Length < 32)
