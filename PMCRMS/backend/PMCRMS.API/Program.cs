@@ -215,6 +215,7 @@ builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IWorkflowRoutingService, WorkflowRoutingService>();
 builder.Services.AddScoped<PdfService>(); // PDF Generation Service
 // TODO: Add more service registrations here
 

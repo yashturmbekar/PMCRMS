@@ -66,5 +66,6 @@ namespace PMCRMS.API.Models
         public const string Comment = "Comment";
         public const string DocumentUpdate = "DocumentUpdate";
         public const string PaymentReceived = "PaymentReceived";
+        public const string AppointmentScheduled = "AppointmentScheduled";
     }
 }
