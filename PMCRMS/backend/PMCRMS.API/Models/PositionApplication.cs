@@ -107,9 +107,23 @@ namespace PMCRMS.API.Models
         [MaxLength(1000)]
         public string? Remarks { get; set; }
 
+        // Current assigned officer
+        public int? AssignedOfficerId { get; set; }
+
+        [MaxLength(100)]
+        public string? AssignedOfficerName { get; set; }
+
+        [MaxLength(50)]
+        public string? AssignedOfficerRole { get; set; }
+
+        public DateTime? AssignedDate { get; set; }
+
         // Foreign Keys
         [ForeignKey("UserId")]
         public virtual User User { get; set; } = null!;
+
+        [ForeignKey("AssignedOfficerId")]
+        public virtual Officer? AssignedOfficer { get; set; }
 
         // Navigation properties
         public virtual ICollection<SEAddress> Addresses { get; set; } = new List<SEAddress>();

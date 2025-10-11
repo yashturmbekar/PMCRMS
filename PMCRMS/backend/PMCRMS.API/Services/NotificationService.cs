@@ -52,6 +52,14 @@ namespace PMCRMS.API.Services
             string applicationType,
             string applicantName,
             string assignedByName);
+
+        Task NotifyAppointmentScheduledAsync(
+            int applicantId,
+            string applicationNumber,
+            int applicationId,
+            DateTime scheduledDateTime,
+            string location,
+            string purpose);
     }
 
     public class NotificationService : INotificationService
@@ -326,6 +334,59 @@ namespace PMCRMS.API.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error notifying officer assignment for {ApplicationNumber}", applicationNumber);
+            }
+        }
+
+        public async Task NotifyAppointmentScheduledAsync(
+            int applicantId,
+            string applicationNumber,
+            int applicationId,
+            DateTime scheduledDateTime,
+            string location,
+            string purpose)
+        {
+            try
+            {
+                var user = await _context.Users.FindAsync(applicantId);
+                if (user == null) return;
+
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var viewUrl = $"{baseUrl}/applications/{applicationId}";
+
+                // Create in-app notification
+                await CreateNotificationAsync(
+                    userId: applicantId,
+                    type: NotificationType.AppointmentScheduled,
+                    title: $"Appointment Scheduled - {applicationNumber}",
+                    message: $"An appointment has been scheduled for {scheduledDateTime:dd MMM yyyy hh:mm tt} at {location}. Purpose: {purpose}",
+                    applicationId: applicationId,
+                    applicationNumber: applicationNumber,
+                    actionUrl: $"/applications/{applicationId}",
+                    actorName: "Junior Engineer",
+                    actorRole: "JuniorEngineer",
+                    priority: NotificationPriority.High
+                );
+
+                // Send email notification
+                if (!string.IsNullOrEmpty(user.Email))
+                {
+                    _ = _emailService.SendAppointmentScheduledEmailAsync(
+                        user.Email,
+                        user.Name,
+                        applicationNumber,
+                        scheduledDateTime,
+                        location,
+                        purpose,
+                        viewUrl
+                    );
+                }
+
+                _logger.LogInformation("Notified applicant {ApplicantId} about appointment for application {ApplicationNumber}",
+                    applicantId, applicationNumber);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error notifying appointment scheduled for {ApplicationNumber}", applicationNumber);
             }
         }
     }

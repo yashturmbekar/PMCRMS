@@ -13,6 +13,7 @@ namespace PMCRMS.API.Services
         Task<bool> SendApplicationRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectedBy, string rejectedRole, string remarks, string viewUrl);
         Task<bool> SendAssignmentNotificationEmailAsync(string toEmail, string officerName, string applicationNumber, string applicationType, string applicantName, string assignedBy, string viewUrl);
         Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string temporaryPassword, string loginUrl);
+        Task<bool> SendAppointmentScheduledEmailAsync(string toEmail, string applicantName, string applicationNumber, DateTime scheduledDateTime, string location, string purpose, string viewUrl);
     }
 
     public class EmailService : IEmailService
@@ -1354,6 +1355,91 @@ namespace PMCRMS.API.Services
             <p>For support, please visit our website or contact us at support@pmcrms.gov.in</p>
             <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
         </div>";
+        }
+
+        public async Task<bool> SendAppointmentScheduledEmailAsync(
+            string toEmail,
+            string applicantName,
+            string applicationNumber,
+            DateTime scheduledDateTime,
+            string location,
+            string purpose,
+            string viewUrl)
+        {
+            var subject = $"Appointment Scheduled - {applicationNumber}";
+            var body = GenerateAppointmentScheduledEmailBody(applicantName, applicationNumber, scheduledDateTime, location, purpose, viewUrl);
+            return await SendEmailAsync(toEmail, subject, body);
+        }
+
+        private string GenerateAppointmentScheduledEmailBody(
+            string applicantName,
+            string applicationNumber,
+            DateTime scheduledDateTime,
+            string location,
+            string purpose,
+            string viewUrl)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        {GetCommonEmailStyles()}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        {GetEmailHeader()}
+        <div class='content'>
+            <div style='font-size: 48px; color: #3b82f6; text-align: center; margin: 10px 0;'>📅</div>
+            <div style='background-color: #3b82f6; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Appointment Scheduled</div>
+            
+            <h2>Dear {applicantName},</h2>
+            <p>An appointment has been scheduled for your application <strong>{applicationNumber}</strong>.</p>
+            
+            <div class='info-box' style='background-color: #eff6ff; border-color: #3b82f6;'>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{applicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Date & Time:</div>
+                    <div class='info-value'><strong>{scheduledDateTime:dddd, MMMM dd, yyyy hh:mm tt}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Location:</div>
+                    <div class='info-value'>{location}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Purpose:</div>
+                    <div class='info-value'>{purpose}</div>
+                </div>
+            </div>
+            
+            <div class='info-notice'>
+                <strong>📋 Please Remember:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li>Bring all original documents for verification</li>
+                    <li>Arrive 10 minutes before the scheduled time</li>
+                    <li>Carry a valid photo ID proof</li>
+                    <li>Keep your application number ready</li>
+                </ul>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{viewUrl}' class='btn-primary' style='background-color: #3b82f6;'>View Application Details</a>
+            </div>
+            
+            <p>If you need to reschedule, please contact our support team.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        {GetEmailFooter()}
+    </div>
+</body>
+</html>";
         }
     }
 }

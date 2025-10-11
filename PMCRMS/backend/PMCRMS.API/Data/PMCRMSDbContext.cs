@@ -32,6 +32,7 @@ namespace PMCRMS.API.Data
         public DbSet<SEQualification> SEQualifications { get; set; }
         public DbSet<SEExperience> SEExperiences { get; set; }
         public DbSet<SEDocument> SEDocuments { get; set; }
+        public DbSet<Appointment> Appointments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -190,6 +191,11 @@ namespace PMCRMS.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+                    
+                entity.HasOne(e => e.AssignedOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedOfficerId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure SEAddress entity
@@ -235,6 +241,22 @@ namespace PMCRMS.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.VerifiedBy)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure Appointment entity
+            modelBuilder.Entity<Appointment>(entity =>
+            {
+                entity.Property(e => e.Status).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany()
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.ScheduledByOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.ScheduledByOfficerId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configure OfficerInvitation entity
