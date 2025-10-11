@@ -15,17 +15,20 @@ namespace PMCRMS.API.Controllers
         private readonly ILogger<PositionRegistrationController> _logger;
         private readonly Services.IEmailService _emailService;
         private readonly IConfiguration _configuration;
+        private readonly Services.IWorkflowRoutingService _workflowRoutingService;
 
         public PositionRegistrationController(
             PMCRMSDbContext context,
             ILogger<PositionRegistrationController> logger,
             Services.IEmailService emailService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            Services.IWorkflowRoutingService workflowRoutingService)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
             _configuration = configuration;
+            _workflowRoutingService = workflowRoutingService;
         }
 
         // POST: api/PositionRegistration
@@ -76,6 +79,20 @@ namespace PMCRMS.API.Controllers
                 {
                     application.ApplicationNumber = await GenerateApplicationNumber(request.PositionType);
                     application.SubmittedDate = DateTime.UtcNow;
+                    
+                    // Auto-assign to Junior Engineer based on position type
+                    var juniorEngineer = await _workflowRoutingService.GetJuniorEngineerForPosition(request.PositionType);
+                    if (juniorEngineer != null)
+                    {
+                        application.AssignedOfficerId = juniorEngineer.Id;
+                        application.AssignedOfficerName = juniorEngineer.Name;
+                        application.AssignedOfficerRole = juniorEngineer.Role.ToString();
+                        application.AssignedDate = DateTime.UtcNow;
+                        application.Status = ApplicationCurrentStatus.UnderReviewByJE;
+                        
+                        _logger.LogInformation("Application {ApplicationNumber} auto-assigned to Junior Engineer {OfficerName}",
+                            application.ApplicationNumber, juniorEngineer.Name);
+                    }
                 }
 
                 // Add addresses
@@ -283,6 +300,20 @@ namespace PMCRMS.API.Controllers
                 {
                     application.ApplicationNumber = await GenerateApplicationNumber(request.PositionType);
                     application.SubmittedDate = DateTime.UtcNow;
+                    
+                    // Auto-assign to Junior Engineer based on position type
+                    var juniorEngineer = await _workflowRoutingService.GetJuniorEngineerForPosition(request.PositionType);
+                    if (juniorEngineer != null)
+                    {
+                        application.AssignedOfficerId = juniorEngineer.Id;
+                        application.AssignedOfficerName = juniorEngineer.Name;
+                        application.AssignedOfficerRole = juniorEngineer.Role.ToString();
+                        application.AssignedDate = DateTime.UtcNow;
+                        application.Status = ApplicationCurrentStatus.UnderReviewByJE;
+                        
+                        _logger.LogInformation("Application {ApplicationNumber} auto-assigned to Junior Engineer {OfficerName}",
+                            application.ApplicationNumber, juniorEngineer.Name);
+                    }
                 }
 
                 // Update addresses
