@@ -72,6 +72,6 @@ namespace PMCRMS.API.Models
         public virtual Application Application { get; set; } = null!;
         
         [ForeignKey("ProcessedBy")]
-        public virtual User? ProcessedByUser { get; set; }
+        public virtual Officer? ProcessedByOfficer { get; set; }
     }
 }

@@ -25,7 +25,7 @@ namespace PMCRMS.API.Models
         public string? PhoneNumber { get; set; }
 
         [Required]
-        public UserRole Role { get; set; }
+        public OfficerRole Role { get; set; }
 
         [Required]
         [MaxLength(50)]
@@ -46,14 +46,14 @@ namespace PMCRMS.API.Models
 
         public DateTime ExpiresAt { get; set; }
 
-        public int InvitedByUserId { get; set; }
+        public int InvitedByAdminId { get; set; }
 
-        // Navigation property
-        public virtual User? InvitedByUser { get; set; }
+        // Navigation property - invited by system admin
+        public virtual SystemAdmin? InvitedByAdmin { get; set; }
 
-        // Linked user ID once they accept the invitation
-        public int? UserId { get; set; }
+        // Linked officer ID once they accept the invitation
+        public int? OfficerId { get; set; }
 
-        public virtual User? User { get; set; }
+        public virtual Officer? Officer { get; set; }
     }
 }

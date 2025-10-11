@@ -20,6 +20,15 @@ const OFFICER_DESIGNATIONS = [
   "Clerk",
 ];
 
+// Helper function to format designation names with spaces
+const formatDesignation = (designation: string): string => {
+  // Add space before capital letters and numbers
+  return designation
+    .replace(/([A-Z])/g, " $1") // Add space before capital letters
+    .replace(/([0-9])/g, " $1") // Add space before numbers
+    .trim(); // Remove leading space
+};
+
 const OfficerManagementPage: React.FC = () => {
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -399,7 +408,7 @@ const OfficerManagementPage: React.FC = () => {
                         }}
                       >
                         <Shield style={{ width: "14px", height: "14px" }} />
-                        {officer.role}
+                        {formatDesignation(officer.role)}
                       </div>
                     </td>
                     <td style={{ textAlign: "center" }}>
@@ -614,7 +623,7 @@ const OfficerManagementPage: React.FC = () => {
                     <option value="">Select a designation</option>
                     {getAvailableDesignations().map((designation) => (
                       <option key={designation} value={designation}>
-                        {designation}
+                        {formatDesignation(designation)}
                       </option>
                     ))}
                   </select>
@@ -755,7 +764,7 @@ const OfficerManagementPage: React.FC = () => {
                   <span
                     style={{ fontWeight: "600", color: "var(--pmc-gray-700)" }}
                   >
-                    {selectedOfficer.role}
+                    {formatDesignation(selectedOfficer.role)}
                   </span>
                 </div>
               </div>

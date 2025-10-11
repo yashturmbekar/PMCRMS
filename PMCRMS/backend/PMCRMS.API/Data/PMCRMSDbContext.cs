@@ -9,7 +9,12 @@ namespace PMCRMS.API.Data
         {
         }
 
-        public DbSet<User> Users { get; set; }
+        // Authentication & Authorization
+        public DbSet<SystemAdmin> SystemAdmins { get; set; }
+        public DbSet<Officer> Officers { get; set; }
+        public DbSet<User> Users { get; set; } // Regular applicants/citizens
+        
+        // Core Application Management
         public DbSet<Application> Applications { get; set; }
         public DbSet<ApplicationDocument> ApplicationDocuments { get; set; }
         public DbSet<ApplicationStatus> ApplicationStatuses { get; set; }
@@ -32,14 +37,31 @@ namespace PMCRMS.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure User entity
+            // Configure SystemAdmin entity
+            modelBuilder.Entity<SystemAdmin>(entity =>
+            {
+                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.EmployeeId).IsUnique();
+            });
+
+            // Configure Officer entity
+            modelBuilder.Entity<Officer>(entity =>
+            {
+                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.EmployeeId).IsUnique();
+                entity.Property(e => e.Role).HasConversion<int>();
+            });
+
+            // Configure User entity (Applicants + LEGACY Officers/Admins during migration)
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasIndex(e => e.Email).IsUnique();
-                // Unique index on PhoneNumber, but allow multiple nulls
                 entity.HasIndex(e => e.PhoneNumber)
                     .IsUnique()
                     .HasFilter("\"PhoneNumber\" IS NOT NULL");
+                entity.HasIndex(e => e.EmployeeId)
+                    .IsUnique()
+                    .HasFilter("\"EmployeeId\" IS NOT NULL");
                 entity.Property(e => e.Role).HasConversion<int>();
             });
 
@@ -66,7 +88,7 @@ namespace PMCRMS.API.Data
                     .HasForeignKey(e => e.ApplicationId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
-                entity.HasOne(e => e.VerifiedByUser)
+                entity.HasOne(e => e.VerifiedByOfficer)
                     .WithMany()
                     .HasForeignKey(e => e.VerifiedBy)
                     .OnDelete(DeleteBehavior.SetNull);
@@ -82,6 +104,12 @@ namespace PMCRMS.API.Data
                     .HasForeignKey(e => e.ApplicationId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
+                entity.HasOne(e => e.UpdatedByOfficer)
+                    .WithMany(e => e.StatusUpdates)
+                    .HasForeignKey(e => e.UpdatedByOfficerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                // TEMPORARY: Backward compatibility
                 entity.HasOne(e => e.UpdatedByUser)
                     .WithMany(e => e.StatusUpdates)
                     .HasForeignKey(e => e.UpdatedByUserId)
@@ -96,7 +124,7 @@ namespace PMCRMS.API.Data
                     .HasForeignKey(e => e.ApplicationId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
-                entity.HasOne(e => e.CommentedByUser)
+                entity.HasOne(e => e.CommentedByOfficer)
                     .WithMany()
                     .HasForeignKey(e => e.CommentedBy)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -120,7 +148,7 @@ namespace PMCRMS.API.Data
                     .HasForeignKey(e => e.ApplicationId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
-                entity.HasOne(e => e.ProcessedByUser)
+                entity.HasOne(e => e.ProcessedByOfficer)
                     .WithMany()
                     .HasForeignKey(e => e.ProcessedBy)
                     .OnDelete(DeleteBehavior.SetNull);
@@ -203,7 +231,7 @@ namespace PMCRMS.API.Data
                     .HasForeignKey(e => e.ApplicationId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
-                entity.HasOne(e => e.VerifiedByUser)
+                entity.HasOne(e => e.VerifiedByOfficer)
                     .WithMany()
                     .HasForeignKey(e => e.VerifiedBy)
                     .OnDelete(DeleteBehavior.SetNull);
@@ -217,14 +245,14 @@ namespace PMCRMS.API.Data
                 entity.Property(e => e.Role).HasConversion<int>();
                 entity.Property(e => e.Status).HasConversion<int>();
                 
-                entity.HasOne(e => e.InvitedByUser)
+                entity.HasOne(e => e.InvitedByAdmin)
                     .WithMany()
-                    .HasForeignKey(e => e.InvitedByUserId)
+                    .HasForeignKey(e => e.InvitedByAdminId)
                     .OnDelete(DeleteBehavior.Restrict);
                     
-                entity.HasOne(e => e.User)
-                    .WithMany()
-                    .HasForeignKey(e => e.UserId)
+                entity.HasOne(e => e.Officer)
+                    .WithOne(e => e.Invitation)
+                    .HasForeignKey<OfficerInvitation>(e => e.OfficerId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 
@@ -243,6 +271,12 @@ namespace PMCRMS.API.Data
                     .HasForeignKey(e => e.FormConfigurationId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
+                entity.HasOne(e => e.ChangedByAdmin)
+                    .WithMany()
+                    .HasForeignKey(e => e.ChangedByAdminId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                // TEMPORARY: Backward compatibility
                 entity.HasOne(e => e.ChangedByUser)
                     .WithMany()
                     .HasForeignKey(e => e.ChangedByUserId)
@@ -255,17 +289,19 @@ namespace PMCRMS.API.Data
 
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Seed default admin user only
-            modelBuilder.Entity<User>().HasData(
-                new User
+            // Seed default system administrator
+            modelBuilder.Entity<SystemAdmin>().HasData(
+                new SystemAdmin
                 {
                     Id = 1,
                     Name = "System Administrator",
                     Email = "admin@gmail.com",
                     PhoneNumber = "9999999999",
-                    Role = UserRole.Admin,
-                    IsActive = true,
                     EmployeeId = "ADMIN001",
+                    IsActive = true,
+                    IsSuperAdmin = true,
+                    Department = "Administration",
+                    Designation = "System Administrator",
                     CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     CreatedBy = "System"
                 }

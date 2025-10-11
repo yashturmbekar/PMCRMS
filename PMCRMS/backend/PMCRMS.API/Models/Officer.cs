@@ -2,14 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PMCRMS.API.Models
 {
-    /// <summary>
-    /// Backward compatibility enum - kept for existing controllers
-    /// Officers now use OfficerRole enum in Officer model
-    /// </summary>
-    public enum UserRole
+    public enum OfficerRole
     {
-        Admin = 1,
-        User = 2,
         JuniorArchitect = 3,
         AssistantArchitect = 4,
         JuniorLicenceEngineer = 5,
@@ -26,11 +20,9 @@ namespace PMCRMS.API.Models
     }
 
     /// <summary>
-    /// Represents a regular applicant/citizen user
-    /// NOTE: Role, PasswordHash, EmployeeId, and login tracking properties kept for backward compatibility
-    /// These will be removed in Phase 2 after auth migration is complete
+    /// Represents an Officer who processes applications
     /// </summary>
-    public class User : BaseEntity
+    public class Officer : BaseEntity
     {
         [Required]
         [MaxLength(100)]
@@ -44,28 +36,39 @@ namespace PMCRMS.API.Models
         [MaxLength(15)]
         public string? PhoneNumber { get; set; }
         
-        // TEMPORARY: Kept for backward compatibility during migration
-        public UserRole Role { get; set; } = UserRole.User;
+        [Required]
+        public OfficerRole Role { get; set; }
+        
+        [Required]
+        [MaxLength(50)]
+        public string EmployeeId { get; set; } = string.Empty;
+        
+        [Required]
+        [MaxLength(500)]
+        public string PasswordHash { get; set; } = string.Empty;
         
         public bool IsActive { get; set; } = true;
         
-        [MaxLength(255)]
-        public string? Address { get; set; }
+        [MaxLength(100)]
+        public string? Department { get; set; }
         
-        // TEMPORARY: Password/auth fields kept for backward compatibility
-        [MaxLength(500)]
-        public string? PasswordHash { get; set; }
-        
-        [MaxLength(50)]
-        public string? EmployeeId { get; set; }
-        
-        // TEMPORARY: Login tracking kept for backward compatibility
+        // Login tracking
         public DateTime? LastLoginAt { get; set; }
-        public int LoginAttempts { get; set; }
+        
+        public int LoginAttempts { get; set; } = 0;
+        
         public DateTime? LockedUntil { get; set; }
         
+        // Password management
+        public bool MustChangePassword { get; set; } = true;
+        
+        public DateTime? PasswordChangedAt { get; set; }
+        
+        // Link to invitation
+        public int? InvitationId { get; set; }
+        public virtual OfficerInvitation? Invitation { get; set; }
+        
         // Navigation properties
-        public virtual ICollection<Application> Applications { get; set; } = new List<Application>();
         public virtual ICollection<ApplicationStatus> StatusUpdates { get; set; } = new List<ApplicationStatus>();
     }
 }

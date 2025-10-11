@@ -434,7 +434,7 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Officer login with email and password
+        /// Officer login with email and password - Uses Officers table
         /// </summary>
         [HttpPost("officer-login")]
         public async Task<ActionResult<ApiResponse<LoginResponse>>> OfficerLogin([FromBody] OfficerLoginRequest request)
@@ -444,13 +444,13 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("=== Officer Login Attempt Started ===");
                 _logger.LogInformation("Officer login attempt for: {Email}", request.Email);
 
-                // Find user by email
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Email == request.Email);
+                // Find officer by email in Officers table
+                var officer = await _context.Officers
+                    .FirstOrDefaultAsync(o => o.Email == request.Email);
 
-                if (user == null)
+                if (officer == null)
                 {
-                    _logger.LogWarning("Login failed - user not found: {Email}", request.Email);
+                    _logger.LogWarning("Login failed - officer not found: {Email}", request.Email);
                     return Unauthorized(new ApiResponse
                     {
                         Success = false,
@@ -459,18 +459,18 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                _logger.LogInformation("User found - ID: {UserId}, Name: {Name}, Role: {Role}, IsActive: {IsActive}", 
-                    user.Id, user.Name, user.Role, user.IsActive);
-                _logger.LogInformation("User PasswordHash exists: {HasPassword}, Length: {Length}", 
-                    !string.IsNullOrEmpty(user.PasswordHash), user.PasswordHash?.Length ?? 0);
-                _logger.LogInformation("User EmployeeId: {EmployeeId}, LoginAttempts: {LoginAttempts}", 
-                    user.EmployeeId, user.LoginAttempts);
+                _logger.LogInformation("Officer found - ID: {OfficerId}, Name: {Name}, Role: {Role}, IsActive: {IsActive}", 
+                    officer.Id, officer.Name, officer.Role, officer.IsActive);
+                _logger.LogInformation("Officer PasswordHash exists: {HasPassword}, Length: {Length}", 
+                    !string.IsNullOrEmpty(officer.PasswordHash), officer.PasswordHash?.Length ?? 0);
+                _logger.LogInformation("Officer EmployeeId: {EmployeeId}, LoginAttempts: {LoginAttempts}", 
+                    officer.EmployeeId, officer.LoginAttempts);
 
                 // Check if account is locked
-                if (user.LockedUntil.HasValue && user.LockedUntil > DateTime.UtcNow)
+                if (officer.LockedUntil.HasValue && officer.LockedUntil > DateTime.UtcNow)
                 {
-                    var lockRemaining = (user.LockedUntil.Value - DateTime.UtcNow).Minutes;
-                    _logger.LogWarning("Login attempt on locked account: {Email}", request.Email);
+                    var lockRemaining = (officer.LockedUntil.Value - DateTime.UtcNow).Minutes;
+                    _logger.LogWarning("Login attempt on locked officer account: {Email}", request.Email);
                     return Unauthorized(new ApiResponse
                     {
                         Success = false,
@@ -480,9 +480,9 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Check if account is active
-                if (!user.IsActive)
+                if (!officer.IsActive)
                 {
-                    _logger.LogWarning("Login attempt on inactive account: {Email}", request.Email);
+                    _logger.LogWarning("Login attempt on inactive officer account: {Email}", request.Email);
                     return Unauthorized(new ApiResponse
                     {
                         Success = false,
@@ -491,20 +491,8 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Verify this is an officer account (not Applicant)
-                if (user.Role == UserRole.User)
-                {
-                    _logger.LogWarning("Officer login attempted on applicant account: {Email}", request.Email);
-                    return BadRequest(new ApiResponse
-                    {
-                        Success = false,
-                        Message = "This is an applicant account. Please use OTP-based login.",
-                        Errors = new List<string> { "Invalid login method" }
-                    });
-                }
-
                 // Verify password hash exists
-                if (string.IsNullOrEmpty(user.PasswordHash))
+                if (string.IsNullOrEmpty(officer.PasswordHash))
                 {
                     _logger.LogError("Officer account without password hash: {Email}", request.Email);
                     return Unauthorized(new ApiResponse
@@ -515,26 +503,38 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                _logger.LogInformation("Attempting password verification for user: {Email}", request.Email);
+                _logger.LogInformation("Attempting password verification for officer: {Email}", request.Email);
                 _logger.LogInformation("Password provided length: {Length}", request.Password?.Length ?? 0);
                 
+                // Validate password is provided
+                if (string.IsNullOrEmpty(request.Password))
+                {
+                    _logger.LogWarning("Empty password provided for officer login: {Email}", request.Email);
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Password is required",
+                        Errors = new List<string> { "Invalid request" }
+                    });
+                }
+                
                 // Verify password
-                var passwordVerificationResult = _passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
+                var passwordVerificationResult = _passwordHasher.VerifyPassword(request.Password, officer.PasswordHash);
                 _logger.LogInformation("Password verification result: {Result}", passwordVerificationResult);
                 
                 if (!passwordVerificationResult)
                 {
                     // Increment login attempts
-                    user.LoginAttempts++;
+                    officer.LoginAttempts++;
                     
                     // Lock account after 5 failed attempts
-                    if (user.LoginAttempts >= 5)
+                    if (officer.LoginAttempts >= 5)
                     {
-                        user.LockedUntil = DateTime.UtcNow.AddMinutes(30);
-                        user.LoginAttempts = 0;
+                        officer.LockedUntil = DateTime.UtcNow.AddMinutes(30);
+                        officer.LoginAttempts = 0;
                         await _context.SaveChangesAsync();
                         
-                        _logger.LogWarning("Account locked after multiple failed attempts: {Email}", request.Email);
+                        _logger.LogWarning("Officer account locked after multiple failed attempts: {Email}", request.Email);
                         return Unauthorized(new ApiResponse
                         {
                             Success = false,
@@ -544,7 +544,7 @@ namespace PMCRMS.API.Controllers
                     }
 
                     await _context.SaveChangesAsync();
-                    var attemptsLeft = 5 - user.LoginAttempts;
+                    var attemptsLeft = 5 - officer.LoginAttempts;
                     
                     _logger.LogWarning("Failed login attempt for {Email}. Attempts left: {Attempts}", request.Email, attemptsLeft);
                     return Unauthorized(new ApiResponse
@@ -555,19 +555,19 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                _logger.LogInformation("Password verified successfully! Proceeding with login for user: {Email}", request.Email);
+                _logger.LogInformation("Password verified successfully! Proceeding with login for officer: {Email}", request.Email);
                 
                 // Reset login attempts on successful login
-                user.LoginAttempts = 0;
-                user.LastLoginAt = DateTime.UtcNow;
-                user.UpdatedBy = user.Email;
+                officer.LoginAttempts = 0;
+                officer.LastLoginAt = DateTime.UtcNow;
+                officer.UpdatedBy = officer.Email;
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("User login attempts reset and last login updated");
+                _logger.LogInformation("Officer login attempts reset and last login updated");
 
-                // Generate JWT token
-                _logger.LogInformation("Generating JWT token for user: {UserId}", user.Id);
-                var token = GenerateJwtToken(user);
+                // Generate JWT token for officer
+                _logger.LogInformation("Generating JWT token for officer: {OfficerId}", officer.Id);
+                var token = GenerateOfficerJwtToken(officer);
                 var refreshToken = Guid.NewGuid().ToString();
 
                 var loginResponse = new LoginResponse
@@ -577,31 +577,194 @@ namespace PMCRMS.API.Controllers
                     ExpiresAt = DateTime.UtcNow.AddHours(24),
                     User = new UserDto
                     {
-                        Id = user.Id,
-                        Name = user.Name,
-                        Email = user.Email,
-                        PhoneNumber = user.PhoneNumber,
-                        Role = user.Role.ToString(),
-                        IsActive = user.IsActive,
-                        Address = user.Address,
-                        EmployeeId = user.EmployeeId,
-                        LastLoginAt = user.LastLoginAt
+                        Id = officer.Id,
+                        Name = officer.Name,
+                        Email = officer.Email,
+                        PhoneNumber = officer.PhoneNumber,
+                        Role = officer.Role.ToString(),
+                        IsActive = officer.IsActive,
+                        Address = null, // Officers don't have address field
+                        EmployeeId = officer.EmployeeId,
+                        LastLoginAt = officer.LastLoginAt
                     }
                 };
 
-                _logger.LogInformation("Officer {UserId} ({Role}) logged in successfully", user.Id, user.Role);
+                _logger.LogInformation("Officer {OfficerId} ({Role}) logged in successfully", officer.Id, officer.Role);
                 _logger.LogInformation("=== Officer Login Successful - Token Generated ===");
 
                 return Ok(new ApiResponse<LoginResponse>
                 {
                     Success = true,
-                    Message = $"Welcome back, {user.Name}!",
+                    Message = $"Welcome back, {officer.Name}!",
                     Data = loginResponse
                 });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during officer login for {Email}", request.Email);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "An error occurred during login. Please try again later.",
+                    Errors = new List<string> { "Internal server error" }
+                });
+            }
+        }
+
+        /// <summary>
+        /// System Admin login with email and password - Uses SystemAdmins table
+        /// </summary>
+        [HttpPost("admin-login")]
+        public async Task<ActionResult<ApiResponse<LoginResponse>>> AdminLogin([FromBody] OfficerLoginRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("=== System Admin Login Attempt Started ===");
+                _logger.LogInformation("Admin login attempt for: {Email}", request.Email);
+
+                // Find admin by email in SystemAdmins table
+                var admin = await _context.SystemAdmins
+                    .FirstOrDefaultAsync(a => a.Email == request.Email);
+
+                if (admin == null)
+                {
+                    _logger.LogWarning("Login failed - admin not found: {Email}", request.Email);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid email or password",
+                        Errors = new List<string> { "Authentication failed" }
+                    });
+                }
+
+                _logger.LogInformation("Admin found - ID: {AdminId}, Name: {Name}, IsActive: {IsActive}", 
+                    admin.Id, admin.Name, admin.IsActive);
+                _logger.LogInformation("Admin PasswordHash exists: {HasPassword}", 
+                    !string.IsNullOrEmpty(admin.PasswordHash));
+
+                // Check if account is locked
+                if (admin.LockedUntil.HasValue && admin.LockedUntil > DateTime.UtcNow)
+                {
+                    var lockRemaining = (admin.LockedUntil.Value - DateTime.UtcNow).Minutes;
+                    _logger.LogWarning("Login attempt on locked admin account: {Email}", request.Email);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = $"Account is locked. Please try again in {lockRemaining} minutes.",
+                        Errors = new List<string> { "Account locked due to multiple failed login attempts" }
+                    });
+                }
+
+                // Check if account is active
+                if (!admin.IsActive)
+                {
+                    _logger.LogWarning("Login attempt on inactive admin account: {Email}", request.Email);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Your account has been deactivated. Please contact system administrator.",
+                        Errors = new List<string> { "Account inactive" }
+                    });
+                }
+
+                // Verify password hash exists
+                if (string.IsNullOrEmpty(admin.PasswordHash))
+                {
+                    _logger.LogError("Admin account without password hash: {Email}", request.Email);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Password not set for this account. Please contact support.",
+                        Errors = new List<string> { "Password configuration error" }
+                    });
+                }
+
+                _logger.LogInformation("Attempting password verification for admin: {Email}", request.Email);
+                
+                // Verify password
+                var passwordVerificationResult = _passwordHasher.VerifyPassword(request.Password, admin.PasswordHash);
+                _logger.LogInformation("Password verification result: {Result}", passwordVerificationResult);
+                
+                if (!passwordVerificationResult)
+                {
+                    // Increment login attempts
+                    admin.LoginAttempts++;
+                    
+                    // Lock account after 5 failed attempts
+                    if (admin.LoginAttempts >= 5)
+                    {
+                        admin.LockedUntil = DateTime.UtcNow.AddMinutes(30);
+                        admin.LoginAttempts = 0;
+                        await _context.SaveChangesAsync();
+                        
+                        _logger.LogWarning("Admin account locked after multiple failed attempts: {Email}", request.Email);
+                        return Unauthorized(new ApiResponse
+                        {
+                            Success = false,
+                            Message = "Account locked for 30 minutes due to multiple failed login attempts.",
+                            Errors = new List<string> { "Too many failed login attempts" }
+                        });
+                    }
+
+                    await _context.SaveChangesAsync();
+                    var attemptsLeft = 5 - admin.LoginAttempts;
+                    
+                    _logger.LogWarning("Failed login attempt for admin {Email}. Attempts left: {Attempts}", request.Email, attemptsLeft);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = $"Invalid email or password. {attemptsLeft} attempts remaining.",
+                        Errors = new List<string> { "Authentication failed" }
+                    });
+                }
+
+                _logger.LogInformation("Password verified successfully! Proceeding with login for admin: {Email}", request.Email);
+                
+                // Reset login attempts on successful login
+                admin.LoginAttempts = 0;
+                admin.LastLoginAt = DateTime.UtcNow;
+                admin.UpdatedBy = admin.Email;
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Admin login attempts reset and last login updated");
+
+                // Generate JWT token for admin
+                _logger.LogInformation("Generating JWT token for admin: {AdminId}", admin.Id);
+                var token = GenerateAdminJwtToken(admin);
+                var refreshToken = Guid.NewGuid().ToString();
+
+                var loginResponse = new LoginResponse
+                {
+                    Token = token,
+                    RefreshToken = refreshToken,
+                    ExpiresAt = DateTime.UtcNow.AddHours(24),
+                    User = new UserDto
+                    {
+                        Id = admin.Id,
+                        Name = admin.Name,
+                        Email = admin.Email,
+                        PhoneNumber = null,
+                        Role = "Admin",
+                        IsActive = admin.IsActive,
+                        Address = null,
+                        EmployeeId = admin.EmployeeId,
+                        LastLoginAt = admin.LastLoginAt
+                    }
+                };
+
+                _logger.LogInformation("Admin {AdminId} logged in successfully", admin.Id);
+                _logger.LogInformation("=== Admin Login Successful - Token Generated ===");
+
+                return Ok(new ApiResponse<LoginResponse>
+                {
+                    Success = true,
+                    Message = $"Welcome back, {admin.Name}!",
+                    Data = loginResponse
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during admin login for {Email}", request.Email);
                 return StatusCode(500, new ApiResponse
                 {
                     Success = false,
@@ -734,6 +897,112 @@ namespace PMCRMS.API.Controllers
             // Add employee ID for officers
             if (!string.IsNullOrEmpty(user.EmployeeId))
                 claims.Add(new Claim("employee_id", user.EmployeeId));
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(expiryHours),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private string GenerateOfficerJwtToken(Officer officer)
+        {
+            var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+                ?? _configuration["JwtSettings:SecretKey"] 
+                ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+            
+            var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+                ?? _configuration["JwtSettings:Issuer"] 
+                ?? "PMCRMS.API";
+            
+            var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+                ?? _configuration["JwtSettings:Audience"] 
+                ?? "PMCRMS.Client";
+            
+            var expiryHours = int.Parse(
+                Environment.GetEnvironmentVariable("JWT_EXPIRY_HOURS") 
+                ?? _configuration["JwtSettings:ExpiryHours"] 
+                ?? "24");
+
+            if (secretKey.Length < 32)
+            {
+                throw new InvalidOperationException($"JWT SecretKey must be at least 32 characters long.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, officer.Id.ToString()),
+                new Claim(ClaimTypes.Name, officer.Name),
+                new Claim(ClaimTypes.Email, officer.Email),
+                new Claim(ClaimTypes.Role, officer.Role.ToString()),
+                new Claim("user_id", officer.Id.ToString()),
+                new Claim("officer_id", officer.Id.ToString()),
+                new Claim("role", officer.Role.ToString()),
+                new Claim("employee_id", officer.EmployeeId),
+                new Claim("user_type", "Officer")
+            };
+
+            if (!string.IsNullOrEmpty(officer.PhoneNumber))
+                claims.Add(new Claim(ClaimTypes.MobilePhone, officer.PhoneNumber));
+
+            var token = new JwtSecurityToken(
+                issuer: issuer,
+                audience: audience,
+                claims: claims,
+                expires: DateTime.UtcNow.AddHours(expiryHours),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private string GenerateAdminJwtToken(SystemAdmin admin)
+        {
+            var secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
+                ?? _configuration["JwtSettings:SecretKey"] 
+                ?? throw new InvalidOperationException("JWT SecretKey is not configured");
+            
+            var issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") 
+                ?? _configuration["JwtSettings:Issuer"] 
+                ?? "PMCRMS.API";
+            
+            var audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") 
+                ?? _configuration["JwtSettings:Audience"] 
+                ?? "PMCRMS.Client";
+            
+            var expiryHours = int.Parse(
+                Environment.GetEnvironmentVariable("JWT_EXPIRY_HOURS") 
+                ?? _configuration["JwtSettings:ExpiryHours"] 
+                ?? "24");
+
+            if (secretKey.Length < 32)
+            {
+                throw new InvalidOperationException($"JWT SecretKey must be at least 32 characters long.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, admin.Id.ToString()),
+                new Claim(ClaimTypes.Name, admin.Name),
+                new Claim(ClaimTypes.Email, admin.Email),
+                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim("user_id", admin.Id.ToString()),
+                new Claim("admin_id", admin.Id.ToString()),
+                new Claim("role", "Admin"),
+                new Claim("employee_id", admin.EmployeeId ?? "ADMIN"),
+                new Claim("is_super_admin", admin.IsSuperAdmin.ToString()),
+                new Claim("user_type", "SystemAdmin")
+            };
 
             var token = new JwtSecurityToken(
                 issuer: issuer,

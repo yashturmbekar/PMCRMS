@@ -63,7 +63,7 @@ namespace PMCRMS.API.Controllers
                     a.CurrentStatus.ToString().Contains("Rejected"));
 
                 // Officer statistics
-                var allOfficers = await _context.Users.Where(u => u.Role != UserRole.User && u.Role != UserRole.User).ToListAsync();
+                var allOfficers = await _context.Officers.ToListAsync();
                 stats.TotalOfficers = allOfficers.Count;
                 stats.ActiveOfficers = allOfficers.Count(o => o.IsActive);
 
@@ -166,7 +166,7 @@ namespace PMCRMS.API.Controllers
                 }
 
                 // Parse role string to enum
-                if (!Enum.TryParse<UserRole>(request.Role, true, out var userRole))
+                if (!Enum.TryParse<OfficerRole>(request.Role, true, out var officerRole))
                 {
                     return BadRequest(new ApiResponse
                     {
@@ -184,25 +184,35 @@ namespace PMCRMS.API.Controllers
                     _logger.LogInformation("Auto-generated Employee ID: {EmployeeId}", request.EmployeeId);
                 }
 
-                // Check if email already exists
-                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-                if (existingUser != null)
+                // Check if email already exists in Officers or SystemAdmins
+                var existingOfficer = await _context.Officers.FirstOrDefaultAsync(o => o.Email == request.Email);
+                if (existingOfficer != null)
                 {
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
-                        Message = "A user with this email already exists"
+                        Message = "An officer with this email already exists"
+                    });
+                }
+
+                var existingAdmin = await _context.SystemAdmins.FirstOrDefaultAsync(a => a.Email == request.Email);
+                if (existingAdmin != null)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "An admin with this email already exists"
                     });
                 }
 
                 // Check if employee ID already exists
-                var existingEmployee = await _context.Users.FirstOrDefaultAsync(u => u.EmployeeId == request.EmployeeId);
-                if (existingEmployee != null)
+                var existingEmployeeId = await _context.Officers.FirstOrDefaultAsync(o => o.EmployeeId == request.EmployeeId);
+                if (existingEmployeeId != null)
                 {
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
-                        Message = "A user with this employee ID already exists"
+                        Message = "An officer with this employee ID already exists"
                     });
                 }
 
@@ -225,28 +235,55 @@ namespace PMCRMS.API.Controllers
                 var tempPassword = GenerateTemporaryPassword();
                 var hashedPassword = _passwordHasher.HashPassword(tempPassword);
 
-                // Create invitation
+                // Create Officer account immediately
+                var officer = new Officer
+                {
+                    Name = request.Name,
+                    Email = request.Email,
+                    PhoneNumber = request.PhoneNumber,
+                    Role = officerRole,
+                    EmployeeId = request.EmployeeId,
+                    Department = request.Department ?? string.Empty,
+                    PasswordHash = hashedPassword,
+                    MustChangePassword = true, // Force password change on first login
+                    IsActive = true,
+                    CreatedBy = User.FindFirst("email")?.Value ?? "Admin",
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.Officers.Add(officer);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Officer account created: {Email}, ID: {OfficerId}, Employee ID: {EmployeeId}", 
+                    request.Email, officer.Id, officer.EmployeeId);
+
+                // Create invitation record for tracking
                 var invitation = new OfficerInvitation
                 {
                     Name = request.Name,
                     Email = request.Email,
                     PhoneNumber = request.PhoneNumber,
-                    Role = userRole, // Use the parsed enum value
+                    Role = officerRole, // Use the parsed OfficerRole enum value
                     EmployeeId = request.EmployeeId,
                     Department = request.Department ?? string.Empty,
                     TemporaryPassword = hashedPassword,
-                    InvitedByUserId = adminId,
+                    InvitedByAdminId = adminId, // Changed from InvitedByUserId
                     InvitedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays > 0 ? request.ExpiryDays : 7),
-                    Status = InvitationStatus.Pending,
+                    Status = InvitationStatus.Accepted, // Mark as accepted since officer is created
+                    AcceptedAt = DateTime.UtcNow,
+                    OfficerId = officer.Id,
                     CreatedBy = User.FindFirst("email")?.Value ?? "Admin"
                 };
 
                 _context.OfficerInvitations.Add(invitation);
+
+                // Update officer with invitation reference
+                officer.InvitationId = invitation.Id;
+
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Officer invitation created with ID: {InvitationId}, Employee ID: {EmployeeId}", 
-                    invitation.Id, invitation.EmployeeId);
+                _logger.LogInformation("Officer invitation record created with ID: {InvitationId}", invitation.Id);
 
                 // Send invitation email
                 var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
@@ -255,7 +292,7 @@ namespace PMCRMS.API.Controllers
                 var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
                     request.Email,
                     request.Name,
-                    userRole.ToString(), // Use the parsed enum
+                    officerRole.ToString(), // Use the parsed OfficerRole enum
                     request.EmployeeId,
                     tempPassword,
                     loginUrl
@@ -266,7 +303,7 @@ namespace PMCRMS.API.Controllers
                     _logger.LogWarning("Failed to send invitation email to {Email}, but invitation was created", request.Email);
                 }
 
-                var invitedBy = await _context.Users.FindAsync(adminId);
+                var invitedByAdmin = await _context.SystemAdmins.FindAsync(adminId);
 
                 var responseDto = new OfficerInvitationDto
                 {
@@ -280,7 +317,7 @@ namespace PMCRMS.API.Controllers
                     Status = invitation.Status.ToString(),
                     InvitedAt = invitation.InvitedAt,
                     ExpiresAt = invitation.ExpiresAt,
-                    InvitedByName = invitedBy?.Name ?? "Admin",
+                    InvitedByName = invitedByAdmin?.Name ?? "Admin",
                     IsExpired = invitation.ExpiresAt <= DateTime.UtcNow,
                     TemporaryPassword = tempPassword // Include password in response
                 };
@@ -314,8 +351,8 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Admin {AdminId} fetching invitations", adminId);
 
                 var query = _context.OfficerInvitations
-                    .Include(i => i.InvitedByUser)
-                    .Include(i => i.User)
+                    .Include(i => i.InvitedByAdmin)
+                    .Include(i => i.Officer)
                     .AsQueryable();
 
                 if (!string.IsNullOrEmpty(status) && Enum.TryParse<InvitationStatus>(status, out var statusEnum))
@@ -340,9 +377,9 @@ namespace PMCRMS.API.Controllers
                     InvitedAt = i.InvitedAt,
                     AcceptedAt = i.AcceptedAt,
                     ExpiresAt = i.ExpiresAt,
-                    InvitedByName = i.InvitedByUser?.Name ?? "Admin",
+                    InvitedByName = i.InvitedByAdmin?.Name ?? "Admin",
                     IsExpired = i.ExpiresAt <= DateTime.UtcNow && i.Status == InvitationStatus.Pending,
-                    UserId = i.UserId
+                    OfficerId = i.OfficerId
                 }).ToList();
 
                 return Ok(new ApiResponse<List<OfficerInvitationDto>>
@@ -488,22 +525,20 @@ namespace PMCRMS.API.Controllers
                 var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
                 _logger.LogInformation("Admin {AdminId} fetching officers", adminId);
 
-                var query = _context.Users
-                    .Where(u => u.Role != UserRole.User && u.Role != UserRole.User)
-                    .AsQueryable();
+                var query = _context.Officers.AsQueryable();
 
-                if (!string.IsNullOrEmpty(role) && Enum.TryParse<UserRole>(role, out var roleEnum))
+                if (!string.IsNullOrEmpty(role) && Enum.TryParse<OfficerRole>(role, out var roleEnum))
                 {
-                    query = query.Where(u => u.Role == roleEnum);
+                    query = query.Where(o => o.Role == roleEnum);
                 }
 
                 if (isActive.HasValue)
                 {
-                    query = query.Where(u => u.IsActive == isActive.Value);
+                    query = query.Where(o => o.IsActive == isActive.Value);
                 }
 
                 var officers = await query
-                    .OrderByDescending(u => u.CreatedDate)
+                    .OrderByDescending(o => o.CreatedDate)
                     .ToListAsync();
 
                 var officerDtos = new List<OfficerDto>();
@@ -511,7 +546,7 @@ namespace PMCRMS.API.Controllers
                 foreach (var officer in officers)
                 {
                     var applicationsProcessed = await _context.ApplicationStatuses
-                        .CountAsync(s => s.UpdatedByUserId == officer.Id);
+                        .CountAsync(s => s.UpdatedByOfficerId == officer.Id);
 
                     officerDtos.Add(new OfficerDto
                     {
@@ -520,7 +555,7 @@ namespace PMCRMS.API.Controllers
                         Email = officer.Email,
                         PhoneNumber = officer.PhoneNumber,
                         Role = officer.Role.ToString(),
-                        EmployeeId = officer.EmployeeId ?? "",
+                        EmployeeId = officer.EmployeeId,
                         IsActive = officer.IsActive,
                         LastLoginAt = officer.LastLoginAt,
                         CreatedDate = officer.CreatedDate,
@@ -552,8 +587,8 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var officer = await _context.Users.FindAsync(id);
-                if (officer == null || officer.Role == UserRole.User || officer.Role == UserRole.User)
+                var officer = await _context.Officers.FindAsync(id);
+                if (officer == null)
                 {
                     return NotFound(new ApiResponse
                     {
@@ -564,7 +599,7 @@ namespace PMCRMS.API.Controllers
 
                 var recentStatusUpdates = await _context.ApplicationStatuses
                     .Include(s => s.Application)
-                    .Where(s => s.UpdatedByUserId == id)
+                    .Where(s => s.UpdatedByOfficerId == id)
                     .OrderByDescending(s => s.CreatedDate)
                     .Take(10)
                     .Select(s => new ApplicationStatusSummaryDto
@@ -578,7 +613,7 @@ namespace PMCRMS.API.Controllers
                     .ToListAsync();
 
                 var applicationsProcessed = await _context.ApplicationStatuses
-                    .CountAsync(s => s.UpdatedByUserId == id);
+                    .CountAsync(s => s.UpdatedByOfficerId == id);
 
                 var officerDetail = new OfficerDetailDto
                 {
@@ -587,12 +622,12 @@ namespace PMCRMS.API.Controllers
                     Email = officer.Email,
                     PhoneNumber = officer.PhoneNumber,
                     Role = officer.Role.ToString(),
-                    EmployeeId = officer.EmployeeId ?? "",
+                    EmployeeId = officer.EmployeeId,
                     IsActive = officer.IsActive,
                     LastLoginAt = officer.LastLoginAt,
                     CreatedDate = officer.CreatedDate,
                     ApplicationsProcessed = applicationsProcessed,
-                    Address = officer.Address,
+                    Department = officer.Department, // Changed from Address to Department
                     UpdatedDate = officer.UpdatedDate,
                     CreatedBy = officer.CreatedBy,
                     RecentStatusUpdates = recentStatusUpdates
@@ -625,8 +660,8 @@ namespace PMCRMS.API.Controllers
                 var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
                 _logger.LogInformation("Admin {AdminId} updating officer {OfficerId}", adminId, id);
 
-                var officer = await _context.Users.FindAsync(id);
-                if (officer == null || officer.Role == UserRole.User || officer.Role == UserRole.User)
+                var officer = await _context.Officers.FindAsync(id);
+                if (officer == null)
                 {
                     return NotFound(new ApiResponse
                     {
@@ -644,6 +679,9 @@ namespace PMCRMS.API.Controllers
 
                 if (request.Role.HasValue)
                     officer.Role = request.Role.Value;
+
+                if (!string.IsNullOrEmpty(request.Department))
+                    officer.Department = request.Department;
 
                 if (request.IsActive.HasValue)
                     officer.IsActive = request.IsActive.Value;
@@ -679,8 +717,8 @@ namespace PMCRMS.API.Controllers
                 var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
                 _logger.LogInformation("Admin {AdminId} deleting officer {OfficerId}", adminId, id);
 
-                var officer = await _context.Users.FindAsync(id);
-                if (officer == null || officer.Role == UserRole.User || officer.Role == UserRole.User || officer.Role == UserRole.Admin)
+                var officer = await _context.Officers.FindAsync(id);
+                if (officer == null)
                 {
                     return NotFound(new ApiResponse
                     {
@@ -773,7 +811,7 @@ namespace PMCRMS.API.Controllers
             {
                 var form = await _context.FormConfigurations
                     .Include(f => f.FeeHistory)
-                        .ThenInclude(h => h.ChangedByUser)
+                        .ThenInclude(h => h.ChangedByAdmin)
                     .FirstOrDefaultAsync(f => f.Id == id);
 
                 if (form == null)
@@ -795,7 +833,7 @@ namespace PMCRMS.API.Controllers
                         OldProcessingFee = h.OldProcessingFee,
                         NewProcessingFee = h.NewProcessingFee,
                         EffectiveFrom = h.EffectiveFrom,
-                        ChangedBy = h.ChangedByUser?.Name ?? "System",
+                        ChangedBy = h.ChangedByAdmin?.Name ?? "System",
                         ChangeReason = h.ChangeReason,
                         ChangedDate = h.CreatedDate
                     }).ToList();
@@ -867,7 +905,7 @@ namespace PMCRMS.API.Controllers
                     OldProcessingFee = form.ProcessingFee,
                     NewProcessingFee = request.ProcessingFee,
                     EffectiveFrom = request.EffectiveFrom ?? DateTime.UtcNow,
-                    ChangedByUserId = adminId,
+                    ChangedByAdminId = adminId, // Changed from ChangedByUserId
                     ChangeReason = request.ChangeReason,
                     CreatedBy = User.FindFirst("email")?.Value ?? "Admin"
                 };
@@ -1076,7 +1114,7 @@ namespace PMCRMS.API.Controllers
                     .Include(a => a.Applicant)
                     .Include(a => a.Documents)
                     .Include(a => a.StatusHistory)
-                        .ThenInclude(s => s.UpdatedByUser)
+                        .ThenInclude(s => s.UpdatedByOfficer) // Changed from UpdatedByUser
                     .AsQueryable();
 
                 // Filter by status
@@ -1171,9 +1209,9 @@ namespace PMCRMS.API.Controllers
                     .Include(a => a.Applicant)
                     .Include(a => a.Documents)
                     .Include(a => a.StatusHistory)
-                        .ThenInclude(s => s.UpdatedByUser)
+                        .ThenInclude(s => s.UpdatedByOfficer) // Changed from UpdatedByUser
                     .Include(a => a.Comments)
-                        .ThenInclude(c => c.CommentedByUser)
+                        .ThenInclude(c => c.CommentedByOfficer) // Changed from CommentedByUser
                     .Include(a => a.Payments)
                     .FirstOrDefaultAsync(a => a.Id == id);
 
@@ -1222,7 +1260,7 @@ namespace PMCRMS.API.Controllers
                         FilePath = d.FilePath,
                         IsVerified = d.IsVerified,
                         VerifiedBy = d.VerifiedBy,
-                        VerifiedByName = d.VerifiedByUser?.Name,
+                        VerifiedByName = d.VerifiedByOfficer?.Name, // Changed from VerifiedByUser
                         VerifiedDate = d.VerifiedDate,
                         UploadedAt = d.CreatedDate
                     }).ToList(),
@@ -1233,8 +1271,8 @@ namespace PMCRMS.API.Controllers
                             Id = s.Id,
                             Status = s.Status.ToString(),
                             Remarks = s.Remarks,
-                            UpdatedBy = s.UpdatedByUser?.Name ?? "System",
-                            UpdatedByRole = s.UpdatedByUser?.Role.ToString() ?? "",
+                            UpdatedBy = s.UpdatedByOfficer?.Name ?? "System", // Changed from UpdatedByUser
+                            UpdatedByRole = s.UpdatedByOfficer?.Role.ToString() ?? "", // Changed from UpdatedByUser
                             StatusDate = s.StatusDate,
                             CreatedAt = s.CreatedDate
                         }).ToList(),
@@ -1246,8 +1284,8 @@ namespace PMCRMS.API.Controllers
                             Comment = c.Comment,
                             CommentType = c.CommentType,
                             IsInternal = c.IsInternal,
-                            CommentedBy = c.CommentedByUser?.Name ?? "Unknown",
-                            CommentedByRole = c.CommentedByUser?.Role.ToString() ?? "",
+                            CommentedBy = c.CommentedByOfficer?.Name ?? "Unknown", // Changed from CommentedByUser
+                            CommentedByRole = c.CommentedByOfficer?.Role.ToString() ?? "", // Changed from CommentedByUser
                             CreatedAt = c.CreatedDate
                         }).ToList(),
                     Payments = application.Payments

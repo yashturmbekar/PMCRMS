@@ -16,4 +16,10 @@ namespace PMCRMS.API.DTOs
     {
         public bool IsActive { get; set; }
     }
+
+    public class AcceptInvitationRequest
+    {
+        public string Email { get; set; } = string.Empty;
+        public string TemporaryPassword { get; set; } = string.Empty;
+    }
 }

@@ -276,6 +276,11 @@ using (var scope = app.Services.CreateScope())
         context.Database.Migrate();
         Log.Information("Database migrations applied successfully.");
         
+        // Ensure System Admin exists
+        Log.Information("Ensuring System Admin exists...");
+        await dataSeeder.EnsureSystemAdminExistsAsync();
+        Log.Information("System Admin check completed.");
+        
         // Seed officer passwords
         Log.Information("Seeding officer passwords...");
         await dataSeeder.SeedOfficerPasswordsAsync();

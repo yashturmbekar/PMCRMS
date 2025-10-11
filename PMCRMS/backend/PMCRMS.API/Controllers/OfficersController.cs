@@ -40,23 +40,12 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Admin inviting officer: {Email}, Role: {Role}", request.Email, request.Role);
 
                 // Parse role string to enum
-                if (!Enum.TryParse<UserRole>(request.Role, true, out var userRole))
+                if (!Enum.TryParse<OfficerRole>(request.Role, true, out var officerRole))
                 {
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
                         Message = $"Invalid role: {request.Role}",
-                        Errors = new List<string> { "Invalid role for officer invitation" }
-                    });
-                }
-
-                // Validate role
-                if (userRole == UserRole.Admin || userRole == UserRole.User)
-                {
-                    return BadRequest(new ApiResponse
-                    {
-                        Success = false,
-                        Message = "Cannot invite Admin or regular User through this endpoint",
                         Errors = new List<string> { "Invalid role for officer invitation" }
                     });
                 }
@@ -70,14 +59,25 @@ namespace PMCRMS.API.Controllers
                     _logger.LogInformation("Auto-generated Employee ID: {EmployeeId}", request.EmployeeId);
                 }
 
-                // Check if email already exists
-                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-                if (existingUser != null)
+                // Check if email already exists in Officers or SystemAdmins
+                var existingOfficer = await _context.Officers.FirstOrDefaultAsync(o => o.Email == request.Email);
+                if (existingOfficer != null)
                 {
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
-                        Message = "A user with this email already exists",
+                        Message = "An officer with this email already exists",
+                        Errors = new List<string> { "Email already registered" }
+                    });
+                }
+
+                var existingAdmin = await _context.SystemAdmins.FirstOrDefaultAsync(a => a.Email == request.Email);
+                if (existingAdmin != null)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "An admin with this email already exists",
                         Errors = new List<string> { "Email already registered" }
                     });
                 }
@@ -115,24 +115,51 @@ namespace PMCRMS.API.Controllers
                 // Get current admin user ID
                 var adminUserId = int.Parse(User.FindFirst("user_id")?.Value ?? "1");
 
-                // Create invitation
+                // Create Officer account immediately
+                var officer = new Officer
+                {
+                    Name = request.Name,
+                    Email = request.Email,
+                    PhoneNumber = request.PhoneNumber,
+                    Role = officerRole,
+                    EmployeeId = request.EmployeeId,
+                    Department = request.Department ?? string.Empty,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
+                    MustChangePassword = true, // Force password change on first login
+                    IsActive = true,
+                    CreatedBy = User.FindFirst(ClaimTypes.Email)?.Value ?? "Admin",
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.Officers.Add(officer);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Officer account created: {Email}, ID: {OfficerId}", request.Email, officer.Id);
+
+                // Create invitation record for tracking
                 var invitation = new OfficerInvitation
                 {
                     Name = request.Name,
                     Email = request.Email,
                     PhoneNumber = request.PhoneNumber,
-                    Role = userRole, // Use parsed enum value
+                    Role = officerRole, // Use parsed OfficerRole enum value
                     EmployeeId = request.EmployeeId,
                     Department = request.Department ?? string.Empty,
-                    TemporaryPassword = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
+                    TemporaryPassword = officer.PasswordHash, // Already hashed
                     InvitedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays > 0 ? request.ExpiryDays : 7),
-                    InvitedByUserId = adminUserId,
-                    Status = InvitationStatus.Pending,
+                    InvitedByAdminId = adminUserId, // Changed from InvitedByUserId
+                    Status = InvitationStatus.Accepted, // Mark as accepted since officer is created
+                    AcceptedAt = DateTime.UtcNow,
+                    OfficerId = officer.Id,
                     CreatedBy = User.FindFirst(ClaimTypes.Email)?.Value ?? "Admin"
                 };
 
                 _context.OfficerInvitations.Add(invitation);
+
+                // Update officer with invitation reference
+                officer.InvitationId = invitation.Id;
+                
                 await _context.SaveChangesAsync();
 
                 // Send invitation email
@@ -140,7 +167,7 @@ namespace PMCRMS.API.Controllers
                 var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
                     request.Email,
                     request.Name,
-                    userRole.ToString(), // Use parsed enum
+                    officerRole.ToString(), // Use parsed OfficerRole enum
                     request.EmployeeId ?? string.Empty,
                     temporaryPassword,
                     loginUrl
@@ -199,8 +226,8 @@ namespace PMCRMS.API.Controllers
             try
             {
                 var query = _context.OfficerInvitations
-                    .Include(o => o.InvitedByUser)
-                    .Include(o => o.User)
+                    .Include(o => o.InvitedByAdmin) // Changed from InvitedByUser
+                    .Include(o => o.Officer) // Changed from User
                     .AsQueryable();
 
                 if (status.HasValue)
@@ -225,8 +252,8 @@ namespace PMCRMS.API.Controllers
                     InvitedAt = o.InvitedAt,
                     AcceptedAt = o.AcceptedAt,
                     ExpiresAt = o.ExpiresAt,
-                    InvitedBy = o.InvitedByUser?.Name ?? "Unknown",
-                    UserId = o.UserId
+                    InvitedBy = o.InvitedByAdmin?.Name ?? "Unknown", // Changed from InvitedByUser
+                    OfficerId = o.OfficerId // Changed from UserId
                 }).ToList();
 
                 var response = new InvitationListResponse
@@ -264,26 +291,24 @@ namespace PMCRMS.API.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponse<OfficerListResponse>>> GetOfficers(
             [FromQuery] bool? isActive = null,
-            [FromQuery] UserRole? role = null)
+            [FromQuery] OfficerRole? role = null) // Changed from UserRole to OfficerRole
         {
             try
             {
-                var query = _context.Users
-                    .Where(u => u.Role != UserRole.User && u.Role != UserRole.Admin)
-                    .AsQueryable();
+                var query = _context.Officers.AsQueryable(); // Changed from Users to Officers
 
                 if (isActive.HasValue)
                 {
-                    query = query.Where(u => u.IsActive == isActive.Value);
+                    query = query.Where(o => o.IsActive == isActive.Value);
                 }
 
                 if (role.HasValue)
                 {
-                    query = query.Where(u => u.Role == role.Value);
+                    query = query.Where(o => o.Role == role.Value);
                 }
 
                 var officers = await query
-                    .OrderBy(u => u.Name)
+                    .OrderBy(o => o.Name)
                     .ToListAsync();
 
                 var officerDtos = officers.Select(o => new OfficerDto
@@ -293,7 +318,7 @@ namespace PMCRMS.API.Controllers
                     Email = o.Email,
                     PhoneNumber = o.PhoneNumber,
                     Role = o.Role.ToString(),
-                    EmployeeId = o.EmployeeId ?? "",
+                    EmployeeId = o.EmployeeId, // No longer nullable
                     IsActive = o.IsActive,
                     LastLoginAt = o.LastLoginAt,
                     CreatedDate = o.CreatedDate
@@ -335,22 +360,13 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var officer = await _context.Users.FindAsync(id);
+                var officer = await _context.Officers.FindAsync(id); // Changed from Users to Officers
                 if (officer == null)
                 {
                     return NotFound(new ApiResponse
                     {
                         Success = false,
                         Message = "Officer not found"
-                    });
-                }
-
-                if (officer.Role == UserRole.Admin)
-                {
-                    return BadRequest(new ApiResponse
-                    {
-                        Success = false,
-                        Message = "Cannot update admin user through this endpoint"
                     });
                 }
 
@@ -361,8 +377,11 @@ namespace PMCRMS.API.Controllers
                 if (!string.IsNullOrEmpty(request.PhoneNumber))
                     officer.PhoneNumber = request.PhoneNumber;
 
-                if (request.Role.HasValue && request.Role.Value != UserRole.Admin && request.Role.Value != UserRole.User)
+                if (request.Role.HasValue)
                     officer.Role = request.Role.Value;
+
+                if (!string.IsNullOrEmpty(request.Department))
+                    officer.Department = request.Department;
 
                 if (request.IsActive.HasValue)
                     officer.IsActive = request.IsActive.Value;
@@ -379,7 +398,7 @@ namespace PMCRMS.API.Controllers
                     Email = officer.Email,
                     PhoneNumber = officer.PhoneNumber,
                     Role = officer.Role.ToString(),
-                    EmployeeId = officer.EmployeeId ?? "",
+                    EmployeeId = officer.EmployeeId, // No longer nullable
                     IsActive = officer.IsActive,
                     LastLoginAt = officer.LastLoginAt,
                     CreatedDate = officer.CreatedDate
@@ -413,22 +432,13 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var officer = await _context.Users.FindAsync(id);
+                var officer = await _context.Officers.FindAsync(id); // Changed from Users to Officers
                 if (officer == null)
                 {
                     return NotFound(new ApiResponse
                     {
                         Success = false,
                         Message = "Officer not found"
-                    });
-                }
-
-                if (officer.Role == UserRole.Admin)
-                {
-                    return BadRequest(new ApiResponse
-                    {
-                        Success = false,
-                        Message = "Cannot delete admin user"
                     });
                 }
 
@@ -454,6 +464,136 @@ namespace PMCRMS.API.Controllers
                 {
                     Success = false,
                     Message = "An error occurred while deleting the officer",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Accept officer invitation and create officer account
+        /// </summary>
+        [HttpPost("invitations/accept")]
+        public async Task<ActionResult<ApiResponse<OfficerDto>>> AcceptInvitation([FromBody] AcceptInvitationRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Accepting invitation for email: {Email}", request.Email);
+
+                // Find the invitation
+                var invitation = await _context.OfficerInvitations
+                    .FirstOrDefaultAsync(o => o.Email == request.Email && o.Status == InvitationStatus.Pending);
+
+                if (invitation == null)
+                {
+                    _logger.LogWarning("No pending invitation found for: {Email}", request.Email);
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "No pending invitation found for this email",
+                        Errors = new List<string> { "Invitation not found" }
+                    });
+                }
+
+                // Check if invitation has expired
+                if (invitation.ExpiresAt < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("Invitation expired for: {Email}", request.Email);
+                    invitation.Status = InvitationStatus.Expired;
+                    await _context.SaveChangesAsync();
+                    
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This invitation has expired. Please contact the administrator.",
+                        Errors = new List<string> { "Invitation expired" }
+                    });
+                }
+
+                // Verify temporary password
+                if (!BCrypt.Net.BCrypt.Verify(request.TemporaryPassword, invitation.TemporaryPassword))
+                {
+                    _logger.LogWarning("Invalid temporary password for: {Email}", request.Email);
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid temporary password",
+                        Errors = new List<string> { "Authentication failed" }
+                    });
+                }
+
+                // Check if officer already exists
+                var existingOfficer = await _context.Officers
+                    .FirstOrDefaultAsync(o => o.Email == request.Email);
+                
+                if (existingOfficer != null)
+                {
+                    _logger.LogWarning("Officer already exists: {Email}", request.Email);
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer account already exists for this email",
+                        Errors = new List<string> { "Duplicate account" }
+                    });
+                }
+
+                // Create officer account
+                var officer = new Officer
+                {
+                    Name = invitation.Name,
+                    Email = invitation.Email,
+                    PhoneNumber = invitation.PhoneNumber,
+                    Role = invitation.Role,
+                    EmployeeId = invitation.EmployeeId,
+                    Department = invitation.Department,
+                    PasswordHash = invitation.TemporaryPassword, // Use hashed temporary password
+                    MustChangePassword = true, // Force password change on first login
+                    IsActive = true,
+                    InvitationId = invitation.Id,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.Officers.Add(officer);
+
+                // Mark invitation as accepted
+                invitation.Status = InvitationStatus.Accepted;
+                invitation.AcceptedAt = DateTime.UtcNow;
+                invitation.OfficerId = officer.Id;
+                invitation.UpdatedBy = "System";
+                invitation.UpdatedDate = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Officer account created successfully for: {Email}, ID: {OfficerId}", 
+                    request.Email, officer.Id);
+
+                var officerDto = new OfficerDto
+                {
+                    Id = officer.Id,
+                    Name = officer.Name,
+                    Email = officer.Email,
+                    PhoneNumber = officer.PhoneNumber,
+                    Role = officer.Role.ToString(),
+                    EmployeeId = officer.EmployeeId,
+                    IsActive = officer.IsActive,
+                    LastLoginAt = officer.LastLoginAt,
+                    CreatedDate = officer.CreatedDate
+                };
+
+                return Ok(new ApiResponse<OfficerDto>
+                {
+                    Success = true,
+                    Message = "Invitation accepted successfully. You can now login with your temporary password.",
+                    Data = officerDto
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error accepting invitation for {Email}", request.Email);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "An error occurred while accepting the invitation",
                     Errors = new List<string> { ex.Message }
                 });
             }

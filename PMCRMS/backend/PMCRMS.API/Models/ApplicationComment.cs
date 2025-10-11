@@ -29,7 +29,7 @@ namespace PMCRMS.API.Models
         public virtual Application Application { get; set; } = null!;
         
         [ForeignKey("CommentedBy")]
-        public virtual User CommentedByUser { get; set; } = null!;
+        public virtual Officer CommentedByOfficer { get; set; } = null!;
         
         [ForeignKey("ParentCommentId")]
         public virtual ApplicationComment? ParentComment { get; set; }

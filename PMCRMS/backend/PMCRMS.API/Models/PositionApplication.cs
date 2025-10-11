@@ -251,6 +251,6 @@ namespace PMCRMS.API.Models
         public virtual PositionApplication Application { get; set; } = null!;
 
         [ForeignKey("VerifiedBy")]
-        public virtual User? VerifiedByUser { get; set; }
+        public virtual Officer? VerifiedByOfficer { get; set; }
     }
 }

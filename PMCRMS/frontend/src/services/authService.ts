@@ -40,6 +40,16 @@ export const authService = {
   },
 
   /**
+   * System Admin login with email and password
+   */
+  async adminLogin(
+    email: string,
+    password: string
+  ): Promise<ApiResponse<AuthResponse>> {
+    return apiClient.post(`${endpoint}/admin-login`, { email, password });
+  },
+
+  /**
    * Change password for authenticated user
    */
   async changePassword(

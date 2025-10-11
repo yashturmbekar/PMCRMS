@@ -7,6 +7,8 @@ namespace PMCRMS.API.Services
     public interface IDataSeeder
     {
         Task SeedOfficerPasswordsAsync();
+        Task EnsureSystemAdminExistsAsync();
+        Task SeedAllOfficersForTestingAsync();
     }
 
     public class DataSeeder : IDataSeeder
@@ -23,6 +25,81 @@ namespace PMCRMS.API.Services
             _context = context;
             _passwordHasher = passwordHasher;
             _logger = logger;
+        }
+
+        /// <summary>
+        /// Ensures a System Admin account exists in the SystemAdmins table
+        /// Creates default admin if none exists: admin@gmail.com / admin@123
+        /// Also fixes any admin accounts without password hashes
+        /// </summary>
+        public async Task EnsureSystemAdminExistsAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Checking if System Admin exists...");
+
+                // Check if admin@gmail.com exists
+                var defaultAdmin = await _context.SystemAdmins
+                    .FirstOrDefaultAsync(a => a.Email == "admin@gmail.com");
+
+                if (defaultAdmin != null)
+                {
+                    // Admin exists, but check if password is set
+                    if (string.IsNullOrEmpty(defaultAdmin.PasswordHash))
+                    {
+                        _logger.LogWarning("System Admin exists but has no password. Setting password...");
+                        defaultAdmin.PasswordHash = _passwordHasher.HashPassword("admin@123");
+                        defaultAdmin.UpdatedBy = "System";
+                        defaultAdmin.UpdatedDate = DateTime.UtcNow;
+                        await _context.SaveChangesAsync();
+                        
+                        _logger.LogInformation("Password set successfully for admin@gmail.com");
+                        _logger.LogWarning(
+                            "SECURITY NOTICE: Default admin password is 'admin@123'. Please change it immediately after first login."
+                        );
+                    }
+                    else
+                    {
+                        _logger.LogInformation("System Admin already exists with password set. Skipping.");
+                    }
+                    return;
+                }
+
+                _logger.LogInformation("No System Admin found. Creating default admin account...");
+
+                // Create default System Admin
+                defaultAdmin = new SystemAdmin
+                {
+                    Name = "System Administrator",
+                    Email = "admin@gmail.com",
+                    PasswordHash = _passwordHasher.HashPassword("admin@123"),
+                    EmployeeId = "ADMIN001",
+                    IsSuperAdmin = true,
+                    Department = "Administration",
+                    Designation = "System Administrator",
+                    IsActive = true,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedBy = "System",
+                    UpdatedDate = DateTime.UtcNow
+                };
+
+                _context.SystemAdmins.Add(defaultAdmin);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "System Admin created successfully. Email: {Email}, EmployeeId: {EmployeeId}",
+                    defaultAdmin.Email, defaultAdmin.EmployeeId
+                );
+                _logger.LogWarning(
+                    "SECURITY NOTICE: Default admin password is 'admin@123'. Please change it immediately after first login."
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while ensuring System Admin exists");
+                throw;
+            }
         }
 
         /// <summary>
@@ -125,6 +202,104 @@ namespace PMCRMS.API.Services
             };
 
             return $"PMC-{roleCode}-{userId:D4}";
+        }
+
+        /// <summary>
+        /// Seeds all 13 officer roles for testing purposes
+        /// This is a ONE-TIME operation for testing only
+        /// </summary>
+        public async Task SeedAllOfficersForTestingAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Starting test officer seeding for all 13 roles...");
+
+                var officerRoles = new[]
+                {
+                    UserRole.JuniorArchitect,
+                    UserRole.AssistantArchitect,
+                    UserRole.JuniorLicenceEngineer,
+                    UserRole.AssistantLicenceEngineer,
+                    UserRole.JuniorStructuralEngineer,
+                    UserRole.AssistantStructuralEngineer,
+                    UserRole.JuniorSupervisor1,
+                    UserRole.AssistantSupervisor1,
+                    UserRole.JuniorSupervisor2,
+                    UserRole.AssistantSupervisor2,
+                    UserRole.ExecutiveEngineer,
+                    UserRole.CityEngineer,
+                    UserRole.Clerk
+                };
+
+                var createdCount = 0;
+
+                foreach (var role in officerRoles)
+                {
+                    // Check if officer with this role already exists
+                    var existingOfficer = await _context.Users
+                        .FirstOrDefaultAsync(u => u.Role == role);
+
+                    if (existingOfficer != null)
+                    {
+                        _logger.LogInformation("Officer with role {Role} already exists. Skipping.", role);
+                        continue;
+                    }
+
+                    // Create test officer
+                    var roleName = role.ToString();
+                    var email = $"{roleName.ToLower()}@test.com";
+                    var defaultPassword = GenerateDefaultPassword(role);
+
+                    var officer = new User
+                    {
+                        Name = $"Test {FormatRoleName(roleName)}",
+                        Email = email,
+                        PasswordHash = _passwordHasher.HashPassword(defaultPassword),
+                        Role = role,
+                        IsActive = true,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    };
+
+                    _context.Users.Add(officer);
+                    await _context.SaveChangesAsync();
+
+                    // Generate and update employee ID after saving to get the ID
+                    officer.EmployeeId = GenerateEmployeeId(role, officer.Id);
+                    await _context.SaveChangesAsync();
+
+                    createdCount++;
+                    _logger.LogInformation(
+                        "Created test officer: {Role} | Email: {Email} | Password: {Password} | EmployeeId: {EmployeeId}",
+                        role, email, defaultPassword, officer.EmployeeId
+                    );
+                }
+
+                _logger.LogInformation(
+                    "Test officer seeding completed. {Count} officers created out of 13 roles.",
+                    createdCount
+                );
+
+                if (createdCount > 0)
+                {
+                    _logger.LogWarning(
+                        "SECURITY NOTICE: Test officers created with default passwords. These are for TESTING ONLY."
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during test officer seeding");
+                throw;
+            }
+        }
+
+        private string FormatRoleName(string roleName)
+        {
+            // Add spaces before capital letters and numbers
+            return System.Text.RegularExpressions.Regex.Replace(roleName, "([A-Z0-9])", " $1").Trim();
         }
     }
 }

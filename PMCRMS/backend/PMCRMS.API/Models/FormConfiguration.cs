@@ -75,13 +75,19 @@ namespace PMCRMS.API.Models
 
         public DateTime EffectiveFrom { get; set; }
 
-        public int ChangedByUserId { get; set; }
+        public int ChangedByAdminId { get; set; }
+        
+        // TEMPORARY: Kept for backward compatibility during migration
+        public int? ChangedByUserId { get; set; }
 
         [MaxLength(500)]
         public string? ChangeReason { get; set; }
 
         // Navigation properties
         public virtual FormConfiguration? FormConfiguration { get; set; }
+        public virtual SystemAdmin? ChangedByAdmin { get; set; }
+        
+        // TEMPORARY: Kept for backward compatibility during migration
         public virtual User? ChangedByUser { get; set; }
     }
 }

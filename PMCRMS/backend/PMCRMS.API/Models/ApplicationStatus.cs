@@ -11,7 +11,10 @@ namespace PMCRMS.API.Models
         public ApplicationCurrentStatus Status { get; set; }
         
         [Required]
-        public int UpdatedByUserId { get; set; }
+        public int UpdatedByOfficerId { get; set; }
+        
+        // TEMPORARY: Kept for backward compatibility during migration
+        public int? UpdatedByUserId { get; set; }
         
         [MaxLength(1000)]
         public string? Remarks { get; set; }
@@ -27,7 +30,11 @@ namespace PMCRMS.API.Models
         [ForeignKey("ApplicationId")]
         public virtual Application Application { get; set; } = null!;
         
+        [ForeignKey("UpdatedByOfficerId")]
+        public virtual Officer UpdatedByOfficer { get; set; } = null!;
+        
+        // TEMPORARY: Kept for backward compatibility during migration
         [ForeignKey("UpdatedByUserId")]
-        public virtual User UpdatedByUser { get; set; } = null!;
+        public virtual User? UpdatedByUser { get; set; }
     }
 }

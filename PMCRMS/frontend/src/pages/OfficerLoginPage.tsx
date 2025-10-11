@@ -27,13 +27,15 @@ const OfficerLoginPage: React.FC = () => {
     setError("");
 
     try {
-      const response = await apiService.auth.officerLogin(
-        formData.email,
-        formData.password
-      );
+      // Try admin login first if email is admin@gmail.com
+      const isAdminEmail = formData.email.toLowerCase() === "admin@gmail.com";
+
+      const response = isAdminEmail
+        ? await apiService.auth.adminLogin(formData.email, formData.password)
+        : await apiService.auth.officerLogin(formData.email, formData.password);
 
       if (response.success && response.data) {
-        console.log("Officer login successful:", response.data);
+        console.log("Login successful:", response.data);
 
         // Store token and user data
         localStorage.setItem("pmcrms_token", response.data.token);
@@ -69,7 +71,7 @@ const OfficerLoginPage: React.FC = () => {
           "Login failed. Please check your credentials.";
       }
       setError(errorMessage);
-      console.error("Officer login error:", errorMessage);
+      console.error("Login error:", errorMessage);
     } finally {
       setLoading(false);
     }

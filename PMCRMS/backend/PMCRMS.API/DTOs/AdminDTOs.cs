@@ -46,7 +46,7 @@ namespace PMCRMS.API.DTOs
         public string InvitedByName { get; set; } = string.Empty;
         public string InvitedBy { get; set; } = string.Empty; // Alias for InvitedByName
         public bool IsExpired { get; set; }
-        public int? UserId { get; set; }
+        public int? OfficerId { get; set; } // Changed from UserId to OfficerId
         public string? TemporaryPassword { get; set; } // Only included when creating new invitation
     }
 
@@ -61,7 +61,7 @@ namespace PMCRMS.API.DTOs
     public class UpdateOfficerRequest
     {
         [Required]
-        public int UserId { get; set; }
+        public int OfficerId { get; set; }
 
         [MaxLength(100)]
         public string? Name { get; set; }
@@ -69,7 +69,7 @@ namespace PMCRMS.API.DTOs
         [Phone]
         public string? PhoneNumber { get; set; }
 
-        public UserRole? Role { get; set; }
+        public OfficerRole? Role { get; set; }
 
         [MaxLength(100)]
         public string? Department { get; set; }
@@ -111,7 +111,7 @@ namespace PMCRMS.API.DTOs
 
     public class OfficerDetailDto : OfficerDto
     {
-        public string? Address { get; set; }
+        public string? Department { get; set; } // Changed from Address to Department
         public DateTime? UpdatedDate { get; set; }
         public string? CreatedBy { get; set; }
         public List<ApplicationStatusSummaryDto> RecentStatusUpdates { get; set; } = new List<ApplicationStatusSummaryDto>();
