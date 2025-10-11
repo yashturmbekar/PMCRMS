@@ -1006,6 +1006,235 @@ namespace PMCRMS.API.Controllers
 
         #endregion
 
+        #region Application Management
+
+        [HttpGet("applications")]
+        public async Task<ActionResult<ApiResponse<List<ApplicationDto>>>> GetAllApplications(
+            [FromQuery] string? status = null,
+            [FromQuery] string? type = null,
+            [FromQuery] string? search = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
+                _logger.LogInformation("Admin {AdminId} fetching all applications", adminId);
+
+                var query = _context.Applications
+                    .Include(a => a.Applicant)
+                    .Include(a => a.Documents)
+                    .Include(a => a.StatusHistory)
+                        .ThenInclude(s => s.UpdatedByUser)
+                    .AsQueryable();
+
+                // Filter by status
+                if (!string.IsNullOrEmpty(status) && Enum.TryParse<ApplicationCurrentStatus>(status, out var statusEnum))
+                {
+                    query = query.Where(a => a.CurrentStatus == statusEnum);
+                }
+
+                // Filter by type
+                if (!string.IsNullOrEmpty(type) && Enum.TryParse<ApplicationType>(type, out var typeEnum))
+                {
+                    query = query.Where(a => a.Type == typeEnum);
+                }
+
+                // Search filter
+                if (!string.IsNullOrEmpty(search))
+                {
+                    query = query.Where(a =>
+                        a.ApplicationNumber.Contains(search) ||
+                        a.ProjectTitle.Contains(search) ||
+                        a.Applicant.Name.Contains(search) ||
+                        a.Applicant.Email.Contains(search));
+                }
+
+                var totalCount = await query.CountAsync();
+                var applications = await query
+                    .OrderByDescending(a => a.CreatedDate)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var applicationDtos = applications.Select(app => new ApplicationDto
+                {
+                    Id = app.Id,
+                    ApplicationNumber = app.ApplicationNumber,
+                    ApplicantId = app.ApplicantId,
+                    ApplicantName = app.Applicant?.Name ?? "Unknown",
+                    ApplicationType = app.Type.ToString(),
+                    ProjectTitle = app.ProjectTitle,
+                    ProjectDescription = app.ProjectDescription,
+                    SiteAddress = app.SiteAddress,
+                    PlotArea = app.PlotArea,
+                    BuiltUpArea = app.BuiltUpArea,
+                    EstimatedCost = app.EstimatedCost,
+                    CurrentStatus = app.CurrentStatus.ToString(),
+                    AssignedOfficerId = app.AssignedOfficerId,
+                    AssignedOfficerName = app.AssignedOfficerName,
+                    AssignedOfficerDesignation = app.AssignedOfficerDesignation,
+                    AssignedDate = app.AssignedDate,
+                    CreatedAt = app.CreatedDate,
+                    UpdatedAt = app.UpdatedDate ?? app.CreatedDate,
+                    CertificateIssuedDate = app.CertificateIssuedDate,
+                    CertificateNumber = app.CertificateNumber,
+                    Documents = app.Documents.Select(d => new DocumentDto
+                    {
+                        Id = d.Id,
+                        FileName = d.FileName,
+                        DocumentType = d.Type.ToString(),
+                        FileSize = d.FileSize,
+                        UploadedAt = d.CreatedDate
+                    }).ToList()
+                }).ToList();
+
+                return Ok(new ApiResponse<List<ApplicationDto>>
+                {
+                    Success = true,
+                    Data = applicationDtos,
+                    Message = $"Retrieved {applicationDtos.Count} applications (Page {page} of {(int)Math.Ceiling((double)totalCount / pageSize)})"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching applications for admin");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to fetch applications",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("applications/{id}")]
+        public async Task<ActionResult<ApiResponse<ApplicationDetailDto>>> GetApplicationDetail(int id)
+        {
+            try
+            {
+                var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
+                _logger.LogInformation("Admin {AdminId} fetching application detail {ApplicationId}", adminId, id);
+
+                var application = await _context.Applications
+                    .Include(a => a.Applicant)
+                    .Include(a => a.Documents)
+                    .Include(a => a.StatusHistory)
+                        .ThenInclude(s => s.UpdatedByUser)
+                    .Include(a => a.Comments)
+                        .ThenInclude(c => c.CommentedByUser)
+                    .Include(a => a.Payments)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+
+                if (application == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Application not found"
+                    });
+                }
+
+                var applicationDetail = new ApplicationDetailDto
+                {
+                    Id = application.Id,
+                    ApplicationNumber = application.ApplicationNumber,
+                    ApplicantId = application.ApplicantId,
+                    ApplicantName = application.Applicant?.Name ?? "Unknown",
+                    ApplicantEmail = application.Applicant?.Email ?? "",
+                    ApplicantPhone = application.Applicant?.PhoneNumber ?? "",
+                    ApplicationType = application.Type.ToString(),
+                    ProjectTitle = application.ProjectTitle,
+                    ProjectDescription = application.ProjectDescription,
+                    SiteAddress = application.SiteAddress,
+                    PlotArea = application.PlotArea,
+                    BuiltUpArea = application.BuiltUpArea,
+                    EstimatedCost = application.EstimatedCost,
+                    CurrentStatus = application.CurrentStatus.ToString(),
+                    AssignedOfficerId = application.AssignedOfficerId,
+                    AssignedOfficerName = application.AssignedOfficerName,
+                    AssignedOfficerDesignation = application.AssignedOfficerDesignation,
+                    AssignedDate = application.AssignedDate,
+                    FeeAmount = application.FeeAmount,
+                    PaymentDueDate = application.PaymentDueDate,
+                    CertificateNumber = application.CertificateNumber,
+                    CertificateIssuedDate = application.CertificateIssuedDate,
+                    Remarks = application.Remarks,
+                    CreatedAt = application.CreatedDate,
+                    UpdatedAt = application.UpdatedDate ?? application.CreatedDate,
+                    Documents = application.Documents.Select(d => new ApplicationDocumentDto
+                    {
+                        Id = d.Id,
+                        FileName = d.FileName,
+                        DocumentType = d.Type.ToString(),
+                        FileSize = d.FileSize,
+                        FilePath = d.FilePath,
+                        IsVerified = d.IsVerified,
+                        VerifiedBy = d.VerifiedBy,
+                        VerifiedByName = d.VerifiedByUser?.Name,
+                        VerifiedDate = d.VerifiedDate,
+                        UploadedAt = d.CreatedDate
+                    }).ToList(),
+                    StatusHistory = application.StatusHistory
+                        .OrderByDescending(s => s.StatusDate)
+                        .Select(s => new ApplicationStatusDto
+                        {
+                            Id = s.Id,
+                            Status = s.Status.ToString(),
+                            Remarks = s.Remarks,
+                            UpdatedBy = s.UpdatedByUser?.Name ?? "System",
+                            UpdatedByRole = s.UpdatedByUser?.Role.ToString() ?? "",
+                            StatusDate = s.StatusDate,
+                            CreatedAt = s.CreatedDate
+                        }).ToList(),
+                    Comments = application.Comments
+                        .OrderByDescending(c => c.CreatedDate)
+                        .Select(c => new ApplicationCommentDto
+                        {
+                            Id = c.Id,
+                            Comment = c.Comment,
+                            CommentType = c.CommentType,
+                            IsInternal = c.IsInternal,
+                            CommentedBy = c.CommentedByUser?.Name ?? "Unknown",
+                            CommentedByRole = c.CommentedByUser?.Role.ToString() ?? "",
+                            CreatedAt = c.CreatedDate
+                        }).ToList(),
+                    Payments = application.Payments
+                        .OrderByDescending(p => p.CreatedDate)
+                        .Select(p => new ApplicationPaymentDto
+                        {
+                            Id = p.Id,
+                            PaymentId = p.PaymentId,
+                            Amount = p.Amount,
+                            Status = p.Status.ToString(),
+                            Method = p.Method.ToString(),
+                            TransactionId = p.TransactionId,
+                            PaymentDate = p.PaymentDate,
+                            CreatedAt = p.CreatedDate
+                        }).ToList()
+                };
+
+                return Ok(new ApiResponse<ApplicationDetailDto>
+                {
+                    Success = true,
+                    Data = applicationDetail,
+                    Message = "Application details retrieved successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching application detail {ApplicationId}", id);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to fetch application details",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private string GenerateTemporaryPassword()

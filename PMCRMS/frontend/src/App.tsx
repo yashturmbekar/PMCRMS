@@ -8,9 +8,9 @@ import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import OfficerManagement from "./pages/admin/OfficerManagement";
-import FormManagement from "./pages/admin/FormManagement";
-import AdminLayout from "./components/layouts/AdminLayout";
+import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
+import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
+import FormManagementPage from "./pages/admin/FormManagementPage";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import ViewPositionApplication from "./pages/ViewPositionApplication";
 import LoaderShowcase from "./components/LoaderShowcase";
@@ -71,19 +71,28 @@ function App() {
               {/* Loader Showcase - For demo purposes */}
               <Route path="/loaders" element={<LoaderShowcase />} />
 
-              {/* Admin routes with AdminLayout */}
+              {/* Admin routes with Layout */}
               <Route
                 path="/admin"
                 element={
                   <AdminRoute>
-                    <AdminLayout />
+                    <Layout>
+                      <Routes>
+                        <Route index element={<AdminDashboard />} />
+                        <Route
+                          path="applications"
+                          element={<AdminApplicationsPage />}
+                        />
+                        <Route
+                          path="officers"
+                          element={<OfficerManagementPage />}
+                        />
+                        <Route path="forms" element={<FormManagementPage />} />
+                      </Routes>
+                    </Layout>
                   </AdminRoute>
                 }
-              >
-                <Route index element={<AdminDashboard />} />
-                <Route path="officers" element={<OfficerManagement />} />
-                <Route path="forms" element={<FormManagement />} />
-              </Route>
+              />
 
               {/* Protected routes with Layout */}
               <Route

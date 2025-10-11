@@ -300,11 +300,19 @@ class AdminService {
     return apiClient.delete(`/Admin/forms/${formId}`);
   }
 
-  // Get all applications for admin view
-  async getAllApplications(
-    filters?: Record<string, unknown>
-  ): Promise<ApiResponse<unknown[]>> {
-    return apiClient.get("/Applications", { params: filters });
+  // Applications Management - Admin View
+  async getAllApplications(filters?: {
+    status?: string;
+    type?: string;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<ApiResponse<unknown[]>> {
+    return apiClient.get("/Admin/applications", { params: filters });
+  }
+
+  async getApplicationDetail(id: number): Promise<ApiResponse<unknown>> {
+    return apiClient.get(`/Admin/applications/${id}`);
   }
 }
 
