@@ -498,6 +498,88 @@ namespace PMCRMS.API.Controllers
             };
         }
 
+        /// <summary>
+        /// Download SE document by ID (serves PDF from database)
+        /// </summary>
+        [HttpGet("documents/{documentId}/download")]
+        public async Task<IActionResult> DownloadDocument(int documentId)
+        {
+            try
+            {
+                _logger.LogInformation("Downloading SE document {DocumentId}", documentId);
+
+                var document = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.Id == documentId);
+
+                if (document == null)
+                {
+                    _logger.LogWarning("SE document {DocumentId} not found", documentId);
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Document not found"
+                    });
+                }
+
+                // Try to serve from database first (for system-generated PDFs like RecommendedForm)
+                if (document.FileContent != null && document.FileContent.Length > 0)
+                {
+                    _logger.LogInformation("Serving SE document {DocumentId} from database ({Size} bytes)", 
+                        documentId, document.FileContent.Length);
+                    
+                    var contentType = document.ContentType ?? "application/pdf";
+                    var fileName = document.FileName ?? $"document_{documentId}.pdf";
+                    
+                    // Set headers to allow inline viewing in browser
+                    Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+                    Response.Headers["X-Content-Type-Options"] = "nosniff";
+                    Response.Headers["Content-Length"] = document.FileContent.Length.ToString();
+                    
+                    _logger.LogInformation("Returning PDF from database: {FileName}, {Size} bytes, ContentType: {ContentType}", 
+                        fileName, document.FileContent.Length, contentType);
+                    
+                    return File(document.FileContent, contentType);
+                }
+
+                // Fallback to physical file (for user-uploaded documents)
+                if (!string.IsNullOrEmpty(document.FilePath))
+                {
+                    var physicalPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", document.FilePath);
+                    
+                    if (System.IO.File.Exists(physicalPath))
+                    {
+                        _logger.LogInformation("Serving SE document {DocumentId} from physical path {Path}", 
+                            documentId, physicalPath);
+                        
+                        var fileBytes = await System.IO.File.ReadAllBytesAsync(physicalPath);
+                        var contentType = document.ContentType ?? "application/pdf";
+                        var fileName = document.FileName ?? Path.GetFileName(physicalPath);
+                        
+                        // Return file with inline disposition to allow viewing in browser
+                        Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileName}\"";
+                        return File(fileBytes, contentType);
+                    }
+                }
+
+                _logger.LogWarning("SE document {DocumentId} has no content - neither database nor physical file", documentId);
+                return NotFound(new ApiResponse
+                {
+                    Success = false,
+                    Message = "Document content not found"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error downloading SE document {DocumentId}", documentId);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to download document",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         #endregion
     }
 }

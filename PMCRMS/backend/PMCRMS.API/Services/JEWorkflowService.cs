@@ -893,16 +893,17 @@ namespace PMCRMS.API.Services
                 throw new Exception($"Failed to generate recommendation form: {pdfResult.Message}");
             }
 
-            // Create document record
+            // Create document record - Store PDF content in database instead of file path
             var document = new SEDocument
             {
                 ApplicationId = applicationId,
                 DocumentType = SEDocumentType.RecommendedForm,
                 FileName = pdfResult.FileName ?? $"RecommendedForm_{applicationId}.pdf",
-                FilePath = pdfResult.FilePath ?? string.Empty,
+                FilePath = null, // No physical file path needed
                 FileId = Guid.NewGuid().ToString(),
                 FileSize = (decimal)(pdfResult.FileContent.Length / 1024.0), // Size in KB
                 ContentType = "application/pdf",
+                FileContent = pdfResult.FileContent, // Store PDF binary data in database
                 IsVerified = false,
                 CreatedDate = DateTime.UtcNow
             };
@@ -910,7 +911,7 @@ namespace PMCRMS.API.Services
             _context.SEDocuments.Add(document);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Recommendation form generated and saved for application {ApplicationId}", applicationId);
+            _logger.LogInformation("Recommendation form generated and saved to database for application {ApplicationId}", applicationId);
         }
     }
 }

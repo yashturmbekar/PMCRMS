@@ -148,16 +148,35 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Add documents
+                // Add documents - convert base64 to binary and store in database
                 foreach (var doc in request.Documents)
                 {
+                    byte[]? fileContent = null;
+                    
+                    // Convert base64 string to binary data
+                    if (!string.IsNullOrEmpty(doc.FileBase64))
+                    {
+                        try
+                        {
+                            fileContent = Convert.FromBase64String(doc.FileBase64);
+                            _logger.LogInformation("Converted document {FileId} from base64 to binary ({Size} bytes)", 
+                                doc.FileId, fileContent.Length);
+                        }
+                        catch (FormatException ex)
+                        {
+                            _logger.LogError(ex, "Failed to convert base64 data for document {FileId}", doc.FileId);
+                            throw new InvalidOperationException($"Invalid base64 data for document {doc.FileId}");
+                        }
+                    }
+                    
                     application.Documents.Add(new SEDocument
                     {
                         FileId = doc.FileId,
                         DocumentType = doc.DocumentType,
                         FileName = doc.FileName,
-                        FilePath = doc.FilePath,
-                        FileSize = doc.FileSize,
+                        FilePath = null, // No physical file path - storing in database
+                        FileContent = fileContent, // Binary data stored in database
+                        FileSize = fileContent != null ? (decimal)(fileContent.Length / 1024.0) : doc.FileSize,
                         ContentType = doc.ContentType,
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -387,18 +406,37 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Update documents
+                // Update documents - convert base64 to binary and store in database
                 _context.SEDocuments.RemoveRange(application.Documents);
                 
                 foreach (var doc in request.Documents)
                 {
+                    byte[]? fileContent = null;
+                    
+                    // Convert base64 string to binary data
+                    if (!string.IsNullOrEmpty(doc.FileBase64))
+                    {
+                        try
+                        {
+                            fileContent = Convert.FromBase64String(doc.FileBase64);
+                            _logger.LogInformation("Converted document {FileId} from base64 to binary ({Size} bytes)", 
+                                doc.FileId, fileContent.Length);
+                        }
+                        catch (FormatException ex)
+                        {
+                            _logger.LogError(ex, "Failed to convert base64 data for document {FileId}", doc.FileId);
+                            throw new InvalidOperationException($"Invalid base64 data for document {doc.FileId}");
+                        }
+                    }
+                    
                     application.Documents.Add(new SEDocument
                     {
                         FileId = doc.FileId,
                         DocumentType = doc.DocumentType,
                         FileName = doc.FileName,
-                        FilePath = doc.FilePath,
-                        FileSize = doc.FileSize,
+                        FilePath = null, // No physical file path - storing in database
+                        FileContent = fileContent, // Binary data stored in database
+                        FileSize = fileContent != null ? (decimal)(fileContent.Length / 1024.0) : doc.FileSize,
                         ContentType = doc.ContentType,
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -766,14 +804,35 @@ namespace PMCRMS.API.Controllers
                     DocumentType = d.DocumentType,
                     DocumentTypeName = d.DocumentType.ToString(),
                     FileName = d.FileName,
-                    FilePath = d.FilePath,
+                    FilePath = d.FilePath, // Deprecated - may be null
                     FileSize = d.FileSize,
                     ContentType = d.ContentType,
                     IsVerified = d.IsVerified,
                     VerifiedDate = d.VerifiedDate,
-                    VerificationRemarks = d.VerificationRemarks
+                    VerificationRemarks = d.VerificationRemarks,
+                    FileBase64 = d.FileContent != null && d.FileContent.Length > 0 
+                        ? Convert.ToBase64String(d.FileContent) 
+                        : null
                 }).ToList()
             };
+
+            // Add recommendation form PDF if it exists (separate from documents)
+            var recommendationForm = application.Documents
+                .FirstOrDefault(d => d.DocumentType == SEDocumentType.RecommendedForm);
+            
+            if (recommendationForm != null && recommendationForm.FileContent != null && recommendationForm.FileContent.Length > 0)
+            {
+                response.RecommendationForm = new RecommendationFormDTO
+                {
+                    DocumentId = recommendationForm.Id,
+                    FileName = recommendationForm.FileName,
+                    FileId = recommendationForm.FileId,
+                    FileSize = recommendationForm.FileSize ?? 0,
+                    ContentType = recommendationForm.ContentType ?? "application/pdf",
+                    PdfBase64 = Convert.ToBase64String(recommendationForm.FileContent),
+                    CreatedDate = recommendationForm.CreatedDate
+                };
+            }
 
             // Add JE workflow information if application is in JE stage
             if (IsInJEWorkflowStage(application.Status))

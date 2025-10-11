@@ -606,10 +606,10 @@ export const PositionRegistrationPage = () => {
   };
 
   // Map form data to API request format
-  const mapFormDataToRequest = (
+  const mapFormDataToRequest = async (
     data: FormData,
     status: number
-  ): PositionRegistrationRequest => {
+  ): Promise<PositionRegistrationRequest> => {
     // Helper function to convert date strings to ISO 8601 UTC format
     const toUTCDate = (dateStr: string) => {
       if (!dateStr) return dateStr;
@@ -668,6 +668,29 @@ export const PositionRegistrationPage = () => {
         toDate: toUTCDate(e.toDate), // Convert to UTC
       }));
 
+    // Convert documents to base64 format
+    const documents = await Promise.all(
+      data.documents.map(async (d) => {
+        // If file exists, convert it to base64
+        if (d.file) {
+          const uploadedDoc = await positionRegistrationService.uploadDocument(
+            d.file,
+            d.documentType
+          );
+          return uploadedDoc;
+        }
+        // Otherwise, assume it's already in the correct format with base64
+        return {
+          fileId: d.fileId,
+          documentType: d.documentType,
+          fileName: d.fileName,
+          fileBase64: "", // Empty for existing documents (shouldn't happen in create flow)
+          fileSize: undefined,
+          contentType: undefined,
+        };
+      })
+    );
+
     // Build request
     const request: PositionRegistrationRequest = {
       firstName: data.firstName,
@@ -689,14 +712,7 @@ export const PositionRegistrationPage = () => {
       permanentAddress,
       qualifications,
       experiences,
-      documents: data.documents.map((d) => ({
-        fileId: d.fileId,
-        documentType: d.documentType,
-        fileName: d.fileName,
-        filePath: d.filePath,
-        fileSize: undefined,
-        contentType: undefined,
-      })),
+      documents,
     };
 
     return request;
@@ -861,7 +877,7 @@ export const PositionRegistrationPage = () => {
 
     try {
       // Map form data to API request with Submitted status (2)
-      const request = mapFormDataToRequest(formData, 2);
+      const request = await mapFormDataToRequest(formData, 2);
 
       let response;
       // If in edit mode, update existing application; otherwise create new
@@ -999,7 +1015,7 @@ export const PositionRegistrationPage = () => {
     try {
       // Map form data to API request with Draft status (1)
       // No validation required for draft save
-      const request = mapFormDataToRequest(formData, 1);
+      const request = await mapFormDataToRequest(formData, 1);
 
       let response;
       // If in edit mode, update existing draft; otherwise create new

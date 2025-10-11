@@ -43,9 +43,13 @@ const ViewPositionApplication: React.FC = () => {
   });
   const [selectedDocument, setSelectedDocument] = useState<{
     fileName: string;
-    filePath: string;
+    filePath?: string; // Make filePath optional
     documentTypeName: string;
+    id?: number; // Add optional ID for API endpoint
+    pdfBase64?: string; // Add base64 for direct display (recommendation form)
+    fileBase64?: string; // Add base64 for all documents
   } | null>(null);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
 
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
@@ -86,6 +90,60 @@ const ViewPositionApplication: React.FC = () => {
 
     fetchApplication();
   }, [id]);
+
+  // Create blob URL from base64 when selectedDocument changes
+  useEffect(() => {
+    // Cleanup previous blob URL
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+      setPdfBlobUrl(null);
+    }
+
+    // Create new blob URL if we have base64 data (either pdfBase64 or fileBase64)
+    const base64Data =
+      selectedDocument?.pdfBase64 || selectedDocument?.fileBase64;
+
+    if (base64Data) {
+      try {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        // Determine content type based on file name
+        let contentType = "application/pdf";
+        if (selectedDocument?.fileName) {
+          const fileName = selectedDocument.fileName.toLowerCase();
+          if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+            contentType = "image/jpeg";
+          } else if (fileName.endsWith(".png")) {
+            contentType = "image/png";
+          } else if (fileName.endsWith(".gif")) {
+            contentType = "image/gif";
+          } else if (fileName.endsWith(".webp")) {
+            contentType = "image/webp";
+          }
+        }
+
+        const blob = new Blob([byteArray], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        setPdfBlobUrl(url);
+        console.log("✅ Created blob URL:", url, "Type:", contentType);
+      } catch (error) {
+        console.error("❌ Error creating blob URL:", error);
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDocument]);
 
   const handleDocumentApprovalComplete = async () => {
     // Reload application data
@@ -577,6 +635,7 @@ const ViewPositionApplication: React.FC = () => {
                             fileName: doc.fileName,
                             filePath: doc.filePath,
                             documentTypeName: doc.documentTypeName,
+                            fileBase64: doc.fileBase64, // Add base64 data
                           })
                         }
                         style={{
@@ -591,12 +650,37 @@ const ViewPositionApplication: React.FC = () => {
                       <button
                         className="pmc-button pmc-button-secondary pmc-button-sm"
                         onClick={() => {
-                          const link = document.createElement("a");
-                          link.href = `http://localhost:5062/${doc.filePath}`;
-                          link.download = doc.fileName;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
+                          if (doc.fileBase64) {
+                            // Download from base64 data
+                            const byteCharacters = atob(doc.fileBase64);
+                            const byteNumbers = new Array(
+                              byteCharacters.length
+                            );
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], {
+                              type:
+                                doc.contentType || "application/octet-stream",
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = doc.fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                          } else {
+                            // Fallback to file path
+                            const link = document.createElement("a");
+                            link.href = `http://localhost:5062/${doc.filePath}`;
+                            link.download = doc.fileName;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }
                         }}
                         style={{
                           display: "flex",
@@ -616,9 +700,7 @@ const ViewPositionApplication: React.FC = () => {
       )}
 
       {/* Recommendation Form - Separate Section */}
-      {application.documents.filter(
-        (doc) => doc.documentTypeName === "RecommendedForm"
-      ).length > 0 && (
+      {application.recommendationForm && (
         <div className="pmc-card" style={{ marginBottom: "16px" }}>
           <div
             className="pmc-card-header"
@@ -638,102 +720,103 @@ const ViewPositionApplication: React.FC = () => {
           </div>
           <div className="pmc-card-body">
             <div className="pmc-form-grid pmc-form-grid-2">
-              {application.documents
-                .filter((doc) => doc.documentTypeName === "RecommendedForm")
-                .map((doc) => (
-                  <div
-                    key={doc.id}
+              <div
+                style={{
+                  padding: "16px",
+                  background: "#f8fafc",
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <FileText size={24} color="#3b82f6" />
+                  <div>
+                    <p className="pmc-value" style={{ marginBottom: "4px" }}>
+                      Recommendation Form
+                    </p>
+                    <p style={{ fontSize: "12px", color: "#64748b" }}>
+                      {application.recommendationForm.fileName}
+                    </p>
+                    {application.recommendationForm.fileSize && (
+                      <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        {(
+                          application.recommendationForm.fileSize / 1024
+                        ).toFixed(2)}{" "}
+                        KB
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <button
+                    className="pmc-button pmc-button-primary pmc-button-sm"
+                    onClick={() =>
+                      setSelectedDocument({
+                        fileName: application.recommendationForm!.fileName,
+                        filePath: "",
+                        documentTypeName: "Recommendation Form",
+                        pdfBase64: application.recommendationForm!.pdfBase64,
+                      })
+                    }
                     style={{
-                      padding: "16px",
-                      background: "#f8fafc",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "space-between",
+                      gap: "4px",
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      }}
-                    >
-                      <FileText size={24} color="#3b82f6" />
-                      <div>
-                        <p
-                          className="pmc-value"
-                          style={{ marginBottom: "4px" }}
-                        >
-                          {doc.documentTypeName}
-                        </p>
-                        <p style={{ fontSize: "12px", color: "#64748b" }}>
-                          {doc.fileName}
-                        </p>
-                        {doc.fileSize && (
-                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
-                            {(doc.fileSize / 1024).toFixed(2)} KB
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      {doc.isVerified ? (
-                        <span title="Verified">
-                          <CheckCircle size={20} color="#10b981" />
-                        </span>
-                      ) : (
-                        <span title="Not Verified">
-                          <XCircle size={20} color="#94a3b8" />
-                        </span>
-                      )}
-                      <button
-                        className="pmc-button pmc-button-primary pmc-button-sm"
-                        onClick={() =>
-                          setSelectedDocument({
-                            fileName: doc.fileName,
-                            filePath: doc.filePath,
-                            documentTypeName: doc.documentTypeName,
-                          })
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Eye size={14} />
-                        View
-                      </button>
-                      <button
-                        className="pmc-button pmc-button-secondary pmc-button-sm"
-                        onClick={() => {
-                          const link = document.createElement("a");
-                          link.href = `http://localhost:5062/${doc.filePath}`;
-                          link.download = doc.fileName;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Download size={14} />
-                        Download
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                    <Eye size={14} />
+                    View
+                  </button>
+                  <button
+                    className="pmc-button pmc-button-secondary pmc-button-sm"
+                    onClick={() => {
+                      // Download from base64 data
+                      const byteCharacters = atob(
+                        application.recommendationForm!.pdfBase64
+                      );
+                      const byteNumbers = new Array(byteCharacters.length);
+                      for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                      }
+                      const byteArray = new Uint8Array(byteNumbers);
+                      const blob = new Blob([byteArray], {
+                        type: "application/pdf",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = application.recommendationForm!.fileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <Download size={14} />
+                    Download
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1388,12 +1471,54 @@ const ViewPositionApplication: React.FC = () => {
                 <button
                   className="pmc-button pmc-button-sm"
                   onClick={() => {
-                    const link = document.createElement("a");
-                    link.href = `http://localhost:5062/${selectedDocument.filePath}`;
-                    link.download = selectedDocument.fileName;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    const base64Data =
+                      selectedDocument.pdfBase64 || selectedDocument.fileBase64;
+
+                    if (base64Data) {
+                      // Download from base64 data
+                      const byteCharacters = atob(base64Data);
+                      const byteNumbers = new Array(byteCharacters.length);
+                      for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                      }
+                      const byteArray = new Uint8Array(byteNumbers);
+
+                      // Determine content type
+                      let contentType = "application/pdf";
+                      const fileName = selectedDocument.fileName.toLowerCase();
+                      if (
+                        fileName.endsWith(".jpg") ||
+                        fileName.endsWith(".jpeg")
+                      ) {
+                        contentType = "image/jpeg";
+                      } else if (fileName.endsWith(".png")) {
+                        contentType = "image/png";
+                      } else if (fileName.endsWith(".gif")) {
+                        contentType = "image/gif";
+                      } else if (fileName.endsWith(".webp")) {
+                        contentType = "image/webp";
+                      }
+
+                      const blob = new Blob([byteArray], { type: contentType });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = selectedDocument.fileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    } else {
+                      // Use API endpoint or file path
+                      const link = document.createElement("a");
+                      link.href = selectedDocument.id
+                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                        : `http://localhost:5062/${selectedDocument.filePath}`;
+                      link.download = selectedDocument.fileName;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
                   }}
                   style={{
                     background: "rgba(255,255,255,0.2)",
@@ -1433,9 +1558,14 @@ const ViewPositionApplication: React.FC = () => {
                 justifyContent: "center",
               }}
             >
-              {selectedDocument.filePath.toLowerCase().endsWith(".pdf") ? (
+              {selectedDocument.fileName.toLowerCase().endsWith(".pdf") ? (
                 <iframe
-                  src={`http://localhost:5062/${selectedDocument.filePath}`}
+                  src={
+                    pdfBlobUrl ||
+                    (selectedDocument.id
+                      ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                      : `http://localhost:5062/${selectedDocument.filePath}`)
+                  }
                   style={{
                     width: "100%",
                     height: "100%",
@@ -1443,11 +1573,16 @@ const ViewPositionApplication: React.FC = () => {
                   }}
                   title={selectedDocument.fileName}
                 />
-              ) : selectedDocument.filePath.match(
+              ) : selectedDocument.fileName.match(
                   /\.(jpg|jpeg|png|gif|webp)$/i
                 ) ? (
                 <img
-                  src={`http://localhost:5062/${selectedDocument.filePath}`}
+                  src={
+                    pdfBlobUrl ||
+                    (selectedDocument.id
+                      ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                      : `http://localhost:5062/${selectedDocument.filePath}`)
+                  }
                   alt={selectedDocument.fileName}
                   style={{
                     maxWidth: "100%",
@@ -1474,7 +1609,9 @@ const ViewPositionApplication: React.FC = () => {
                     className="pmc-button pmc-button-primary"
                     onClick={() => {
                       const link = document.createElement("a");
-                      link.href = `http://localhost:5062/${selectedDocument.filePath}`;
+                      link.href = selectedDocument.id
+                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                        : `http://localhost:5062/${selectedDocument.filePath}`;
                       link.download = selectedDocument.fileName;
                       link.click();
                     }}

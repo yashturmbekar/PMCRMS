@@ -176,12 +176,17 @@ namespace PMCRMS.API.DTOs
         [Required(ErrorMessage = "File name is required")]
         public string FileName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "File path is required")]
-        public string FilePath { get; set; } = string.Empty;
+        // Base64 encoded file content (for binary storage in database)
+        [Required(ErrorMessage = "File content is required")]
+        public string FileBase64 { get; set; } = string.Empty;
 
         public decimal? FileSize { get; set; }
 
         public string? ContentType { get; set; }
+        
+        // Deprecated - keeping for backward compatibility
+        [Obsolete("Use FileBase64 instead. FilePath is no longer used.")]
+        public string? FilePath { get; set; }
     }
 
     // Response DTOs
@@ -220,8 +225,25 @@ namespace PMCRMS.API.DTOs
         public List<ExperienceResponseDTO> Experiences { get; set; } = new List<ExperienceResponseDTO>();
         public List<DocumentResponseDTO> Documents { get; set; } = new List<DocumentResponseDTO>();
         
+        // Recommendation Form PDF (system-generated, stored as binary data)
+        public RecommendationFormDTO? RecommendationForm { get; set; }
+        
         // JE Workflow Information
         public JEWorkflowInfo? WorkflowInfo { get; set; }
+    }
+    
+    /// <summary>
+    /// Recommendation Form PDF data
+    /// </summary>
+    public class RecommendationFormDTO
+    {
+        public int DocumentId { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string FileId { get; set; } = string.Empty;
+        public decimal FileSize { get; set; }
+        public string ContentType { get; set; } = string.Empty;
+        public string PdfBase64 { get; set; } = string.Empty; // Base64 encoded PDF data
+        public DateTime CreatedDate { get; set; }
     }
     
     /// <summary>
@@ -304,12 +326,13 @@ namespace PMCRMS.API.DTOs
         public SEDocumentType DocumentType { get; set; }
         public string DocumentTypeName { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
+        public string? FilePath { get; set; } // Deprecated - keeping for backward compatibility
         public decimal? FileSize { get; set; }
         public string? ContentType { get; set; }
         public bool IsVerified { get; set; }
         public DateTime? VerifiedDate { get; set; }
         public string? VerificationRemarks { get; set; }
+        public string? FileBase64 { get; set; } // Base64 encoded file content from database
     }
 
     // Custom Validation Attributes

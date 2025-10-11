@@ -97,18 +97,19 @@ const Dashboard: React.FC = () => {
         console.log("✅ Fetched applications:", allApplicationsResponse);
 
         // Separate submitted and draft applications
-        const submitted = allApplicationsResponse.filter(
-          (app) => app.status === 2
-        ); // Status 2 = Submitted
+        // Draft = 1, all other statuses (2+) are considered "submitted/in-progress"
         const drafts = allApplicationsResponse.filter(
           (app) => app.status === 1
-        ); // Status 1 = Draft
+        ); // Status 1 = Draft only
+        const submitted = allApplicationsResponse.filter(
+          (app) => app.status !== 1
+        ); // All non-draft applications (Submitted, Under Review, Approved, etc.)
         const completed = allApplicationsResponse.filter(
           (app) => app.status === 23
         ); // Status 23 = Completed
 
         console.log(
-          "📋 Submitted:",
+          "📋 Submitted/In-Progress:",
           submitted.length,
           "Draft:",
           drafts.length,

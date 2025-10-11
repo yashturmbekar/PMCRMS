@@ -55,9 +55,18 @@ export interface DocumentUpload {
   fileId: string;
   documentType: number;
   fileName: string;
-  filePath: string;
+  fileBase64: string; // Base64 encoded file content
   fileSize?: number;
   contentType?: string;
+  filePath?: string; // Deprecated - for backward compatibility
+}
+
+export interface RecommendationFormResponse {
+  pdfBase64: string;
+  documentId: number;
+  fileName: string;
+  generatedDate: string;
+  fileSize: number;
 }
 
 export interface PositionRegistrationResponse {
@@ -92,6 +101,7 @@ export interface PositionRegistrationResponse {
   qualifications: QualificationResponse[];
   experiences: ExperienceResponse[];
   documents: DocumentResponse[];
+  recommendationForm?: RecommendationFormResponse;
   workflowInfo?: WorkflowInfo;
 }
 
@@ -155,12 +165,13 @@ export interface DocumentResponse {
   documentType: number;
   documentTypeName: string;
   fileName: string;
-  filePath: string;
+  filePath?: string; // Deprecated - may be null
   fileSize?: number;
   contentType?: string;
   isVerified: boolean;
   verifiedDate?: string;
   verificationRemarks?: string;
+  fileBase64?: string; // Base64 encoded file content from database
 }
 
 const positionRegistrationService = {
@@ -225,27 +236,33 @@ const positionRegistrationService = {
   },
 
   /**
-   * Upload a document file
+   * Convert file to base64 for database storage
    */
   uploadDocument: async (
     file: File,
     documentType: number
   ): Promise<DocumentUpload> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("documentType", documentType.toString());
+    // Convert file to base64
+    const fileBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(",")[1]; // Remove data URL prefix
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-    // This endpoint needs to be created separately for file uploads
-    const response = await apiClient.postWithFiles(
-      "/Document/upload",
-      formData
-    );
+    // Generate a unique file ID
+    const fileId = `DOC_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(7)}`;
 
     return {
-      fileId: response.fileId,
+      fileId: fileId,
       documentType: documentType,
       fileName: file.name,
-      filePath: response.filePath,
+      fileBase64: fileBase64,
       fileSize: file.size,
       contentType: file.type,
     };

@@ -282,9 +282,8 @@ namespace PMCRMS.API.Models
 
         public SEDocumentType DocumentType { get; set; }
 
-        [Required]
         [MaxLength(500)]
-        public string FilePath { get; set; } = string.Empty;
+        public string? FilePath { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(255)]
@@ -299,6 +298,9 @@ namespace PMCRMS.API.Models
 
         [MaxLength(50)]
         public string? ContentType { get; set; }
+
+        // Store PDF content directly in database for RecommendedForm documents
+        public byte[]? FileContent { get; set; }
 
         public bool IsVerified { get; set; } = false;
 
