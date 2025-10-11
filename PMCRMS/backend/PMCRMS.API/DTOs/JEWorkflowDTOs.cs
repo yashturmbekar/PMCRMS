@@ -63,12 +63,8 @@ namespace PMCRMS.API.DTOs
     /// </summary>
     public class VerifyDocumentRequestDto
     {
-        public int DocumentId { get; set; }
-        public bool IsAuthentic { get; set; }
-        public bool IsCompliant { get; set; }
-        public bool IsComplete { get; set; }
-        public List<ChecklistItemDto> ChecklistItems { get; set; } = new List<ChecklistItemDto>();
-        public string? Remarks { get; set; }
+        public int ApplicationId { get; set; }
+        public string? Comments { get; set; }
     }
 
     /// <summary>

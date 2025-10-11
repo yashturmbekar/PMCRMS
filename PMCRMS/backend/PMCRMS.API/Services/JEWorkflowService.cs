@@ -233,25 +233,37 @@ namespace PMCRMS.API.Services
         {
             try
             {
+                // Find the application using ApplicationId from the request
                 var application = await _context.PositionApplications
-                    .FirstOrDefaultAsync(a => a.Id == request.DocumentId); // Note: Using DocumentId as ApplicationId based on DTO
+                    .FirstOrDefaultAsync(a => a.Id == request.ApplicationId);
 
                 if (application == null)
                 {
                     return new WorkflowActionResultDto { Success = false, Message = "Application not found" };
                 }
 
-                // Update status if pending
+                // Update application status if this is the first verification
                 if (application.Status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING)
                 {
                     application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS;
-                    await _context.SaveChangesAsync();
                 }
+
+                // Set AllDocumentsVerified to true
+                application.AllDocumentsVerified = true;
+                application.DocumentsVerifiedDate = DateTime.UtcNow;
+                
+                // Save JE comments if provided
+                if (!string.IsNullOrWhiteSpace(request.Comments))
+                {
+                    application.JEComments = request.Comments;
+                }
+
+                await _context.SaveChangesAsync();
 
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = "Document verification recorded",
+                    Message = "Documents verified successfully",
                     NewStatus = application.Status
                 };
             }

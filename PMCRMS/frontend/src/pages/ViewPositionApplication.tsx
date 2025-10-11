@@ -18,6 +18,8 @@ import { PageLoader } from "../components";
 import { DocumentApprovalModal } from "../components/workflow";
 import AuthContext from "../contexts/AuthContext";
 import { jeWorkflowService } from "../services/jeWorkflowService";
+import NotificationModal from "../components/common/NotificationModal";
+import type { NotificationType } from "../components/common/NotificationModal";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -40,6 +42,18 @@ const ViewPositionApplication: React.FC = () => {
     contactPerson: "",
     place: "",
     roomNumber: "",
+  });
+  const [notification, setNotification] = useState<{
+    isOpen: boolean;
+    message: string;
+    type: NotificationType;
+    title: string;
+    autoClose?: boolean;
+  }>({
+    isOpen: false,
+    message: "",
+    type: "success",
+    title: "",
   });
   const [selectedDocument, setSelectedDocument] = useState<{
     fileName: string;
@@ -230,11 +244,26 @@ const ViewPositionApplication: React.FC = () => {
         remarks,
       });
 
-      alert("Application rejected successfully!");
-      navigate(backPath);
+      setNotification({
+        isOpen: true,
+        message: "The application has been rejected successfully!",
+        type: "success",
+        title: "Application Rejected Successfully!",
+        autoClose: true,
+      });
+
+      setTimeout(() => {
+        navigate(backPath);
+      }, 2000);
     } catch (error) {
       console.error("❌ Error rejecting application:", error);
-      alert("Failed to reject application. Please try again.");
+      setNotification({
+        isOpen: true,
+        message: "Failed to reject application. Please try again.",
+        type: "error",
+        title: "Rejection Failed",
+        autoClose: false,
+      });
     }
   };
 
@@ -287,1350 +316,1377 @@ const ViewPositionApplication: React.FC = () => {
   };
 
   return (
-    <div className="pmc-container" style={{ padding: "20px" }}>
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <button
-          onClick={() => navigate(backPath)}
-          className="pmc-button pmc-button-secondary pmc-button-sm"
-          style={{ marginBottom: "16px" }}
-        >
-          <ArrowLeft size={16} style={{ marginRight: "8px" }} />
-          {isAdminView ? "Back to Applications" : "Back to Dashboard"}
-        </button>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <h1 className="pmc-page-title">Application Details</h1>
-            {application.applicationNumber && (
-              <p
-                style={{ color: "#64748b", fontSize: "14px", marginTop: "4px" }}
-              >
-                Application #: <strong>{application.applicationNumber}</strong>
-              </p>
-            )}
-          </div>
-          {getStatusBadge(application.status)}
-        </div>
-      </div>
-
-      {/* Basic Information */}
-      <div className="pmc-card" style={{ marginBottom: "16px" }}>
-        <div
-          className="pmc-card-header"
-          style={{
-            background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-            color: "#334155",
-            padding: "12px 16px",
-            borderBottom: "2px solid #cbd5e1",
-          }}
-        >
-          <h2
-            className="pmc-card-title"
-            style={{ color: "#334155", margin: 0 }}
-          >
-            Basic Information
-          </h2>
-        </div>
-        <div className="pmc-card-body">
-          <div className="pmc-form-grid pmc-form-grid-3">
-            <div>
-              <label className="pmc-label">Position Type</label>
-              <p className="pmc-value">{application.positionTypeName}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Full Name</label>
-              <p className="pmc-value">{application.fullName}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Mother's Name</label>
-              <p className="pmc-value">{application.motherName}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Mobile Number</label>
-              <p className="pmc-value">{application.mobileNumber}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Email Address</label>
-              <p className="pmc-value">{application.emailAddress}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Gender</label>
-              <p className="pmc-value">{application.genderName}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Date of Birth</label>
-              <p className="pmc-value">
-                {new Date(application.dateOfBirth).toLocaleDateString()} (
-                {application.age} years)
-              </p>
-            </div>
-            {application.bloodGroup && (
-              <div>
-                <label className="pmc-label">Blood Group</label>
-                <p className="pmc-value">{application.bloodGroup}</p>
-              </div>
-            )}
-            {application.height && (
-              <div>
-                <label className="pmc-label">Height</label>
-                <p className="pmc-value">{application.height} cm</p>
-              </div>
-            )}
-            <div>
-              <label className="pmc-label">PAN Card Number</label>
-              <p className="pmc-value">{application.panCardNumber}</p>
-            </div>
-            <div>
-              <label className="pmc-label">Aadhar Card Number</label>
-              <p className="pmc-value">{application.aadharCardNumber}</p>
-            </div>
-            {application.coaCardNumber && (
-              <div>
-                <label className="pmc-label">COA Card Number</label>
-                <p className="pmc-value">{application.coaCardNumber}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Addresses */}
-      {application.addresses.map((address) => (
-        <div
-          className="pmc-card"
-          style={{ marginBottom: "16px" }}
-          key={address.id}
-        >
-          <div
-            className="pmc-card-header"
-            style={{
-              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-              color: "#334155",
-              padding: "12px 16px",
-              borderBottom: "2px solid #cbd5e1",
-            }}
-          >
-            <h2
-              className="pmc-card-title"
-              style={{ color: "#334155", margin: 0 }}
-            >
-              {address.addressType} Address
-            </h2>
-          </div>
-          <div className="pmc-card-body">
-            <p className="pmc-value">{address.fullAddress}</p>
-          </div>
-        </div>
-      ))}
-
-      {/* Qualifications */}
-      {application.qualifications.length > 0 && (
-        <div className="pmc-card" style={{ marginBottom: "16px" }}>
-          <div
-            className="pmc-card-header"
-            style={{
-              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-              color: "#334155",
-              padding: "12px 16px",
-              borderBottom: "2px solid #cbd5e1",
-            }}
-          >
-            <h2
-              className="pmc-card-title"
-              style={{ color: "#334155", margin: 0 }}
-            >
-              Educational Qualifications
-            </h2>
-          </div>
-          <div className="pmc-card-body">
-            {application.qualifications.map((qual, index) => (
-              <div
-                key={qual.id}
-                style={{
-                  padding: "16px",
-                  background: "#f8fafc",
-                  borderRadius: "8px",
-                  marginBottom:
-                    index < application.qualifications.length - 1
-                      ? "12px"
-                      : "0",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div className="pmc-form-grid pmc-form-grid-3">
-                  <div>
-                    <label className="pmc-label">Institute Name</label>
-                    <p className="pmc-value">{qual.instituteName}</p>
-                  </div>
-                  <div>
-                    <label className="pmc-label">University Name</label>
-                    <p className="pmc-value">{qual.universityName}</p>
-                  </div>
-                  <div>
-                    <label className="pmc-label">Degree/Specialization</label>
-                    <p className="pmc-value">
-                      {qual.degreeName} ({qual.specializationName})
-                    </p>
-                  </div>
-                  <div>
-                    <label className="pmc-label">Passing Month & Year</label>
-                    <p className="pmc-value">
-                      {qual.passingMonthName} {qual.yearOfPassing}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Experiences */}
-      {application.experiences.length > 0 && (
-        <div className="pmc-card" style={{ marginBottom: "16px" }}>
-          <div
-            className="pmc-card-header"
-            style={{
-              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-              color: "#334155",
-              padding: "12px 16px",
-              borderBottom: "2px solid #cbd5e1",
-            }}
-          >
-            <h2
-              className="pmc-card-title"
-              style={{ color: "#334155", margin: 0 }}
-            >
-              Work Experience
-            </h2>
-          </div>
-          <div className="pmc-card-body">
-            {application.experiences.map((exp, index) => (
-              <div
-                key={exp.id}
-                style={{
-                  padding: "16px",
-                  background: "#f8fafc",
-                  borderRadius: "8px",
-                  marginBottom:
-                    index < application.experiences.length - 1 ? "12px" : "0",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div className="pmc-form-grid pmc-form-grid-3">
-                  <div>
-                    <label className="pmc-label">Company Name</label>
-                    <p className="pmc-value">{exp.companyName}</p>
-                  </div>
-                  <div>
-                    <label className="pmc-label">Position</label>
-                    <p className="pmc-value">{exp.position}</p>
-                  </div>
-                  <div>
-                    <label className="pmc-label">Duration</label>
-                    <p className="pmc-value">
-                      {new Date(exp.fromDate).toLocaleDateString()} -{" "}
-                      {new Date(exp.toDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="pmc-label">Total Experience</label>
-                    <p className="pmc-value">{exp.yearsOfExperience} years</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Documents */}
-      {application.documents.length > 0 && (
-        <div className="pmc-card" style={{ marginBottom: "16px" }}>
-          <div
-            className="pmc-card-header"
-            style={{
-              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-              color: "#334155",
-              padding: "12px 16px",
-              borderBottom: "2px solid #cbd5e1",
-            }}
-          >
-            <h2
-              className="pmc-card-title"
-              style={{ color: "#334155", margin: 0 }}
-            >
-              Uploaded Documents
-            </h2>
-          </div>
-          <div className="pmc-card-body">
-            <div className="pmc-form-grid pmc-form-grid-2">
-              {application.documents
-                .filter((doc) => doc.documentTypeName !== "RecommendedForm")
-                .map((doc) => (
-                  <div
-                    key={doc.id}
-                    style={{
-                      padding: "16px",
-                      background: "#f8fafc",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      }}
-                    >
-                      <FileText size={24} color="#3b82f6" />
-                      <div>
-                        <p
-                          className="pmc-value"
-                          style={{ marginBottom: "4px" }}
-                        >
-                          {doc.documentTypeName}
-                        </p>
-                        <p style={{ fontSize: "12px", color: "#64748b" }}>
-                          {doc.fileName}
-                        </p>
-                        {doc.fileSize && (
-                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
-                            {(doc.fileSize / 1024).toFixed(2)} KB
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      {doc.isVerified ? (
-                        <span title="Verified">
-                          <CheckCircle size={20} color="#10b981" />
-                        </span>
-                      ) : (
-                        <span title="Not Verified">
-                          <XCircle size={20} color="#94a3b8" />
-                        </span>
-                      )}
-                      <button
-                        className="pmc-button pmc-button-primary pmc-button-sm"
-                        onClick={() =>
-                          setSelectedDocument({
-                            fileName: doc.fileName,
-                            filePath: doc.filePath,
-                            documentTypeName: doc.documentTypeName,
-                            fileBase64: doc.fileBase64, // Add base64 data
-                          })
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Eye size={14} />
-                        View
-                      </button>
-                      <button
-                        className="pmc-button pmc-button-secondary pmc-button-sm"
-                        onClick={() => {
-                          if (doc.fileBase64) {
-                            // Download from base64 data
-                            const byteCharacters = atob(doc.fileBase64);
-                            const byteNumbers = new Array(
-                              byteCharacters.length
-                            );
-                            for (let i = 0; i < byteCharacters.length; i++) {
-                              byteNumbers[i] = byteCharacters.charCodeAt(i);
-                            }
-                            const byteArray = new Uint8Array(byteNumbers);
-                            const blob = new Blob([byteArray], {
-                              type:
-                                doc.contentType || "application/octet-stream",
-                            });
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.download = doc.fileName;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            URL.revokeObjectURL(url);
-                          } else {
-                            // Fallback to file path
-                            const link = document.createElement("a");
-                            link.href = `http://localhost:5062/${doc.filePath}`;
-                            link.download = doc.fileName;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                          }
-                        }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Download size={14} />
-                        Download
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Recommendation Form - Separate Section */}
-      {application.recommendationForm && (
-        <div className="pmc-card" style={{ marginBottom: "16px" }}>
-          <div
-            className="pmc-card-header"
-            style={{
-              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-              color: "#334155",
-              padding: "12px 16px",
-              borderBottom: "2px solid #cbd5e1",
-            }}
-          >
-            <h2
-              className="pmc-card-title"
-              style={{ color: "#334155", margin: 0 }}
-            >
-              Recommendation Form
-            </h2>
-          </div>
-          <div className="pmc-card-body">
-            <div className="pmc-form-grid pmc-form-grid-2">
-              <div
-                style={{
-                  padding: "16px",
-                  background: "#f8fafc",
-                  borderRadius: "8px",
-                  border: "1px solid #e2e8f0",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
-                  <FileText size={24} color="#3b82f6" />
-                  <div>
-                    <p className="pmc-value" style={{ marginBottom: "4px" }}>
-                      Recommendation Form
-                    </p>
-                    <p style={{ fontSize: "12px", color: "#64748b" }}>
-                      {application.recommendationForm.fileName}
-                    </p>
-                    {application.recommendationForm.fileSize && (
-                      <p style={{ fontSize: "11px", color: "#94a3b8" }}>
-                        {(
-                          application.recommendationForm.fileSize / 1024
-                        ).toFixed(2)}{" "}
-                        KB
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  <button
-                    className="pmc-button pmc-button-primary pmc-button-sm"
-                    onClick={() =>
-                      setSelectedDocument({
-                        fileName: application.recommendationForm!.fileName,
-                        filePath: "",
-                        documentTypeName: "Recommendation Form",
-                        pdfBase64: application.recommendationForm!.pdfBase64,
-                      })
-                    }
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <Eye size={14} />
-                    View
-                  </button>
-                  <button
-                    className="pmc-button pmc-button-secondary pmc-button-sm"
-                    onClick={() => {
-                      // Download from base64 data
-                      const byteCharacters = atob(
-                        application.recommendationForm!.pdfBase64
-                      );
-                      const byteNumbers = new Array(byteCharacters.length);
-                      for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                      }
-                      const byteArray = new Uint8Array(byteNumbers);
-                      const blob = new Blob([byteArray], {
-                        type: "application/pdf",
-                      });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = application.recommendationForm!.fileName;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
-                    }}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px",
-                    }}
-                  >
-                    <Download size={14} />
-                    Download
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Application Timeline */}
-      <div className="pmc-card">
-        <div
-          className="pmc-card-header"
-          style={{
-            background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-            color: "#334155",
-            padding: "12px 16px",
-            borderBottom: "2px solid #cbd5e1",
-          }}
-        >
-          <h2
-            className="pmc-card-title"
-            style={{ color: "#334155", margin: 0 }}
-          >
-            Application Timeline
-          </h2>
-        </div>
-        <div className="pmc-card-body">
-          <div className="pmc-form-grid pmc-form-grid-3">
-            <div>
-              <label className="pmc-label">Created Date</label>
-              <p className="pmc-value">
-                {new Date(application.createdDate).toLocaleString()}
-              </p>
-            </div>
-            {application.submittedDate && (
-              <div>
-                <label className="pmc-label">Submitted Date</label>
-                <p className="pmc-value">
-                  {new Date(application.submittedDate).toLocaleString()}
-                </p>
-              </div>
-            )}
-            {application.approvedDate && (
-              <div>
-                <label className="pmc-label">Approved Date</label>
-                <p className="pmc-value">
-                  {new Date(application.approvedDate).toLocaleString()}
-                </p>
-              </div>
-            )}
-          </div>
-          {application.remarks && (
-            <div style={{ marginTop: "16px" }}>
-              <label className="pmc-label">Remarks</label>
-              <p className="pmc-value">{application.remarks}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Action Buttons for JE Officers */}
-      {isJEOfficer && (
-        <div
-          style={{
-            marginTop: "24px",
-            display: "flex",
-            gap: "12px",
-            justifyContent: "flex-end",
-          }}
-        >
-          <button
-            className="pmc-button pmc-button-danger"
-            onClick={handleRejectApplication}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <Ban size={18} />
-            Reject Application
-          </button>
-          {application.workflowInfo?.currentStage ===
-          "Appointment Scheduled" ? (
-            <button
-              className="pmc-button pmc-button-success"
-              onClick={() => setShowDocumentApprovalModal(true)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <CheckCircle size={18} />
-              Document Approve
-            </button>
-          ) : (
-            <button
-              className="pmc-button pmc-button-success"
-              onClick={handleScheduleAppointment}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}
-            >
-              <Calendar size={18} />
-              Schedule Appointment
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Schedule Appointment Modal */}
-      {showScheduleModal && (
-        <div
-          onClick={() => setShowScheduleModal(false)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px",
-            overflow: "auto",
-          }}
-        >
-          <div
-            className="pmc-modal pmc-slideInUp"
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "white",
-              borderRadius: "8px",
-              maxWidth: "500px",
-              width: "100%",
-              boxShadow:
-                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-              position: "relative",
-              maxHeight: "95vh",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div
-              className="pmc-modal-header"
-              style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid #e5e7eb",
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                flexShrink: 0,
-              }}
-            >
-              <h3
-                style={{
-                  color: "white",
-                  marginBottom: "2px",
-                  fontSize: "18px",
-                  fontWeight: "600",
-                }}
-              >
-                Schedule Appointment
-              </h3>
-              <p
-                style={{
-                  color: "rgba(255,255,255,0.9)",
-                  fontSize: "13px",
-                  margin: 0,
-                }}
-              >
-                Application: {application.applicationNumber}
-              </p>
-            </div>
-
-            {/* Error Message */}
-            {scheduleError && (
-              <div
-                style={{
-                  margin: "16px 20px 0",
-                  padding: "12px 16px",
-                  background:
-                    "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                  border: "1.5px solid #ef4444",
-                  borderRadius: "6px",
-                  color: "#991b1b",
-                  fontSize: "13px",
-                  fontWeight: "500",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <span style={{ fontSize: "16px" }}>⚠️</span>
-                {scheduleError}
-              </div>
-            )}
-
-            <div
-              className="pmc-modal-body"
-              style={{
-                padding: "20px",
-                overflowY: "auto",
-                flexGrow: 1,
-              }}
-            >
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  className="pmc-label"
-                  style={{
-                    display: "block",
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    fontSize: "13px",
-                    color: "#374151",
-                  }}
-                >
-                  Review Date <span style={{ color: "#dc2626" }}>*</span>
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduleForm.reviewDate}
-                  onChange={(e) =>
-                    setScheduleForm({
-                      ...scheduleForm,
-                      reviewDate: e.target.value,
-                    })
-                  }
-                  min={new Date().toISOString().slice(0, 16)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: "1.5px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    outline: "none",
-                    transition: "all 0.2s",
-                    cursor: "pointer",
-                    backgroundColor: "white",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#10b981";
-                    e.target.style.boxShadow =
-                      "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#d1d5db";
-                    e.target.style.boxShadow = "none";
-                  }}
-                  required
-                />
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "12px",
-                  marginBottom: "16px",
-                }}
-              >
-                <div>
-                  <label
-                    className="pmc-label"
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "#374151",
-                    }}
-                  >
-                    Contact Person <span style={{ color: "#dc2626" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Contact Person"
-                    value={scheduleForm.contactPerson}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        contactPerson: e.target.value,
-                      })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    className="pmc-label"
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "#374151",
-                    }}
-                  >
-                    Room Number <span style={{ color: "#dc2626" }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Room Number"
-                    value={scheduleForm.roomNumber}
-                    onChange={(e) =>
-                      setScheduleForm({
-                        ...scheduleForm,
-                        roomNumber: e.target.value,
-                      })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  className="pmc-label"
-                  style={{
-                    display: "block",
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    fontSize: "13px",
-                    color: "#374151",
-                  }}
-                >
-                  Place <span style={{ color: "#dc2626" }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Place"
-                  value={scheduleForm.place}
-                  onChange={(e) =>
-                    setScheduleForm({ ...scheduleForm, place: e.target.value })
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: "1.5px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    outline: "none",
-                    transition: "all 0.2s",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#10b981";
-                    e.target.style.boxShadow =
-                      "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#d1d5db";
-                    e.target.style.boxShadow = "none";
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  className="pmc-label"
-                  style={{
-                    display: "block",
-                    marginBottom: "6px",
-                    fontWeight: 500,
-                    fontSize: "13px",
-                    color: "#374151",
-                  }}
-                >
-                  Comments
-                </label>
-                <textarea
-                  placeholder="Additional comments or instructions"
-                  value={scheduleForm.comments}
-                  onChange={(e) =>
-                    setScheduleForm({
-                      ...scheduleForm,
-                      comments: e.target.value,
-                    })
-                  }
-                  rows={3}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    border: "1.5px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                    resize: "vertical",
-                    outline: "none",
-                    transition: "all 0.2s",
-                    fontFamily: "inherit",
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#10b981";
-                    e.target.style.boxShadow =
-                      "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = "#d1d5db";
-                    e.target.style.boxShadow = "none";
-                  }}
-                />
-              </div>
-            </div>
-
-            <div
-              className="pmc-modal-footer"
-              style={{
-                padding: "12px 20px",
-                borderTop: "1px solid #e5e7eb",
-                display: "flex",
-                gap: "10px",
-                justifyContent: "flex-end",
-                background: "#f9fafb",
-                flexShrink: 0,
-              }}
-            >
-              <button
-                className="pmc-button pmc-button-secondary"
-                onClick={() => setShowScheduleModal(false)}
-                style={{
-                  padding: "8px 20px",
-                  fontSize: "14px",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                className="pmc-button pmc-button-success"
-                onClick={handleSubmitSchedule}
-                style={{
-                  padding: "8px 20px",
-                  fontSize: "14px",
-                }}
-              >
-                Schedule Appointment
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success Popup */}
-      {showSuccessPopup && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 10000,
-            padding: "20px",
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "16px",
-              maxWidth: "500px",
-              width: "100%",
-              padding: "40px",
-              textAlign: "center",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <div
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                margin: "0 auto 24px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "40px",
-              }}
-            >
-              ✓
-            </div>
-            <h2
-              style={{
-                fontSize: "28px",
-                fontWeight: "700",
-                color: "#10b981",
-                marginBottom: "16px",
-              }}
-            >
-              Appointment Scheduled Successfully!
-            </h2>
-            <p
-              style={{
-                fontSize: "16px",
-                color: "#64748b",
-                marginBottom: "24px",
-              }}
-            >
-              The appointment has been scheduled and the applicant will be
-              notified.
-            </p>
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                border: "4px solid #10b981",
-                borderTopColor: "transparent",
-                borderRadius: "50%",
-                margin: "0 auto",
-                animation: "spin 1s linear infinite",
-              }}
-            />
-            <p
-              style={{
-                marginTop: "16px",
-                fontSize: "14px",
-                color: "#64748b",
-              }}
-            >
-              Redirecting to dashboard...
-            </p>
-            <style>
-              {`
-                @keyframes spin {
-                  to { transform: rotate(360deg); }
-                }
-              `}
-            </style>
-          </div>
-        </div>
-      )}
-
-      {/* Document Approval Modal */}
-      <DocumentApprovalModal
-        isOpen={showDocumentApprovalModal}
-        onClose={() => setShowDocumentApprovalModal(false)}
-        applicationId={application.id}
-        documents={application.documents.map((doc) => ({
-          id: doc.id,
-          documentTypeName: doc.documentTypeName,
-          fileName: doc.fileName,
-          fileSize: doc.fileSize,
-          isVerified: doc.isVerified,
-        }))}
-        onApprovalComplete={handleDocumentApprovalComplete}
+    <>
+      <NotificationModal
+        isOpen={notification.isOpen}
+        onClose={() => setNotification({ ...notification, isOpen: false })}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        autoClose={notification.autoClose}
+        autoCloseDuration={2000}
       />
+      <div className="pmc-container" style={{ padding: "20px" }}>
+        {/* Header */}
+        <div style={{ marginBottom: "24px" }}>
+          <button
+            onClick={() => navigate(backPath)}
+            className="pmc-button pmc-button-secondary pmc-button-sm"
+            style={{ marginBottom: "16px" }}
+          >
+            <ArrowLeft size={16} style={{ marginRight: "8px" }} />
+            {isAdminView ? "Back to Applications" : "Back to Dashboard"}
+          </button>
 
-      {/* Document Preview Modal */}
-      {selectedDocument && (
-        <div
-          className="pmc-modal-overlay"
-          onClick={() => setSelectedDocument(null)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px",
-          }}
-        >
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
-              background: "white",
-              borderRadius: "8px",
-              width: "90%",
-              maxWidth: "1200px",
-              height: "90vh",
               display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
           >
-            {/* Header */}
-            <div
-              style={{
-                padding: "16px 20px",
-                borderBottom: "1px solid #e5e7eb",
-                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <h3
-                  style={{
-                    color: "white",
-                    margin: 0,
-                    fontSize: "18px",
-                    fontWeight: "600",
-                  }}
-                >
-                  {selectedDocument.documentTypeName}
-                </h3>
+            <div>
+              <h1 className="pmc-page-title">Application Details</h1>
+              {application.applicationNumber && (
                 <p
                   style={{
-                    color: "rgba(255,255,255,0.9)",
-                    fontSize: "13px",
-                    margin: "4px 0 0 0",
+                    color: "#64748b",
+                    fontSize: "14px",
+                    marginTop: "4px",
                   }}
                 >
-                  {selectedDocument.fileName}
+                  Application #:{" "}
+                  <strong>{application.applicationNumber}</strong>
+                </p>
+              )}
+            </div>
+            {getStatusBadge(application.status)}
+          </div>
+        </div>
+
+        {/* Basic Information */}
+        <div className="pmc-card" style={{ marginBottom: "16px" }}>
+          <div
+            className="pmc-card-header"
+            style={{
+              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+              color: "#334155",
+              padding: "12px 16px",
+              borderBottom: "2px solid #cbd5e1",
+            }}
+          >
+            <h2
+              className="pmc-card-title"
+              style={{ color: "#334155", margin: 0 }}
+            >
+              Basic Information
+            </h2>
+          </div>
+          <div className="pmc-card-body">
+            <div className="pmc-form-grid pmc-form-grid-3">
+              <div>
+                <label className="pmc-label">Position Type</label>
+                <p className="pmc-value">{application.positionTypeName}</p>
+              </div>
+              <div>
+                <label className="pmc-label">Full Name</label>
+                <p className="pmc-value">{application.fullName}</p>
+              </div>
+              <div>
+                <label className="pmc-label">Mother's Name</label>
+                <p className="pmc-value">{application.motherName}</p>
+              </div>
+              <div>
+                <label className="pmc-label">Mobile Number</label>
+                <p className="pmc-value">{application.mobileNumber}</p>
+              </div>
+              <div>
+                <label className="pmc-label">Email Address</label>
+                <p className="pmc-value">{application.emailAddress}</p>
+              </div>
+              <div>
+                <label className="pmc-label">Gender</label>
+                <p className="pmc-value">{application.genderName}</p>
+              </div>
+              <div>
+                <label className="pmc-label">Date of Birth</label>
+                <p className="pmc-value">
+                  {new Date(application.dateOfBirth).toLocaleDateString()} (
+                  {application.age} years)
                 </p>
               </div>
-              <div
-                style={{ display: "flex", gap: "8px", alignItems: "center" }}
-              >
-                <button
-                  className="pmc-button pmc-button-sm"
-                  onClick={() => {
-                    const base64Data =
-                      selectedDocument.pdfBase64 || selectedDocument.fileBase64;
-
-                    if (base64Data) {
-                      // Download from base64 data
-                      const byteCharacters = atob(base64Data);
-                      const byteNumbers = new Array(byteCharacters.length);
-                      for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
-                      }
-                      const byteArray = new Uint8Array(byteNumbers);
-
-                      // Determine content type
-                      let contentType = "application/pdf";
-                      const fileName = selectedDocument.fileName.toLowerCase();
-                      if (
-                        fileName.endsWith(".jpg") ||
-                        fileName.endsWith(".jpeg")
-                      ) {
-                        contentType = "image/jpeg";
-                      } else if (fileName.endsWith(".png")) {
-                        contentType = "image/png";
-                      } else if (fileName.endsWith(".gif")) {
-                        contentType = "image/gif";
-                      } else if (fileName.endsWith(".webp")) {
-                        contentType = "image/webp";
-                      }
-
-                      const blob = new Blob([byteArray], { type: contentType });
-                      const url = URL.createObjectURL(blob);
-                      const link = document.createElement("a");
-                      link.href = url;
-                      link.download = selectedDocument.fileName;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                      URL.revokeObjectURL(url);
-                    } else {
-                      // Use API endpoint or file path
-                      const link = document.createElement("a");
-                      link.href = selectedDocument.id
-                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                        : `http://localhost:5062/${selectedDocument.filePath}`;
-                      link.download = selectedDocument.fileName;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.2)",
-                    color: "white",
-                    border: "1px solid rgba(255,255,255,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  <Download size={14} />
-                  Download
-                </button>
-                <button
-                  onClick={() => setSelectedDocument(null)}
-                  style={{
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    padding: "4px",
-                    color: "white",
-                  }}
-                >
-                  <X size={24} />
-                </button>
+              {application.bloodGroup && (
+                <div>
+                  <label className="pmc-label">Blood Group</label>
+                  <p className="pmc-value">{application.bloodGroup}</p>
+                </div>
+              )}
+              {application.height && (
+                <div>
+                  <label className="pmc-label">Height</label>
+                  <p className="pmc-value">{application.height} cm</p>
+                </div>
+              )}
+              <div>
+                <label className="pmc-label">PAN Card Number</label>
+                <p className="pmc-value">{application.panCardNumber}</p>
               </div>
-            </div>
-
-            {/* Document Preview */}
-            <div
-              style={{
-                flex: 1,
-                overflow: "auto",
-                background: "#f3f4f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {selectedDocument.fileName.toLowerCase().endsWith(".pdf") ? (
-                <iframe
-                  src={
-                    pdfBlobUrl ||
-                    (selectedDocument.id
-                      ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                      : `http://localhost:5062/${selectedDocument.filePath}`)
-                  }
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    border: "none",
-                  }}
-                  title={selectedDocument.fileName}
-                />
-              ) : selectedDocument.fileName.match(
-                  /\.(jpg|jpeg|png|gif|webp)$/i
-                ) ? (
-                <img
-                  src={
-                    pdfBlobUrl ||
-                    (selectedDocument.id
-                      ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                      : `http://localhost:5062/${selectedDocument.filePath}`)
-                  }
-                  alt={selectedDocument.fileName}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    objectFit: "contain",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "40px",
-                    color: "#64748b",
-                  }}
-                >
-                  <FileText size={64} style={{ margin: "0 auto 16px" }} />
-                  <p style={{ fontSize: "16px", marginBottom: "8px" }}>
-                    Preview not available for this file type
-                  </p>
-                  <p style={{ fontSize: "14px", marginBottom: "16px" }}>
-                    Click the download button to view the file
-                  </p>
-                  <button
-                    className="pmc-button pmc-button-primary"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = selectedDocument.id
-                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                        : `http://localhost:5062/${selectedDocument.filePath}`;
-                      link.download = selectedDocument.fileName;
-                      link.click();
-                    }}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <Download size={16} />
-                    Download File
-                  </button>
+              <div>
+                <label className="pmc-label">Aadhar Card Number</label>
+                <p className="pmc-value">{application.aadharCardNumber}</p>
+              </div>
+              {application.coaCardNumber && (
+                <div>
+                  <label className="pmc-label">COA Card Number</label>
+                  <p className="pmc-value">{application.coaCardNumber}</p>
                 </div>
               )}
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* Addresses */}
+        {application.addresses.map((address) => (
+          <div
+            className="pmc-card"
+            style={{ marginBottom: "16px" }}
+            key={address.id}
+          >
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
+                padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "#334155", margin: 0 }}
+              >
+                {address.addressType} Address
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <p className="pmc-value">{address.fullAddress}</p>
+            </div>
+          </div>
+        ))}
+
+        {/* Qualifications */}
+        {application.qualifications.length > 0 && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
+                padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "#334155", margin: 0 }}
+              >
+                Educational Qualifications
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              {application.qualifications.map((qual, index) => (
+                <div
+                  key={qual.id}
+                  style={{
+                    padding: "16px",
+                    background: "#f8fafc",
+                    borderRadius: "8px",
+                    marginBottom:
+                      index < application.qualifications.length - 1
+                        ? "12px"
+                        : "0",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div className="pmc-form-grid pmc-form-grid-3">
+                    <div>
+                      <label className="pmc-label">Institute Name</label>
+                      <p className="pmc-value">{qual.instituteName}</p>
+                    </div>
+                    <div>
+                      <label className="pmc-label">University Name</label>
+                      <p className="pmc-value">{qual.universityName}</p>
+                    </div>
+                    <div>
+                      <label className="pmc-label">Degree/Specialization</label>
+                      <p className="pmc-value">
+                        {qual.degreeName} ({qual.specializationName})
+                      </p>
+                    </div>
+                    <div>
+                      <label className="pmc-label">Passing Month & Year</label>
+                      <p className="pmc-value">
+                        {qual.passingMonthName} {qual.yearOfPassing}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Experiences */}
+        {application.experiences.length > 0 && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
+                padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "#334155", margin: 0 }}
+              >
+                Work Experience
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              {application.experiences.map((exp, index) => (
+                <div
+                  key={exp.id}
+                  style={{
+                    padding: "16px",
+                    background: "#f8fafc",
+                    borderRadius: "8px",
+                    marginBottom:
+                      index < application.experiences.length - 1 ? "12px" : "0",
+                    border: "1px solid #e2e8f0",
+                  }}
+                >
+                  <div className="pmc-form-grid pmc-form-grid-3">
+                    <div>
+                      <label className="pmc-label">Company Name</label>
+                      <p className="pmc-value">{exp.companyName}</p>
+                    </div>
+                    <div>
+                      <label className="pmc-label">Position</label>
+                      <p className="pmc-value">{exp.position}</p>
+                    </div>
+                    <div>
+                      <label className="pmc-label">Duration</label>
+                      <p className="pmc-value">
+                        {new Date(exp.fromDate).toLocaleDateString()} -{" "}
+                        {new Date(exp.toDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="pmc-label">Total Experience</label>
+                      <p className="pmc-value">{exp.yearsOfExperience} years</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Documents */}
+        {application.documents.length > 0 && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
+                padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "#334155", margin: 0 }}
+              >
+                Uploaded Documents
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <div className="pmc-form-grid pmc-form-grid-2">
+                {application.documents
+                  .filter((doc) => doc.documentTypeName !== "RecommendedForm")
+                  .map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        padding: "16px",
+                        background: "#f8fafc",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <FileText size={24} color="#3b82f6" />
+                        <div>
+                          <p
+                            className="pmc-value"
+                            style={{ marginBottom: "4px" }}
+                          >
+                            {doc.documentTypeName}
+                          </p>
+                          <p style={{ fontSize: "12px", color: "#64748b" }}>
+                            {doc.fileName}
+                          </p>
+                          {doc.fileSize && (
+                            <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                              {(doc.fileSize / 1024).toFixed(2)} KB
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        {doc.isVerified ? (
+                          <span title="Verified">
+                            <CheckCircle size={20} color="#10b981" />
+                          </span>
+                        ) : (
+                          <span title="Not Verified">
+                            <XCircle size={20} color="#94a3b8" />
+                          </span>
+                        )}
+                        <button
+                          className="pmc-button pmc-button-primary pmc-button-sm"
+                          onClick={() =>
+                            setSelectedDocument({
+                              fileName: doc.fileName,
+                              filePath: doc.filePath,
+                              documentTypeName: doc.documentTypeName,
+                              fileBase64: doc.fileBase64, // Add base64 data
+                            })
+                          }
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Eye size={14} />
+                          View
+                        </button>
+                        <button
+                          className="pmc-button pmc-button-secondary pmc-button-sm"
+                          onClick={() => {
+                            if (doc.fileBase64) {
+                              // Download from base64 data
+                              const byteCharacters = atob(doc.fileBase64);
+                              const byteNumbers = new Array(
+                                byteCharacters.length
+                              );
+                              for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                              }
+                              const byteArray = new Uint8Array(byteNumbers);
+                              const blob = new Blob([byteArray], {
+                                type:
+                                  doc.contentType || "application/octet-stream",
+                              });
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.download = doc.fileName;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              URL.revokeObjectURL(url);
+                            } else {
+                              // Fallback to file path
+                              const link = document.createElement("a");
+                              link.href = `http://localhost:5062/${doc.filePath}`;
+                              link.download = doc.fileName;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Download size={14} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recommendation Form - Separate Section */}
+        {application.recommendationForm && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+                color: "#334155",
+                padding: "12px 16px",
+                borderBottom: "2px solid #cbd5e1",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "#334155", margin: 0 }}
+              >
+                Recommendation Form
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <div className="pmc-form-grid pmc-form-grid-2">
+                <div
+                  style={{
+                    padding: "16px",
+                    background: "#f8fafc",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <FileText size={24} color="#3b82f6" />
+                    <div>
+                      <p className="pmc-value" style={{ marginBottom: "4px" }}>
+                        Recommendation Form
+                      </p>
+                      <p style={{ fontSize: "12px", color: "#64748b" }}>
+                        {application.recommendationForm.fileName}
+                      </p>
+                      {application.recommendationForm.fileSize && (
+                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                          {(
+                            application.recommendationForm.fileSize / 1024
+                          ).toFixed(2)}{" "}
+                          KB
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <button
+                      className="pmc-button pmc-button-primary pmc-button-sm"
+                      onClick={() =>
+                        setSelectedDocument({
+                          fileName: application.recommendationForm!.fileName,
+                          filePath: "",
+                          documentTypeName: "Recommendation Form",
+                          pdfBase64: application.recommendationForm!.pdfBase64,
+                        })
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Eye size={14} />
+                      View
+                    </button>
+                    <button
+                      className="pmc-button pmc-button-secondary pmc-button-sm"
+                      onClick={() => {
+                        // Download from base64 data
+                        const byteCharacters = atob(
+                          application.recommendationForm!.pdfBase64
+                        );
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], {
+                          type: "application/pdf",
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download =
+                          application.recommendationForm!.fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Download size={14} />
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Application Timeline */}
+        <div className="pmc-card">
+          <div
+            className="pmc-card-header"
+            style={{
+              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+              color: "#334155",
+              padding: "12px 16px",
+              borderBottom: "2px solid #cbd5e1",
+            }}
+          >
+            <h2
+              className="pmc-card-title"
+              style={{ color: "#334155", margin: 0 }}
+            >
+              Application Timeline
+            </h2>
+          </div>
+          <div className="pmc-card-body">
+            <div className="pmc-form-grid pmc-form-grid-3">
+              <div>
+                <label className="pmc-label">Created Date</label>
+                <p className="pmc-value">
+                  {new Date(application.createdDate).toLocaleString()}
+                </p>
+              </div>
+              {application.submittedDate && (
+                <div>
+                  <label className="pmc-label">Submitted Date</label>
+                  <p className="pmc-value">
+                    {new Date(application.submittedDate).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              {application.approvedDate && (
+                <div>
+                  <label className="pmc-label">Approved Date</label>
+                  <p className="pmc-value">
+                    {new Date(application.approvedDate).toLocaleString()}
+                  </p>
+                </div>
+              )}
+            </div>
+            {application.remarks && (
+              <div style={{ marginTop: "16px" }}>
+                <label className="pmc-label">Remarks</label>
+                <p className="pmc-value">{application.remarks}</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons for JE Officers */}
+        {isJEOfficer && (
+          <div
+            style={{
+              marginTop: "24px",
+              display: "flex",
+              gap: "12px",
+              justifyContent: "flex-end",
+            }}
+          >
+            <button
+              className="pmc-button pmc-button-danger"
+              onClick={handleRejectApplication}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Ban size={18} />
+              Reject Application
+            </button>
+            {application.workflowInfo?.currentStage ===
+            "Appointment Scheduled" ? (
+              <button
+                className="pmc-button pmc-button-success"
+                onClick={() => setShowDocumentApprovalModal(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <CheckCircle size={18} />
+                Document Approve
+              </button>
+            ) : (
+              <button
+                className="pmc-button pmc-button-success"
+                onClick={handleScheduleAppointment}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <Calendar size={18} />
+                Schedule Appointment
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Schedule Appointment Modal */}
+        {showScheduleModal && (
+          <div
+            onClick={() => setShowScheduleModal(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+              overflow: "auto",
+            }}
+          >
+            <div
+              className="pmc-modal pmc-slideInUp"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                maxWidth: "500px",
+                width: "100%",
+                boxShadow:
+                  "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                position: "relative",
+                maxHeight: "95vh",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div
+                className="pmc-modal-header"
+                style={{
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #e5e7eb",
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  flexShrink: 0,
+                }}
+              >
+                <h3
+                  style={{
+                    color: "white",
+                    marginBottom: "2px",
+                    fontSize: "18px",
+                    fontWeight: "600",
+                  }}
+                >
+                  Schedule Appointment
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "13px",
+                    margin: 0,
+                  }}
+                >
+                  Application: {application.applicationNumber}
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {scheduleError && (
+                <div
+                  style={{
+                    margin: "16px 20px 0",
+                    padding: "12px 16px",
+                    background:
+                      "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                    border: "1.5px solid #ef4444",
+                    borderRadius: "6px",
+                    color: "#991b1b",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  {scheduleError}
+                </div>
+              )}
+
+              <div
+                className="pmc-modal-body"
+                style={{
+                  padding: "20px",
+                  overflowY: "auto",
+                  flexGrow: 1,
+                }}
+              >
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Review Date <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleForm.reviewDate}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        reviewDate: e.target.value,
+                      })
+                    }
+                    min={new Date().toISOString().slice(0, 16)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      cursor: "pointer",
+                      backgroundColor: "white",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "12px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <div>
+                    <label
+                      className="pmc-label"
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "#374151",
+                      }}
+                    >
+                      Contact Person <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contact Person"
+                      value={scheduleForm.contactPerson}
+                      onChange={(e) =>
+                        setScheduleForm({
+                          ...scheduleForm,
+                          contactPerson: e.target.value,
+                        })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="pmc-label"
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "#374151",
+                      }}
+                    >
+                      Room Number <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Room Number"
+                      value={scheduleForm.roomNumber}
+                      onChange={(e) =>
+                        setScheduleForm({
+                          ...scheduleForm,
+                          roomNumber: e.target.value,
+                        })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Place <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Place"
+                    value={scheduleForm.place}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        place: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Comments
+                  </label>
+                  <textarea
+                    placeholder="Additional comments or instructions"
+                    value={scheduleForm.comments}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        comments: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                className="pmc-modal-footer"
+                style={{
+                  padding: "12px 20px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "flex-end",
+                  background: "#f9fafb",
+                  flexShrink: 0,
+                }}
+              >
+                <button
+                  className="pmc-button pmc-button-secondary"
+                  onClick={() => setShowScheduleModal(false)}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="pmc-button pmc-button-success"
+                  onClick={handleSubmitSchedule}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Schedule Appointment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Popup */}
+        {showSuccessPopup && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 10000,
+              padding: "20px",
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                borderRadius: "16px",
+                maxWidth: "500px",
+                width: "100%",
+                padding: "40px",
+                textAlign: "center",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  margin: "0 auto 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "40px",
+                }}
+              >
+                ✓
+              </div>
+              <h2
+                style={{
+                  fontSize: "28px",
+                  fontWeight: "700",
+                  color: "#10b981",
+                  marginBottom: "16px",
+                }}
+              >
+                Appointment Scheduled Successfully!
+              </h2>
+              <p
+                style={{
+                  fontSize: "16px",
+                  color: "#64748b",
+                  marginBottom: "24px",
+                }}
+              >
+                The appointment has been scheduled and the applicant will be
+                notified.
+              </p>
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  border: "4px solid #10b981",
+                  borderTopColor: "transparent",
+                  borderRadius: "50%",
+                  margin: "0 auto",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+              <p
+                style={{
+                  marginTop: "16px",
+                  fontSize: "14px",
+                  color: "#64748b",
+                }}
+              >
+                Redirecting to dashboard...
+              </p>
+              <style>
+                {`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              `}
+              </style>
+            </div>
+          </div>
+        )}
+
+        {/* Document Approval Modal */}
+        <DocumentApprovalModal
+          isOpen={showDocumentApprovalModal}
+          onClose={() => setShowDocumentApprovalModal(false)}
+          applicationId={application.id}
+          documents={application.documents.map((doc) => ({
+            id: doc.id,
+            documentTypeName: doc.documentTypeName,
+            fileName: doc.fileName,
+            fileSize: doc.fileSize,
+            isVerified: doc.isVerified,
+          }))}
+          onApprovalComplete={handleDocumentApprovalComplete}
+        />
+
+        {/* Document Preview Modal */}
+        {selectedDocument && (
+          <div
+            className="pmc-modal-overlay"
+            onClick={() => setSelectedDocument(null)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.8)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                width: "90%",
+                maxWidth: "1200px",
+                height: "90vh",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #e5e7eb",
+                  background:
+                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <div>
+                  <h3
+                    style={{
+                      color: "white",
+                      margin: 0,
+                      fontSize: "18px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {selectedDocument.documentTypeName}
+                  </h3>
+                  <p
+                    style={{
+                      color: "rgba(255,255,255,0.9)",
+                      fontSize: "13px",
+                      margin: "4px 0 0 0",
+                    }}
+                  >
+                    {selectedDocument.fileName}
+                  </p>
+                </div>
+                <div
+                  style={{ display: "flex", gap: "8px", alignItems: "center" }}
+                >
+                  <button
+                    className="pmc-button pmc-button-sm"
+                    onClick={() => {
+                      const base64Data =
+                        selectedDocument.pdfBase64 ||
+                        selectedDocument.fileBase64;
+
+                      if (base64Data) {
+                        // Download from base64 data
+                        const byteCharacters = atob(base64Data);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+
+                        // Determine content type
+                        let contentType = "application/pdf";
+                        const fileName =
+                          selectedDocument.fileName.toLowerCase();
+                        if (
+                          fileName.endsWith(".jpg") ||
+                          fileName.endsWith(".jpeg")
+                        ) {
+                          contentType = "image/jpeg";
+                        } else if (fileName.endsWith(".png")) {
+                          contentType = "image/png";
+                        } else if (fileName.endsWith(".gif")) {
+                          contentType = "image/gif";
+                        } else if (fileName.endsWith(".webp")) {
+                          contentType = "image/webp";
+                        }
+
+                        const blob = new Blob([byteArray], {
+                          type: contentType,
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = selectedDocument.fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                      } else {
+                        // Use API endpoint or file path
+                        const link = document.createElement("a");
+                        link.href = selectedDocument.id
+                          ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                          : `http://localhost:5062/${selectedDocument.filePath}`;
+                        link.download = selectedDocument.fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }
+                    }}
+                    style={{
+                      background: "rgba(255,255,255,0.2)",
+                      color: "white",
+                      border: "1px solid rgba(255,255,255,0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                    }}
+                  >
+                    <Download size={14} />
+                    Download
+                  </button>
+                  <button
+                    onClick={() => setSelectedDocument(null)}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "4px",
+                      color: "white",
+                    }}
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Document Preview */}
+              <div
+                style={{
+                  flex: 1,
+                  overflow: "auto",
+                  background: "#f3f4f6",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {selectedDocument.fileName.toLowerCase().endsWith(".pdf") ? (
+                  <iframe
+                    src={
+                      pdfBlobUrl ||
+                      (selectedDocument.id
+                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                        : `http://localhost:5062/${selectedDocument.filePath}`)
+                    }
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                    }}
+                    title={selectedDocument.fileName}
+                  />
+                ) : selectedDocument.fileName.match(
+                    /\.(jpg|jpeg|png|gif|webp)$/i
+                  ) ? (
+                  <img
+                    src={
+                      pdfBlobUrl ||
+                      (selectedDocument.id
+                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                        : `http://localhost:5062/${selectedDocument.filePath}`)
+                    }
+                    alt={selectedDocument.fileName}
+                    style={{
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                      objectFit: "contain",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: "#64748b",
+                    }}
+                  >
+                    <FileText size={64} style={{ margin: "0 auto 16px" }} />
+                    <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+                      Preview not available for this file type
+                    </p>
+                    <p style={{ fontSize: "14px", marginBottom: "16px" }}>
+                      Click the download button to view the file
+                    </p>
+                    <button
+                      className="pmc-button pmc-button-primary"
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = selectedDocument.id
+                          ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
+                          : `http://localhost:5062/${selectedDocument.filePath}`;
+                        link.download = selectedDocument.fileName;
+                        link.click();
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <Download size={16} />
+                      Download File
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
