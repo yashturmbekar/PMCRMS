@@ -115,7 +115,7 @@ export interface InviteOfficerRequest {
   email: string;
   phoneNumber?: string;
   role: string;
-  employeeId: string;
+  employeeId?: string; // Optional - auto-generated on backend if not provided
   department?: string;
   expiryDays?: number;
 }

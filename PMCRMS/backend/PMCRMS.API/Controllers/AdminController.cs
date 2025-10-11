@@ -135,7 +135,54 @@ namespace PMCRMS.API.Controllers
             try
             {
                 var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
-                _logger.LogInformation("Admin {AdminId} inviting officer: {Email}", adminId, request.Email);
+                _logger.LogInformation("Admin {AdminId} inviting officer: {Email}, Role: {Role}", adminId, request.Email, request.Role);
+
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(request.Name))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer name is required"
+                    });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer email is required"
+                    });
+                }
+
+                if (string.IsNullOrWhiteSpace(request.Role))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer role is required"
+                    });
+                }
+
+                // Parse role string to enum
+                if (!Enum.TryParse<UserRole>(request.Role, true, out var userRole))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = $"Invalid role: {request.Role}. Valid roles are: JuniorArchitect, AssistantArchitect, JuniorLicenceEngineer, AssistantLicenceEngineer, JuniorStructuralEngineer, AssistantStructuralEngineer, JuniorSupervisor1, AssistantSupervisor1, JuniorSupervisor2, AssistantSupervisor2, ExecutiveEngineer, CityEngineer, Clerk"
+                    });
+                }
+
+                // Auto-generate Employee ID if not provided
+                if (string.IsNullOrWhiteSpace(request.EmployeeId))
+                {
+                    var rolePrefix = string.Concat(request.Role.Where(char.IsUpper));
+                    var timestamp = DateTime.UtcNow.Ticks.ToString().Substring(DateTime.UtcNow.Ticks.ToString().Length - 6);
+                    request.EmployeeId = $"{rolePrefix}-{timestamp}";
+                    _logger.LogInformation("Auto-generated Employee ID: {EmployeeId}", request.EmployeeId);
+                }
 
                 // Check if email already exists
                 var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
@@ -184,19 +231,22 @@ namespace PMCRMS.API.Controllers
                     Name = request.Name,
                     Email = request.Email,
                     PhoneNumber = request.PhoneNumber,
-                    Role = request.Role,
+                    Role = userRole, // Use the parsed enum value
                     EmployeeId = request.EmployeeId,
-                    Department = request.Department,
+                    Department = request.Department ?? string.Empty,
                     TemporaryPassword = hashedPassword,
                     InvitedByUserId = adminId,
                     InvitedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays),
+                    ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays > 0 ? request.ExpiryDays : 7),
                     Status = InvitationStatus.Pending,
                     CreatedBy = User.FindFirst("email")?.Value ?? "Admin"
                 };
 
                 _context.OfficerInvitations.Add(invitation);
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Officer invitation created with ID: {InvitationId}, Employee ID: {EmployeeId}", 
+                    invitation.Id, invitation.EmployeeId);
 
                 // Send invitation email
                 var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
@@ -205,7 +255,7 @@ namespace PMCRMS.API.Controllers
                 var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
                     request.Email,
                     request.Name,
-                    request.Role.ToString(),
+                    userRole.ToString(), // Use the parsed enum
                     request.EmployeeId,
                     tempPassword,
                     loginUrl
@@ -231,14 +281,15 @@ namespace PMCRMS.API.Controllers
                     InvitedAt = invitation.InvitedAt,
                     ExpiresAt = invitation.ExpiresAt,
                     InvitedByName = invitedBy?.Name ?? "Admin",
-                    IsExpired = invitation.ExpiresAt <= DateTime.UtcNow
+                    IsExpired = invitation.ExpiresAt <= DateTime.UtcNow,
+                    TemporaryPassword = tempPassword // Include password in response
                 };
 
                 return Ok(new ApiResponse<OfficerInvitationDto>
                 {
                     Success = true,
                     Data = responseDto,
-                    Message = "Officer invitation sent successfully"
+                    Message = $"Officer invitation sent successfully! Temporary Password: {tempPassword}"
                 });
             }
             catch (Exception ex)

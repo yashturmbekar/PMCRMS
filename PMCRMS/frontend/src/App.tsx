@@ -77,18 +77,37 @@ function App() {
                 element={
                   <AdminRoute>
                     <Layout>
-                      <Routes>
-                        <Route index element={<AdminDashboard />} />
-                        <Route
-                          path="applications"
-                          element={<AdminApplicationsPage />}
-                        />
-                        <Route
-                          path="officers"
-                          element={<OfficerManagementPage />}
-                        />
-                        <Route path="forms" element={<FormManagementPage />} />
-                      </Routes>
+                      <AdminDashboard />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/applications"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <AdminApplicationsPage />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/officers"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <OfficerManagementPage />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/forms"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <FormManagementPage />
                     </Layout>
                   </AdminRoute>
                 }

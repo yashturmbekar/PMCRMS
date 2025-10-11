@@ -1042,77 +1042,185 @@ namespace PMCRMS.API.Services
 <html>
 <head>
     <style>
-        {GetCommonEmailStyles()}
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }}
+        .header {{
+            background-color: #0c4a6e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }}
+        .logo-container {{
+            margin-bottom: 15px;
+        }}
+        .badge {{
+            background-color: #f59e0b;
+            color: white;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }}
+        .header h1 {{
+            margin: 10px 0 5px 0;
+            font-size: 24px;
+        }}
+        .header p {{
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        .content {{
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }}
+        .password-box {{
+            background-color: #f0f9ff;
+            border: 2px solid #0c4a6e;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 8px;
+        }}
+        .password-code {{
+            font-size: 32px;
+            font-weight: bold;
+            color: #0c4a6e;
+            letter-spacing: 4px;
+            font-family: 'Courier New', monospace;
+            background-color: white;
+            padding: 15px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 10px 0;
+        }}
+        .info-row {{
+            background-color: #f9fafb;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .info-label {{
+            font-weight: 600;
+            color: #6b7280;
+        }}
+        .info-value {{
+            color: #0c4a6e;
+            font-weight: bold;
+        }}
+        .btn-primary {{
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 14px 32px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-size: 16px;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }}
+        .warning {{
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 15px 0;
+        }}
     </style>
 </head>
 <body>
     <div class='container'>
-        {GetEmailHeader()}
-        <div class='content'>
-            <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>🎉</div>
-            <div class='success-badge' style='background-color: #10b981; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Welcome to PMCRMS!</div>
-            
-            <h2>Dear {officerName},</h2>
-            <p>Welcome to the Pune Municipal Corporation Permit Management & Certificate Recommendation Management System (PMCRMS). An officer account has been created for you.</p>
-            
-            <div class='info-box' style='background-color: #f0f9ff; border-color: #0c4a6e;'>
-                <div class='info-row'>
-                    <div class='info-label'>Employee ID:</div>
-                    <div class='info-value'><strong>{employeeId}</strong></div>
-                </div>
-                <div class='info-row'>
-                    <div class='info-label'>Role:</div>
-                    <div class='info-value'><span style='color: #0c4a6e; font-weight: bold;'>{role}</span></div>
-                </div>
+        <div class='header'>
+            <div class='logo-container'>
+                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
-
-            <div class='info-box' style='background-color: #fef3c7; border: 2px solid #f59e0b;'>
-                <h3 style='margin: 0 0 15px 0; color: #f59e0b;'>🔐 Login Credentials</h3>
-                <div class='info-row'>
-                    <div class='info-label'>Employee ID:</div>
-                    <div class='info-value'><strong>{employeeId}</strong></div>
-                </div>
-                <div class='info-row'>
-                    <div class='info-label'>Temporary Password:</div>
-                    <div class='info-value'><code style='background-color: #ffffff; padding: 8px 12px; border-radius: 4px; font-size: 16px; font-family: monospace; font-weight: bold; color: #f59e0b;'>{temporaryPassword}</code></div>
-                </div>
+            <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
+            <h1>Pune Municipal Corporation</h1>
+            <p>Permit Management & Certificate Recommendation System</p>
+        </div>
+        <div class='content'>
+            <div style='text-align: center; font-size: 48px; margin: 10px 0;'>🎉</div>
+            <h2 style='text-align: center; color: #10b981;'>Welcome to PMCRMS!</h2>
+            
+            <p>Dear <strong>{officerName}</strong>,</p>
+            <p>Your officer account has been successfully created in the PMCRMS system. Below are your login credentials and account details:</p>
+            
+            <div class='info-row'>
+                <span class='info-label'>Employee ID:</span>
+                <span class='info-value'>{employeeId}</span>
+            </div>
+            
+            <div class='info-row'>
+                <span class='info-label'>Role:</span>
+                <span class='info-value'>{role}</span>
+            </div>
+            
+            <div class='password-box'>
+                <p style='margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: #0c4a6e;'>Your Temporary Password</p>
+                <div class='password-code'>{temporaryPassword}</div>
+                <p style='margin: 10px 0 0 0; font-size: 14px; color: #6b7280;'>Valid for 7 days</p>
             </div>
             
             <div style='text-align: center;'>
-                <a href='{loginUrl}' class='btn-primary' style='background-color: #10b981;'>Login to PMCRMS</a>
+                <a href='{loginUrl}' class='btn-primary'>Login to PMCRMS</a>
             </div>
             
-            <div class='warning' style='background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 12px; margin: 15px 0;'>
-                <strong>⚠️ Important Security Notice:</strong>
+            <div class='warning'>
+                <strong>⚠️ Important Security Instructions:</strong>
                 <ul style='margin: 5px 0; padding-left: 20px;'>
                     <li><strong>Change your password immediately</strong> after first login</li>
-                    <li>This temporary password will expire in <strong>7 days</strong></li>
+                    <li>Use your <strong>Employee ID</strong> and the temporary password above to login</li>
+                    <li>This password expires in 7 days</li>
                     <li>Never share your credentials with anyone</li>
-                    <li>Use a strong, unique password for your account</li>
-                    <li>Contact IT support if you suspect unauthorized access</li>
+                    <li>Contact IT support if you need assistance</li>
                 </ul>
             </div>
-
-            <div class='info-notice' style='background-color: #f0f9ff; border-left: 4px solid #0c4a6e; padding: 12px; margin: 15px 0;'>
-                <strong>📋 Getting Started:</strong>
-                <ol style='margin: 5px 0; padding-left: 20px;'>
-                    <li>Click the 'Login to PMCRMS' button above</li>
-                    <li>Enter your email and temporary password</li>
-                    <li>Change your password when prompted</li>
-                    <li>Complete your profile information</li>
-                    <li>Start reviewing assigned applications</li>
-                </ol>
-            </div>
             
-            <p>If you have any questions or need assistance, please contact the system administrator or IT support team.</p>
+            <p style='background-color: #f0f9ff; padding: 15px; border-radius: 6px; margin: 20px 0;'>
+                <strong>📋 Next Steps:</strong><br>
+                1. Click the 'Login to PMCRMS' button above<br>
+                2. Enter your Employee ID and temporary password<br>
+                3. Set a new secure password<br>
+                4. Complete your profile setup<br>
+                5. Start managing applications
+            </p>
             
-            <p>We look forward to working with you!</p>
+            <p>If you have any questions, please contact the system administrator.</p>
             
             <p>Best regards,<br>
-            <strong>PMCRMS Admin Team</strong><br>
+            <strong>PMCRMS Team</strong><br>
             Pune Municipal Corporation</p>
         </div>
-        {GetEmailFooter()}
+        <div class='footer'>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
+        </div>
     </div>
 </body>
 </html>";

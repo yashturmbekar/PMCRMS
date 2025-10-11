@@ -39,8 +39,19 @@ namespace PMCRMS.API.Controllers
             {
                 _logger.LogInformation("Admin inviting officer: {Email}, Role: {Role}", request.Email, request.Role);
 
+                // Parse role string to enum
+                if (!Enum.TryParse<UserRole>(request.Role, true, out var userRole))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = $"Invalid role: {request.Role}",
+                        Errors = new List<string> { "Invalid role for officer invitation" }
+                    });
+                }
+
                 // Validate role
-                if (request.Role == UserRole.Admin || request.Role == UserRole.User)
+                if (userRole == UserRole.Admin || userRole == UserRole.User)
                 {
                     return BadRequest(new ApiResponse
                     {
@@ -48,6 +59,15 @@ namespace PMCRMS.API.Controllers
                         Message = "Cannot invite Admin or regular User through this endpoint",
                         Errors = new List<string> { "Invalid role for officer invitation" }
                     });
+                }
+
+                // Auto-generate Employee ID if not provided
+                if (string.IsNullOrWhiteSpace(request.EmployeeId))
+                {
+                    var rolePrefix = string.Concat(request.Role.Where(char.IsUpper));
+                    var timestamp = DateTime.UtcNow.Ticks.ToString().Substring(DateTime.UtcNow.Ticks.ToString().Length - 6);
+                    request.EmployeeId = $"{rolePrefix}-{timestamp}";
+                    _logger.LogInformation("Auto-generated Employee ID: {EmployeeId}", request.EmployeeId);
                 }
 
                 // Check if email already exists
@@ -101,12 +121,12 @@ namespace PMCRMS.API.Controllers
                     Name = request.Name,
                     Email = request.Email,
                     PhoneNumber = request.PhoneNumber,
-                    Role = request.Role,
+                    Role = userRole, // Use parsed enum value
                     EmployeeId = request.EmployeeId,
-                    Department = request.Department,
+                    Department = request.Department ?? string.Empty,
                     TemporaryPassword = BCrypt.Net.BCrypt.HashPassword(temporaryPassword),
                     InvitedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays),
+                    ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays > 0 ? request.ExpiryDays : 7),
                     InvitedByUserId = adminUserId,
                     Status = InvitationStatus.Pending,
                     CreatedBy = User.FindFirst(ClaimTypes.Email)?.Value ?? "Admin"
@@ -120,8 +140,8 @@ namespace PMCRMS.API.Controllers
                 var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
                     request.Email,
                     request.Name,
-                    request.Role.ToString(),
-                    request.EmployeeId,
+                    userRole.ToString(), // Use parsed enum
+                    request.EmployeeId ?? string.Empty,
                     temporaryPassword,
                     loginUrl
                 );

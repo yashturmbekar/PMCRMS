@@ -18,11 +18,11 @@ namespace PMCRMS.API.DTOs
         public string? PhoneNumber { get; set; }
 
         [Required]
-        public UserRole Role { get; set; }
+        public string Role { get; set; } = string.Empty; // Accepts string, converted to enum in controller
 
-        [Required]
+        // Optional - will be auto-generated if not provided
         [MaxLength(50)]
-        public string EmployeeId { get; set; } = string.Empty;
+        public string? EmployeeId { get; set; }
 
         [MaxLength(100)]
         public string? Department { get; set; }
@@ -47,6 +47,7 @@ namespace PMCRMS.API.DTOs
         public string InvitedBy { get; set; } = string.Empty; // Alias for InvitedByName
         public bool IsExpired { get; set; }
         public int? UserId { get; set; }
+        public string? TemporaryPassword { get; set; } // Only included when creating new invitation
     }
 
     public class ResendInvitationRequest
