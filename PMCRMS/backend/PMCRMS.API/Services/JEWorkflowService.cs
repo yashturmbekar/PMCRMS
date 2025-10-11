@@ -18,6 +18,7 @@ namespace PMCRMS.API.Services
         private readonly IDocumentVerificationService _documentVerificationService;
         private readonly IDigitalSignatureService _digitalSignatureService;
         private readonly INotificationService _notificationService;
+        private readonly PdfService _pdfService;
 
         public JEWorkflowService(
             PMCRMSDbContext context,
@@ -26,7 +27,8 @@ namespace PMCRMS.API.Services
             IAppointmentService appointmentService,
             IDocumentVerificationService documentVerificationService,
             IDigitalSignatureService digitalSignatureService,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            PdfService pdfService)
         {
             _context = context;
             _logger = logger;
@@ -35,6 +37,7 @@ namespace PMCRMS.API.Services
             _documentVerificationService = documentVerificationService;
             _digitalSignatureService = digitalSignatureService;
             _notificationService = notificationService;
+            _pdfService = pdfService;
         }
 
         public async Task<WorkflowActionResultDto> StartWorkflowAsync(StartJEWorkflowRequestDto request, int initiatedByUserId)
@@ -155,6 +158,17 @@ namespace PMCRMS.API.Services
                 application.AppointmentScheduled = true;
                 application.AppointmentScheduledDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+
+                // Generate recommendation form PDF after appointment is scheduled
+                try
+                {
+                    await GenerateAndSaveRecommendationFormAsync(request.ApplicationId);
+                }
+                catch (Exception pdfEx)
+                {
+                    _logger.LogError(pdfEx, "Error generating recommendation form for application {ApplicationId}", request.ApplicationId);
+                    // Don't fail the entire operation if PDF generation fails
+                }
 
                 return new WorkflowActionResultDto
                 {
@@ -854,6 +868,49 @@ namespace PMCRMS.API.Services
                 ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => true,
                 _ => false
             };
+        }
+
+        /// <summary>
+        /// Generates recommendation form PDF and saves it to the database
+        /// </summary>
+        private async Task GenerateAndSaveRecommendationFormAsync(int applicationId)
+        {
+            // Check if recommendation form already exists
+            var existingForm = await _context.SEDocuments
+                .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && d.DocumentType == SEDocumentType.RecommendedForm);
+
+            if (existingForm != null)
+            {
+                _logger.LogInformation("Recommendation form already exists for application {ApplicationId}", applicationId);
+                return;
+            }
+
+            // Generate PDF
+            var pdfResult = await _pdfService.GenerateApplicationPdfAsync(applicationId);
+
+            if (!pdfResult.IsSuccess || pdfResult.FileContent == null)
+            {
+                throw new Exception($"Failed to generate recommendation form: {pdfResult.Message}");
+            }
+
+            // Create document record
+            var document = new SEDocument
+            {
+                ApplicationId = applicationId,
+                DocumentType = SEDocumentType.RecommendedForm,
+                FileName = pdfResult.FileName ?? $"RecommendedForm_{applicationId}.pdf",
+                FilePath = pdfResult.FilePath ?? string.Empty,
+                FileId = Guid.NewGuid().ToString(),
+                FileSize = (decimal)(pdfResult.FileContent.Length / 1024.0), // Size in KB
+                ContentType = "application/pdf",
+                IsVerified = false,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            _context.SEDocuments.Add(document);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Recommendation form generated and saved for application {ApplicationId}", applicationId);
         }
     }
 }

@@ -44,7 +44,9 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
   };
 
   const handleApproveAll = () => {
-    const allDocIds = documents.map((doc) => doc.id);
+    const allDocIds = documents
+      .filter((doc) => doc.documentTypeName !== "RecommendedForm")
+      .map((doc) => doc.id);
     setSelectedDocuments(new Set(allDocIds));
   };
 
@@ -229,100 +231,102 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                 marginBottom: "10px",
               }}
             >
-              {documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  onClick={() => handleDocumentToggle(doc.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "8px 10px",
-                    background: selectedDocuments.has(doc.id)
-                      ? "#f0f9ff"
-                      : "#f8fafc",
-                    border: selectedDocuments.has(doc.id)
-                      ? "2px solid #3b82f6"
-                      : "1px solid #e2e8f0",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
-                  }}
-                >
+              {documents
+                .filter((doc) => doc.documentTypeName !== "RecommendedForm")
+                .map((doc) => (
                   <div
+                    key={doc.id}
+                    onClick={() => handleDocumentToggle(doc.id)}
                     style={{
-                      width: "16px",
-                      height: "16px",
-                      border: "2px solid #cbd5e1",
-                      borderRadius: "3px",
-                      marginRight: "8px",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      padding: "8px 10px",
                       background: selectedDocuments.has(doc.id)
-                        ? "#3b82f6"
-                        : "white",
-                      flexShrink: 0,
+                        ? "#f0f9ff"
+                        : "#f8fafc",
+                      border: selectedDocuments.has(doc.id)
+                        ? "2px solid #3b82f6"
+                        : "1px solid #e2e8f0",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
                     }}
                   >
-                    {selectedDocuments.has(doc.id) && (
-                      <CheckCircle
-                        style={{
-                          width: "12px",
-                          height: "12px",
-                          color: "white",
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  <FileText
-                    style={{
-                      width: "16px",
-                      height: "16px",
-                      color: "#3b82f6",
-                      marginRight: "8px",
-                      flexShrink: 0,
-                    }}
-                  />
-
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p
+                    <div
                       style={{
-                        fontWeight: 500,
-                        color: "#1e293b",
-                        marginBottom: "1px",
-                        fontSize: "13px",
-                      }}
-                    >
-                      {doc.documentTypeName}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "11px",
-                        color: "#64748b",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {doc.fileName}
-                    </p>
-                  </div>
-
-                  {doc.isVerified && (
-                    <span
-                      className="pmc-badge pmc-badge-success"
-                      style={{
-                        fontSize: "9px",
-                        padding: "2px 5px",
+                        width: "16px",
+                        height: "16px",
+                        border: "2px solid #cbd5e1",
+                        borderRadius: "3px",
+                        marginRight: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background: selectedDocuments.has(doc.id)
+                          ? "#3b82f6"
+                          : "white",
                         flexShrink: 0,
                       }}
                     >
-                      Verified
-                    </span>
-                  )}
-                </div>
-              ))}
+                      {selectedDocuments.has(doc.id) && (
+                        <CheckCircle
+                          style={{
+                            width: "12px",
+                            height: "12px",
+                            color: "white",
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <FileText
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        color: "#3b82f6",
+                        marginRight: "8px",
+                        flexShrink: 0,
+                      }}
+                    />
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontWeight: 500,
+                          color: "#1e293b",
+                          marginBottom: "1px",
+                          fontSize: "13px",
+                        }}
+                      >
+                        {doc.documentTypeName}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "11px",
+                          color: "#64748b",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {doc.fileName}
+                      </p>
+                    </div>
+
+                    {doc.isVerified && (
+                      <span
+                        className="pmc-badge pmc-badge-success"
+                        style={{
+                          fontSize: "9px",
+                          padding: "2px 5px",
+                          flexShrink: 0,
+                        }}
+                      >
+                        Verified
+                      </span>
+                    )}
+                  </div>
+                ))}
             </div>
 
             {/* Selected Count */}

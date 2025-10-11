@@ -40,7 +40,8 @@ namespace PMCRMS.API.Models
         ProfilePicture = 8,
         SelfDeclaration = 9,
         COACertificate = 10,
-        AdditionalDocument = 11
+        AdditionalDocument = 11,
+        RecommendedForm = 12
     }
 
     public class PositionApplication : BaseEntity

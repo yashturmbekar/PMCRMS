@@ -514,95 +514,226 @@ const ViewPositionApplication: React.FC = () => {
           </div>
           <div className="pmc-card-body">
             <div className="pmc-form-grid pmc-form-grid-2">
-              {application.documents.map((doc) => (
-                <div
-                  key={doc.id}
-                  style={{
-                    padding: "16px",
-                    background: "#f8fafc",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
+              {application.documents
+                .filter((doc) => doc.documentTypeName !== "RecommendedForm")
+                .map((doc) => (
                   <div
+                    key={doc.id}
                     style={{
+                      padding: "16px",
+                      background: "#f8fafc",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
                       display: "flex",
                       alignItems: "center",
-                      gap: "12px",
+                      justifyContent: "space-between",
                     }}
                   >
-                    <FileText size={24} color="#3b82f6" />
-                    <div>
-                      <p className="pmc-value" style={{ marginBottom: "4px" }}>
-                        {doc.documentTypeName}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "#64748b" }}>
-                        {doc.fileName}
-                      </p>
-                      {doc.fileSize && (
-                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
-                          {(doc.fileSize / 1024).toFixed(2)} KB
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
+                    >
+                      <FileText size={24} color="#3b82f6" />
+                      <div>
+                        <p
+                          className="pmc-value"
+                          style={{ marginBottom: "4px" }}
+                        >
+                          {doc.documentTypeName}
                         </p>
+                        <p style={{ fontSize: "12px", color: "#64748b" }}>
+                          {doc.fileName}
+                        </p>
+                        {doc.fileSize && (
+                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            {(doc.fileSize / 1024).toFixed(2)} KB
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      {doc.isVerified ? (
+                        <span title="Verified">
+                          <CheckCircle size={20} color="#10b981" />
+                        </span>
+                      ) : (
+                        <span title="Not Verified">
+                          <XCircle size={20} color="#94a3b8" />
+                        </span>
                       )}
+                      <button
+                        className="pmc-button pmc-button-primary pmc-button-sm"
+                        onClick={() =>
+                          setSelectedDocument({
+                            fileName: doc.fileName,
+                            filePath: doc.filePath,
+                            documentTypeName: doc.documentTypeName,
+                          })
+                        }
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Eye size={14} />
+                        View
+                      </button>
+                      <button
+                        className="pmc-button pmc-button-secondary pmc-button-sm"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = `http://localhost:5062/${doc.filePath}`;
+                          link.download = doc.fileName;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
                     </div>
                   </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recommendation Form - Separate Section */}
+      {application.documents.filter(
+        (doc) => doc.documentTypeName === "RecommendedForm"
+      ).length > 0 && (
+        <div className="pmc-card" style={{ marginBottom: "16px" }}>
+          <div
+            className="pmc-card-header"
+            style={{
+              background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
+              color: "#334155",
+              padding: "12px 16px",
+              borderBottom: "2px solid #cbd5e1",
+            }}
+          >
+            <h2
+              className="pmc-card-title"
+              style={{ color: "#334155", margin: 0 }}
+            >
+              Recommendation Form
+            </h2>
+          </div>
+          <div className="pmc-card-body">
+            <div className="pmc-form-grid pmc-form-grid-2">
+              {application.documents
+                .filter((doc) => doc.documentTypeName === "RecommendedForm")
+                .map((doc) => (
                   <div
+                    key={doc.id}
                     style={{
+                      padding: "16px",
+                      background: "#f8fafc",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
+                      justifyContent: "space-between",
                     }}
                   >
-                    {doc.isVerified ? (
-                      <span title="Verified">
-                        <CheckCircle size={20} color="#10b981" />
-                      </span>
-                    ) : (
-                      <span title="Not Verified">
-                        <XCircle size={20} color="#94a3b8" />
-                      </span>
-                    )}
-                    <button
-                      className="pmc-button pmc-button-primary pmc-button-sm"
-                      onClick={() =>
-                        setSelectedDocument({
-                          fileName: doc.fileName,
-                          filePath: doc.filePath,
-                          documentTypeName: doc.documentTypeName,
-                        })
-                      }
+                    <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px",
+                        gap: "12px",
                       }}
                     >
-                      <Eye size={14} />
-                      View
-                    </button>
-                    <button
-                      className="pmc-button pmc-button-secondary pmc-button-sm"
-                      onClick={() => {
-                        const link = document.createElement("a");
-                        link.href = doc.filePath;
-                        link.download = doc.fileName;
-                        link.click();
-                      }}
+                      <FileText size={24} color="#3b82f6" />
+                      <div>
+                        <p
+                          className="pmc-value"
+                          style={{ marginBottom: "4px" }}
+                        >
+                          {doc.documentTypeName}
+                        </p>
+                        <p style={{ fontSize: "12px", color: "#64748b" }}>
+                          {doc.fileName}
+                        </p>
+                        {doc.fileSize && (
+                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            {(doc.fileSize / 1024).toFixed(2)} KB
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px",
+                        gap: "8px",
                       }}
                     >
-                      <Download size={14} />
-                      Download
-                    </button>
+                      {doc.isVerified ? (
+                        <span title="Verified">
+                          <CheckCircle size={20} color="#10b981" />
+                        </span>
+                      ) : (
+                        <span title="Not Verified">
+                          <XCircle size={20} color="#94a3b8" />
+                        </span>
+                      )}
+                      <button
+                        className="pmc-button pmc-button-primary pmc-button-sm"
+                        onClick={() =>
+                          setSelectedDocument({
+                            fileName: doc.fileName,
+                            filePath: doc.filePath,
+                            documentTypeName: doc.documentTypeName,
+                          })
+                        }
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Eye size={14} />
+                        View
+                      </button>
+                      <button
+                        className="pmc-button pmc-button-secondary pmc-button-sm"
+                        onClick={() => {
+                          const link = document.createElement("a");
+                          link.href = `http://localhost:5062/${doc.filePath}`;
+                          link.download = doc.fileName;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>
@@ -1258,9 +1389,11 @@ const ViewPositionApplication: React.FC = () => {
                   className="pmc-button pmc-button-sm"
                   onClick={() => {
                     const link = document.createElement("a");
-                    link.href = selectedDocument.filePath;
+                    link.href = `http://localhost:5062/${selectedDocument.filePath}`;
                     link.download = selectedDocument.fileName;
+                    document.body.appendChild(link);
                     link.click();
+                    document.body.removeChild(link);
                   }}
                   style={{
                     background: "rgba(255,255,255,0.2)",
@@ -1302,7 +1435,7 @@ const ViewPositionApplication: React.FC = () => {
             >
               {selectedDocument.filePath.toLowerCase().endsWith(".pdf") ? (
                 <iframe
-                  src={selectedDocument.filePath}
+                  src={`http://localhost:5062/${selectedDocument.filePath}`}
                   style={{
                     width: "100%",
                     height: "100%",
@@ -1314,7 +1447,7 @@ const ViewPositionApplication: React.FC = () => {
                   /\.(jpg|jpeg|png|gif|webp)$/i
                 ) ? (
                 <img
-                  src={selectedDocument.filePath}
+                  src={`http://localhost:5062/${selectedDocument.filePath}`}
                   alt={selectedDocument.fileName}
                   style={{
                     maxWidth: "100%",
@@ -1341,7 +1474,7 @@ const ViewPositionApplication: React.FC = () => {
                     className="pmc-button pmc-button-primary"
                     onClick={() => {
                       const link = document.createElement("a");
-                      link.href = selectedDocument.filePath;
+                      link.href = `http://localhost:5062/${selectedDocument.filePath}`;
                       link.download = selectedDocument.fileName;
                       link.click();
                     }}
