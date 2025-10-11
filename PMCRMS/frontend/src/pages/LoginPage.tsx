@@ -443,23 +443,6 @@ const LoginPage: React.FC = () => {
                         )}
                         {loading && <span>Sending OTP...</span>}
                       </button>
-
-                      {/* Registration Link */}
-                      <div className="pmc-text-center pmc-mt-6 pmc-pt-6 pmc-border-t pmc-border-gray-200">
-                        <p className="pmc-text-gray-600">
-                          Don't have an account?{" "}
-                          <button
-                            type="button"
-                            className="pmc-text-primary pmc-font-semibold"
-                          >
-                            Create User Account
-                          </button>
-                        </p>
-                        <p className="pmc-text-xs pmc-text-gray-500 pmc-mt-2">
-                          Register to apply for building permits and
-                          certificates
-                        </p>
-                      </div>
                     </form>
                   )}
 
@@ -531,7 +514,7 @@ const LoginPage: React.FC = () => {
                           </div>
                         </div>
                         <p className="pmc-help-text">
-                          OTP is valid for 10 minutes
+                          OTP is valid for 5 minutes
                         </p>
                       </div>
 

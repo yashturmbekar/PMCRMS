@@ -1074,6 +1074,30 @@ export const PositionRegistrationPage = () => {
     return `${years} years and ${months} months`;
   };
 
+  // Date validation helpers
+  const getMaxBirthDate = () => {
+    const today = new Date();
+    const maxDate = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate()
+    );
+    return maxDate.toISOString().split("T")[0];
+  };
+
+  const getMaxExperienceDate = () => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  };
+
+  const getCurrentYear = () => {
+    return new Date().getFullYear();
+  };
+
+  const getCurrentMonth = () => {
+    return new Date().getMonth() + 1; // JavaScript months are 0-indexed
+  };
+
   // Initialize the form - simulate loading to prevent blank page
   useEffect(() => {
     // Small delay to ensure smooth transition
@@ -1841,6 +1865,7 @@ export const PositionRegistrationPage = () => {
                     onChange={(e) =>
                       handleInputChange("dateOfBirth", e.target.value)
                     }
+                    max={getMaxBirthDate()}
                     required
                   />
                   {attemptedSubmit && !formData.dateOfBirth && (
@@ -3116,11 +3141,26 @@ export const PositionRegistrationPage = () => {
                           }
                           required
                         >
-                          {monthOptions.map((month, idx) => (
-                            <option key={idx} value={idx + 1}>
-                              {month}
-                            </option>
-                          ))}
+                          {monthOptions.map((month, idx) => {
+                            const monthValue = idx + 1;
+                            const yearOfPassing =
+                              qual.yearOfPassing.split("-")[0];
+                            const isCurrentYear =
+                              yearOfPassing &&
+                              parseInt(yearOfPassing) === getCurrentYear();
+                            const isDisabled =
+                              isCurrentYear && monthValue > getCurrentMonth();
+
+                            return (
+                              <option
+                                key={idx}
+                                value={monthValue}
+                                disabled={isDisabled ? true : undefined}
+                              >
+                                {month}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
                       <div className="pmc-form-group">
@@ -3365,6 +3405,7 @@ export const PositionRegistrationPage = () => {
                               `${e.target.value}T00:00:00.000Z`
                             )
                           }
+                          max={getMaxExperienceDate()}
                           required
                         />
                         {attemptedSubmit && !exp.fromDate && (
@@ -3392,6 +3433,7 @@ export const PositionRegistrationPage = () => {
                               `${e.target.value}T00:00:00.000Z`
                             )
                           }
+                          max={getMaxExperienceDate()}
                           required
                         />
                         {attemptedSubmit && !exp.toDate && (
