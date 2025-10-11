@@ -122,31 +122,34 @@ const OfficerManagementPage: React.FC = () => {
   const handleEditOfficer = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedOfficer || !editForm.name) {
+    if (!selectedOfficer || !editForm.name || !editForm.email) {
       setError("Please fill all required fields");
       return;
     }
 
     try {
       setSubmitting(true);
-      // TODO: Backend needs to support email updates with password reset
       const response = await adminService.updateOfficer(selectedOfficer.id, {
         userId: selectedOfficer.id,
         name: editForm.name,
-        // email: editForm.email, // Not supported in backend yet
+        email: editForm.email,
         role: selectedOfficer.role, // Keep same role/designation
         isActive: selectedOfficer.isActive,
       });
 
       if (response.success) {
-        setSuccessMessage("Officer updated successfully!");
+        setSuccessMessage(
+          editForm.email !== selectedOfficer.email
+            ? "Officer updated successfully! New password has been sent to the new email address."
+            : "Officer updated successfully!"
+        );
         setShowEditModal(false);
         setSelectedOfficer(null);
         setEditForm({
           name: "",
           email: "",
         });
-        setTimeout(() => setSuccessMessage(""), 3000);
+        setTimeout(() => setSuccessMessage(""), 5000);
         loadOfficers();
       } else {
         setError(response.message || "Failed to update officer");
@@ -726,7 +729,7 @@ const OfficerManagementPage: React.FC = () => {
                   marginBottom: 0,
                 }}
               >
-                Update officer name
+                Update officer name and email address
               </p>
             </div>
 
@@ -813,7 +816,7 @@ const OfficerManagementPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Email Field (Read-only) */}
+              {/* Email Field (Editable) */}
               <div style={{ marginBottom: "24px" }}>
                 <label
                   style={{
@@ -824,56 +827,68 @@ const OfficerManagementPage: React.FC = () => {
                     fontSize: "14px",
                   }}
                 >
-                  Email Address
+                  Email Address *
                 </label>
-                <div
-                  style={{
-                    padding: "12px",
-                    backgroundColor: "var(--pmc-gray-100)",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
+                <div style={{ position: "relative" }}>
                   <Mail
                     style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "var(--pmc-gray-400)",
                       width: "18px",
                       height: "18px",
-                      color: "var(--pmc-primary)",
                     }}
                   />
-                  <span style={{ color: "var(--pmc-gray-600)" }}>
-                    {selectedOfficer.email}
-                  </span>
+                  <input
+                    type="email"
+                    required
+                    value={editForm.email}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, email: e.target.value })
+                    }
+                    placeholder="Enter officer's email address"
+                    style={{
+                      width: "100%",
+                      padding: "12px 12px 12px 40px",
+                      border: "1px solid var(--pmc-gray-300)",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                    }}
+                  />
                 </div>
-                <p
-                  style={{
-                    color: "var(--pmc-gray-500)",
-                    fontSize: "12px",
-                    marginTop: "4px",
-                  }}
-                >
-                  Email address cannot be changed
-                </p>
+                {editForm.email !== selectedOfficer?.email && (
+                  <p
+                    style={{
+                      color: "var(--pmc-warning)",
+                      fontSize: "12px",
+                      marginTop: "4px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    ⚠️ Changing email will generate a new password
+                  </p>
+                )}
               </div>
 
               {/* Warning Message */}
-              <div
-                style={{
-                  padding: "12px",
-                  backgroundColor: "#FEF3C7",
-                  borderLeft: "4px solid #F59E0B",
-                  borderRadius: "6px",
-                  marginBottom: "20px",
-                  display: "none", // Hidden for now
-                }}
-              >
-                <p style={{ color: "#92400E", fontSize: "13px", margin: 0 }}>
-                  ⚠️ A new password will be generated and sent to the updated
-                  email address
-                </p>
-              </div>
+              {editForm.email !== selectedOfficer?.email && (
+                <div
+                  style={{
+                    padding: "12px",
+                    backgroundColor: "#FEF3C7",
+                    borderLeft: "4px solid #F59E0B",
+                    borderRadius: "6px",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <p style={{ color: "#92400E", fontSize: "13px", margin: 0 }}>
+                    ⚠️ A new password will be generated and sent to the updated
+                    email address
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div

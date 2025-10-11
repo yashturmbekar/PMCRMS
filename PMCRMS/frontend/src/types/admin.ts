@@ -122,6 +122,7 @@ export interface InviteOfficerRequest {
 
 export interface UpdateOfficerRequest {
   name?: string;
+  email?: string;
   phoneNumber?: string;
   role?: string;
   department?: string;

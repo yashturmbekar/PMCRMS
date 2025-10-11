@@ -670,7 +670,51 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Update fields
+                bool emailChanged = false;
+                string? newPassword = null;
+                string oldEmail = officer.Email;
+
+                // Check if email is being changed
+                if (!string.IsNullOrEmpty(request.Email) && request.Email != officer.Email)
+                {
+                    // Validate that new email doesn't already exist
+                    var existingOfficer = await _context.Officers
+                        .FirstOrDefaultAsync(o => o.Email == request.Email && o.Id != id);
+                    if (existingOfficer != null)
+                    {
+                        return BadRequest(new ApiResponse
+                        {
+                            Success = false,
+                            Message = "An officer with this email already exists",
+                            Errors = new List<string> { "Email already in use" }
+                        });
+                    }
+
+                    var existingAdmin = await _context.SystemAdmins
+                        .FirstOrDefaultAsync(a => a.Email == request.Email);
+                    if (existingAdmin != null)
+                    {
+                        return BadRequest(new ApiResponse
+                        {
+                            Success = false,
+                            Message = "An admin with this email already exists",
+                            Errors = new List<string> { "Email already in use" }
+                        });
+                    }
+
+                    // Generate new password when email changes
+                    newPassword = GenerateTemporaryPassword();
+                    officer.Email = request.Email;
+                    officer.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                    officer.MustChangePassword = true;
+                    officer.PasswordChangedAt = DateTime.UtcNow;
+                    emailChanged = true;
+
+                    _logger.LogInformation("Officer {OfficerId} email changed from {OldEmail} to {NewEmail}", 
+                        id, oldEmail, request.Email);
+                }
+
+                // Update other fields
                 if (!string.IsNullOrEmpty(request.Name))
                     officer.Name = request.Name;
 
@@ -690,6 +734,31 @@ namespace PMCRMS.API.Controllers
                 officer.UpdatedBy = User.FindFirst("email")?.Value;
 
                 await _context.SaveChangesAsync();
+
+                // Send email with new password if email was changed
+                if (emailChanged && newPassword != null)
+                {
+                    var loginUrl = $"{Request.Scheme}://{Request.Host}/officer-login";
+                    var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
+                        officer.Email,
+                        officer.Name,
+                        officer.Role.ToString(),
+                        officer.EmployeeId,
+                        newPassword,
+                        loginUrl
+                    );
+
+                    if (!emailSent)
+                    {
+                        _logger.LogWarning("Failed to send new password email to {Email}", officer.Email);
+                    }
+
+                    return Ok(new ApiResponse
+                    {
+                        Success = true,
+                        Message = $"Officer updated successfully. Email changed and new password sent to {officer.Email}. Temporary password: {newPassword}"
+                    });
+                }
 
                 return Ok(new ApiResponse
                 {

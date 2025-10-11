@@ -5,7 +5,6 @@ import {
   Home,
   FileText,
   Users,
-  Upload,
   BarChart3,
   Settings,
   LogOut,
@@ -25,19 +24,41 @@ interface NavItem {
   roles?: string[];
 }
 
-const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
+const getNavigation = (userRole?: string): NavItem[] => [
+  {
+    name: "Dashboard",
+    href: "/dashboard",
+    icon: Home,
+    roles: [
+      "JuniorArchitect",
+      "AssistantArchitect",
+      "JuniorLicenceEngineer",
+      "AssistantLicenceEngineer",
+      "JuniorStructuralEngineer",
+      "AssistantStructuralEngineer",
+      "JuniorSupervisor1",
+      "AssistantSupervisor1",
+      "JuniorSupervisor2",
+      "AssistantSupervisor2",
+      "ExecutiveEngineer",
+      "CityEngineer",
+      "Applicant",
+    ],
+  },
   {
     name: "Admin Dashboard",
     href: "/admin",
     icon: Settings,
     roles: ["Admin"],
   },
-  { name: "Applications", href: "/applications", icon: FileText },
-  { name: "Documents", href: "/documents", icon: Upload },
   {
-    name: "Users",
-    href: "/users",
+    name: "Applications",
+    href: userRole === "Admin" ? "/admin/applications" : "/dashboard",
+    icon: FileText,
+  },
+  {
+    name: "Officers",
+    href: "/admin/officers",
     icon: Users,
     roles: [
       "Admin",
@@ -75,6 +96,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     navigate("/login");
   };
 
+  const navigation = getNavigation(user?.role);
   const filteredNavigation = navigation.filter(
     (item) => !item.roles || (user && item.roles.includes(user.role))
   );

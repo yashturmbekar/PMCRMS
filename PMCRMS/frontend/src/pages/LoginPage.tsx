@@ -63,7 +63,8 @@ const LoginPage: React.FC = () => {
         localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
 
         // Redirect based on user role
-        const redirectPath = response.data.user.role === "Admin" ? "/admin" : "/dashboard";
+        const redirectPath =
+          response.data.user.role === "Admin" ? "/admin" : "/dashboard";
         window.location.href = redirectPath;
       } else {
         throw new Error(

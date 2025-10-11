@@ -87,6 +87,7 @@ export interface ApplicationStatusSummary {
 export interface UpdateOfficerRequest {
   userId: number;
   name?: string;
+  email?: string;
   phoneNumber?: string;
   role?: string;
   department?: string;
