@@ -55,6 +55,13 @@ const Dashboard: React.FC = () => {
     "submitted"
   );
 
+  // Redirect JuniorEngineer to JE Dashboard
+  useEffect(() => {
+    if (user?.role && user.role.includes("Junior")) {
+      navigate("/je-dashboard", { replace: true });
+    }
+  }, [user, navigate]);
+
   // Position type options
   const positionTypes = [
     { value: PositionType.Architect, label: "Architect", icon: "🏛️" },

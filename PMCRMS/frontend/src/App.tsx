@@ -7,6 +7,7 @@ import {
 import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
+import JEDashboard from "./pages/JEDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
@@ -40,6 +41,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
     return <Navigate to="/admin" replace />;
   }
 
+  // Redirect any Junior role to JE dashboard
+  if (
+    user.role.includes("Junior") &&
+    window.location.pathname === "/dashboard"
+  ) {
+    return <Navigate to="/je-dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -62,6 +71,37 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
+// Officer-only protected route
+const OfficerRoute: React.FC<{
+  children: React.ReactNode;
+  allowedRoles?: string[];
+}> = ({ children, allowedRoles }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageLoader message="Authenticating..." />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check if user has one of the allowed roles
+  const officerRoles = allowedRoles || [
+    "JuniorEngineer",
+    "AssistantEngineer",
+    "ExecutiveEngineer",
+    "CityEngineer",
+    "Clerk",
+  ];
+
+  if (!officerRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 // Smart redirect component for root path
 const DefaultRedirect: React.FC = () => {
   const { user, isLoading } = useAuth();
@@ -77,6 +117,11 @@ const DefaultRedirect: React.FC = () => {
   // Redirect based on user role
   if (user.role === "Admin") {
     return <Navigate to="/admin" replace />;
+  }
+
+  // Redirect any Junior role to JE Dashboard
+  if (user.role.includes("Junior")) {
+    return <Navigate to="/je-dashboard" replace />;
   }
 
   return <Navigate to="/dashboard" replace />;
@@ -159,6 +204,47 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+
+              {/* JE Dashboard - All Junior-level Officers */}
+              <Route
+                path="/je-dashboard"
+                element={
+                  <OfficerRoute
+                    allowedRoles={[
+                      "JuniorArchitect",
+                      "JuniorLicenceEngineer",
+                      "JuniorStructuralEngineer",
+                      "JuniorSupervisor1",
+                      "JuniorSupervisor2",
+                    ]}
+                  >
+                    <Layout>
+                      <JEDashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* JE Officer - View Application */}
+              <Route
+                path="/position-application/:id"
+                element={
+                  <OfficerRoute
+                    allowedRoles={[
+                      "JuniorArchitect",
+                      "JuniorLicenceEngineer",
+                      "JuniorStructuralEngineer",
+                      "JuniorSupervisor1",
+                      "JuniorSupervisor2",
+                    ]}
+                  >
+                    <Layout>
+                      <ViewPositionApplication />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
               <Route
                 path="/register/:positionType"
                 element={

@@ -51,9 +51,15 @@ namespace PMCRMS.API.Models
         public int SignedByOfficerId { get; set; }
 
         /// <summary>
-        /// Date and time when signature was applied
+        /// Date when document was signed
         /// </summary>
         public DateTime? SignedDate { get; set; }
+
+        /// <summary>
+        /// Path to the original document to be signed
+        /// </summary>
+        [MaxLength(500)]
+        public string? OriginalDocumentPath { get; set; }
 
         /// <summary>
         /// Path to the digitally signed document

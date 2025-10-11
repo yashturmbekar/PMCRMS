@@ -6,12 +6,18 @@ import {
   FileText,
   CheckCircle,
   XCircle,
+  Calendar,
+  Ban,
+  X,
+  Eye,
 } from "lucide-react";
 import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
 import { PageLoader } from "../components";
+import { DocumentApprovalModal } from "../components/workflow";
 import AuthContext from "../contexts/AuthContext";
+import { jeWorkflowService } from "../services/jeWorkflowService";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,10 +29,32 @@ const ViewPositionApplication: React.FC = () => {
     useState<PositionRegistrationResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showDocumentApprovalModal, setShowDocumentApprovalModal] =
+    useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [scheduleError, setScheduleError] = useState("");
+  const [scheduleForm, setScheduleForm] = useState({
+    comments: "",
+    reviewDate: "",
+    contactPerson: "",
+    place: "",
+    roomNumber: "",
+  });
+  const [selectedDocument, setSelectedDocument] = useState<{
+    fileName: string;
+    filePath: string;
+    documentTypeName: string;
+  } | null>(null);
 
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
-  const backPath = isAdminView ? "/admin/applications" : "/dashboard";
+  const isJEOfficer = user?.role && user.role.includes("Junior");
+  const backPath = isAdminView
+    ? "/admin/applications"
+    : isJEOfficer
+    ? "/je-dashboard"
+    : "/dashboard";
 
   useEffect(() => {
     const fetchApplication = async () => {
@@ -41,6 +69,12 @@ const ViewPositionApplication: React.FC = () => {
         const response = await positionRegistrationService.getApplication(
           parseInt(id)
         );
+        console.log("📋 Application Data:", {
+          status: response.status,
+          statusName: response.statusName,
+          workflowCurrentStage: response.workflowInfo?.currentStage,
+          hasAppointment: response.workflowInfo?.hasAppointment,
+        });
         setApplication(response);
       } catch (err) {
         console.error("Error fetching application:", err);
@@ -52,6 +86,99 @@ const ViewPositionApplication: React.FC = () => {
 
     fetchApplication();
   }, [id]);
+
+  const handleDocumentApprovalComplete = async () => {
+    // Reload application data
+    if (id) {
+      try {
+        const response = await positionRegistrationService.getApplication(
+          parseInt(id)
+        );
+        setApplication(response);
+      } catch (err) {
+        console.error("Error reloading application:", err);
+      }
+    }
+  };
+
+  const handleScheduleAppointment = () => {
+    setShowScheduleModal(true);
+    setScheduleError(""); // Clear any previous errors
+    setScheduleForm({
+      comments: "",
+      reviewDate: "",
+      contactPerson: "",
+      place: "",
+      roomNumber: "",
+    });
+  };
+
+  const handleSubmitSchedule = async () => {
+    // Clear previous error
+    setScheduleError("");
+
+    if (
+      !application ||
+      !scheduleForm.reviewDate ||
+      !scheduleForm.contactPerson ||
+      !scheduleForm.place ||
+      !scheduleForm.roomNumber
+    ) {
+      setScheduleError("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      console.log("📅 Scheduling appointment:", {
+        applicationId: application.id,
+        ...scheduleForm,
+      });
+
+      await jeWorkflowService.scheduleAppointment({
+        applicationId: application.id,
+        reviewDate: scheduleForm.reviewDate,
+        place: scheduleForm.place,
+        contactPerson: scheduleForm.contactPerson,
+        roomNumber: scheduleForm.roomNumber,
+        remarks: scheduleForm.comments,
+      });
+
+      // Close schedule modal and show success popup
+      setShowScheduleModal(false);
+      setShowSuccessPopup(true);
+
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        navigate(backPath);
+      }, 2000);
+    } catch (error) {
+      console.error("❌ Error scheduling appointment:", error);
+      setScheduleError("Failed to schedule appointment. Please try again.");
+    }
+  };
+
+  const handleRejectApplication = async () => {
+    if (!application) return;
+
+    const remarks = prompt("Please provide a reason for rejection:");
+    if (!remarks) {
+      return; // User cancelled
+    }
+
+    try {
+      // TODO: Implement reject API call
+      console.log("🚫 Rejecting application:", {
+        applicationId: application.id,
+        remarks,
+      });
+
+      alert("Application rejected successfully!");
+      navigate(backPath);
+    } catch (error) {
+      console.error("❌ Error rejecting application:", error);
+      alert("Failed to reject application. Please try again.");
+    }
+  };
 
   if (loading) {
     return <PageLoader message="Loading application details..." />;
@@ -439,11 +566,39 @@ const ViewPositionApplication: React.FC = () => {
                       </span>
                     )}
                     <button
-                      className="pmc-button pmc-button-secondary pmc-button-sm"
-                      onClick={() => window.open(doc.filePath, "_blank")}
+                      className="pmc-button pmc-button-primary pmc-button-sm"
+                      onClick={() =>
+                        setSelectedDocument({
+                          fileName: doc.fileName,
+                          filePath: doc.filePath,
+                          documentTypeName: doc.documentTypeName,
+                        })
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
                     >
-                      <Download size={14} style={{ marginRight: "4px" }} />
+                      <Eye size={14} />
                       View
+                    </button>
+                    <button
+                      className="pmc-button pmc-button-secondary pmc-button-sm"
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = doc.filePath;
+                        link.download = doc.fileName;
+                        link.click();
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Download size={14} />
+                      Download
                     </button>
                   </div>
                 </div>
@@ -504,6 +659,707 @@ const ViewPositionApplication: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Action Buttons for JE Officers */}
+      {isJEOfficer && (
+        <div
+          style={{
+            marginTop: "24px",
+            display: "flex",
+            gap: "12px",
+            justifyContent: "flex-end",
+          }}
+        >
+          <button
+            className="pmc-button pmc-button-danger"
+            onClick={handleRejectApplication}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <Ban size={18} />
+            Reject Application
+          </button>
+          {application.workflowInfo?.currentStage ===
+          "Appointment Scheduled" ? (
+            <button
+              className="pmc-button pmc-button-success"
+              onClick={() => setShowDocumentApprovalModal(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <CheckCircle size={18} />
+              Document Approve
+            </button>
+          ) : (
+            <button
+              className="pmc-button pmc-button-success"
+              onClick={handleScheduleAppointment}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Calendar size={18} />
+              Schedule Appointment
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Schedule Appointment Modal */}
+      {showScheduleModal && (
+        <div
+          onClick={() => setShowScheduleModal(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+            overflow: "auto",
+          }}
+        >
+          <div
+            className="pmc-modal pmc-slideInUp"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              borderRadius: "8px",
+              maxWidth: "500px",
+              width: "100%",
+              boxShadow:
+                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              position: "relative",
+              maxHeight: "95vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div
+              className="pmc-modal-header"
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid #e5e7eb",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                flexShrink: 0,
+              }}
+            >
+              <h3
+                style={{
+                  color: "white",
+                  marginBottom: "2px",
+                  fontSize: "18px",
+                  fontWeight: "600",
+                }}
+              >
+                Schedule Appointment
+              </h3>
+              <p
+                style={{
+                  color: "rgba(255,255,255,0.9)",
+                  fontSize: "13px",
+                  margin: 0,
+                }}
+              >
+                Application: {application.applicationNumber}
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {scheduleError && (
+              <div
+                style={{
+                  margin: "16px 20px 0",
+                  padding: "12px 16px",
+                  background:
+                    "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                  border: "1.5px solid #ef4444",
+                  borderRadius: "6px",
+                  color: "#991b1b",
+                  fontSize: "13px",
+                  fontWeight: "500",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <span style={{ fontSize: "16px" }}>⚠️</span>
+                {scheduleError}
+              </div>
+            )}
+
+            <div
+              className="pmc-modal-body"
+              style={{
+                padding: "20px",
+                overflowY: "auto",
+                flexGrow: 1,
+              }}
+            >
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  className="pmc-label"
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    color: "#374151",
+                  }}
+                >
+                  Review Date <span style={{ color: "#dc2626" }}>*</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={scheduleForm.reviewDate}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      reviewDate: e.target.value,
+                    })
+                  }
+                  min={new Date().toISOString().slice(0, 16)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1.5px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "all 0.2s",
+                    cursor: "pointer",
+                    backgroundColor: "white",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#10b981";
+                    e.target.style.boxShadow =
+                      "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#d1d5db";
+                    e.target.style.boxShadow = "none";
+                  }}
+                  required
+                />
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "12px",
+                  marginBottom: "16px",
+                }}
+              >
+                <div>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Contact Person <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Contact Person"
+                    value={scheduleForm.contactPerson}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        contactPerson: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Room Number <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Room Number"
+                    value={scheduleForm.roomNumber}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        roomNumber: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  className="pmc-label"
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    color: "#374151",
+                  }}
+                >
+                  Place <span style={{ color: "#dc2626" }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Place"
+                  value={scheduleForm.place}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, place: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1.5px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    outline: "none",
+                    transition: "all 0.2s",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#10b981";
+                    e.target.style.boxShadow =
+                      "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#d1d5db";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  className="pmc-label"
+                  style={{
+                    display: "block",
+                    marginBottom: "6px",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    color: "#374151",
+                  }}
+                >
+                  Comments
+                </label>
+                <textarea
+                  placeholder="Additional comments or instructions"
+                  value={scheduleForm.comments}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      comments: e.target.value,
+                    })
+                  }
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1.5px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    resize: "vertical",
+                    outline: "none",
+                    transition: "all 0.2s",
+                    fontFamily: "inherit",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = "#10b981";
+                    e.target.style.boxShadow =
+                      "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = "#d1d5db";
+                    e.target.style.boxShadow = "none";
+                  }}
+                />
+              </div>
+            </div>
+
+            <div
+              className="pmc-modal-footer"
+              style={{
+                padding: "12px 20px",
+                borderTop: "1px solid #e5e7eb",
+                display: "flex",
+                gap: "10px",
+                justifyContent: "flex-end",
+                background: "#f9fafb",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                className="pmc-button pmc-button-secondary"
+                onClick={() => setShowScheduleModal(false)}
+                style={{
+                  padding: "8px 20px",
+                  fontSize: "14px",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="pmc-button pmc-button-success"
+                onClick={handleSubmitSchedule}
+                style={{
+                  padding: "8px 20px",
+                  fontSize: "14px",
+                }}
+              >
+                Schedule Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "16px",
+              maxWidth: "500px",
+              width: "100%",
+              padding: "40px",
+              textAlign: "center",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            }}
+          >
+            <div
+              style={{
+                width: "80px",
+                height: "80px",
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                margin: "0 auto 24px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "40px",
+              }}
+            >
+              ✓
+            </div>
+            <h2
+              style={{
+                fontSize: "28px",
+                fontWeight: "700",
+                color: "#10b981",
+                marginBottom: "16px",
+              }}
+            >
+              Appointment Scheduled Successfully!
+            </h2>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#64748b",
+                marginBottom: "24px",
+              }}
+            >
+              The appointment has been scheduled and the applicant will be
+              notified.
+            </p>
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                border: "4px solid #10b981",
+                borderTopColor: "transparent",
+                borderRadius: "50%",
+                margin: "0 auto",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+            <p
+              style={{
+                marginTop: "16px",
+                fontSize: "14px",
+                color: "#64748b",
+              }}
+            >
+              Redirecting to dashboard...
+            </p>
+            <style>
+              {`
+                @keyframes spin {
+                  to { transform: rotate(360deg); }
+                }
+              `}
+            </style>
+          </div>
+        </div>
+      )}
+
+      {/* Document Approval Modal */}
+      <DocumentApprovalModal
+        isOpen={showDocumentApprovalModal}
+        onClose={() => setShowDocumentApprovalModal(false)}
+        applicationId={application.id}
+        documents={application.documents.map((doc) => ({
+          id: doc.id,
+          documentTypeName: doc.documentTypeName,
+          fileName: doc.fileName,
+          fileSize: doc.fileSize,
+          isVerified: doc.isVerified,
+        }))}
+        onApprovalComplete={handleDocumentApprovalComplete}
+      />
+
+      {/* Document Preview Modal */}
+      {selectedDocument && (
+        <div
+          className="pmc-modal-overlay"
+          onClick={() => setSelectedDocument(null)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              borderRadius: "8px",
+              width: "90%",
+              maxWidth: "1200px",
+              height: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: "16px 20px",
+                borderBottom: "1px solid #e5e7eb",
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <h3
+                  style={{
+                    color: "white",
+                    margin: 0,
+                    fontSize: "18px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {selectedDocument.documentTypeName}
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "13px",
+                    margin: "4px 0 0 0",
+                  }}
+                >
+                  {selectedDocument.fileName}
+                </p>
+              </div>
+              <div
+                style={{ display: "flex", gap: "8px", alignItems: "center" }}
+              >
+                <button
+                  className="pmc-button pmc-button-sm"
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = selectedDocument.filePath;
+                    link.download = selectedDocument.fileName;
+                    link.click();
+                  }}
+                  style={{
+                    background: "rgba(255,255,255,0.2)",
+                    color: "white",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Download size={14} />
+                  Download
+                </button>
+                <button
+                  onClick={() => setSelectedDocument(null)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px",
+                    color: "white",
+                  }}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Document Preview */}
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                background: "#f3f4f6",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {selectedDocument.filePath.toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={selectedDocument.filePath}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    border: "none",
+                  }}
+                  title={selectedDocument.fileName}
+                />
+              ) : selectedDocument.filePath.match(
+                  /\.(jpg|jpeg|png|gif|webp)$/i
+                ) ? (
+                <img
+                  src={selectedDocument.filePath}
+                  alt={selectedDocument.fileName}
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "40px",
+                    color: "#64748b",
+                  }}
+                >
+                  <FileText size={64} style={{ margin: "0 auto 16px" }} />
+                  <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+                    Preview not available for this file type
+                  </p>
+                  <p style={{ fontSize: "14px", marginBottom: "16px" }}>
+                    Click the download button to view the file
+                  </p>
+                  <button
+                    className="pmc-button pmc-button-primary"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = selectedDocument.filePath;
+                      link.download = selectedDocument.fileName;
+                      link.click();
+                    }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <Download size={16} />
+                    Download File
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

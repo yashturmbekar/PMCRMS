@@ -219,6 +219,43 @@ namespace PMCRMS.API.DTOs
         public List<QualificationResponseDTO> Qualifications { get; set; } = new List<QualificationResponseDTO>();
         public List<ExperienceResponseDTO> Experiences { get; set; } = new List<ExperienceResponseDTO>();
         public List<DocumentResponseDTO> Documents { get; set; } = new List<DocumentResponseDTO>();
+        
+        // JE Workflow Information
+        public JEWorkflowInfo? WorkflowInfo { get; set; }
+    }
+    
+    /// <summary>
+    /// Workflow information for JE stage applications
+    /// </summary>
+    public class JEWorkflowInfo
+    {
+        public int? AssignedJuniorEngineerId { get; set; }
+        public string? AssignedJuniorEngineerName { get; set; }
+        public string? AssignedJuniorEngineerEmail { get; set; }
+        public DateTime? AssignedDate { get; set; }
+        public int ProgressPercentage { get; set; }
+        public string CurrentStage { get; set; } = string.Empty;
+        public string NextAction { get; set; } = string.Empty;
+        public bool HasAppointment { get; set; }
+        public DateTime? AppointmentDate { get; set; }
+        public string? AppointmentPlace { get; set; }
+        public bool AllDocumentsVerified { get; set; }
+        public int VerifiedDocumentsCount { get; set; }
+        public int TotalDocumentsCount { get; set; }
+        public bool HasDigitalSignature { get; set; }
+        public DateTime? SignatureCompletedDate { get; set; }
+        public List<WorkflowTimelineEvent> Timeline { get; set; } = new List<WorkflowTimelineEvent>();
+    }
+    
+    /// <summary>
+    /// Timeline event for workflow history
+    /// </summary>
+    public class WorkflowTimelineEvent
+    {
+        public string EventType { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public string? PerformedBy { get; set; }
     }
 
     public class AddressResponseDTO

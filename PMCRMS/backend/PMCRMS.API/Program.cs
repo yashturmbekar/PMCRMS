@@ -211,6 +211,23 @@ builder.Services.AddSwaggerGen(c =>
 
 // Register application services
 builder.Services.AddHttpClient(); // For Brevo API
+
+// Configure HSM HTTP clients for digital signature
+builder.Services.AddHttpClient("HSM_OTP", client =>
+{
+    var hsmUrl = builder.Configuration["HSM:ServiceUrl"] ?? "https://hsm-provider.gov.in";
+    client.BaseAddress = new Uri(hsmUrl);
+    client.Timeout = TimeSpan.FromSeconds(
+        int.Parse(builder.Configuration["HSM:TimeoutSeconds"] ?? "30"));
+});
+
+builder.Services.AddHttpClient("HSM_SIGN", client =>
+{
+    var hsmUrl = builder.Configuration["HSM:ServiceUrl"] ?? "https://hsm-provider.gov.in";
+    client.BaseAddress = new Uri(hsmUrl);
+    client.Timeout = TimeSpan.FromSeconds(
+        int.Parse(builder.Configuration["HSM:TimeoutSeconds"] ?? "30"));
+});
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -218,6 +235,9 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<PdfService>(); // PDF Generation Service
 builder.Services.AddScoped<IAutoAssignmentService, AutoAssignmentService>(); // Auto-assignment for Junior Engineer workflow
 builder.Services.AddScoped<IAppointmentService, AppointmentService>(); // Appointment scheduling for Junior Engineer workflow
+builder.Services.AddScoped<IDocumentVerificationService, DocumentVerificationService>(); // Document verification for Junior Engineer workflow
+builder.Services.AddScoped<IDigitalSignatureService, DigitalSignatureService>(); // Digital signature with HSM integration for Junior Engineer workflow
+builder.Services.AddScoped<IJEWorkflowService, JEWorkflowService>(); // Workflow orchestration - Complete JE workflow coordination
 // TODO: Add more service registrations here
 
 var app = builder.Build();

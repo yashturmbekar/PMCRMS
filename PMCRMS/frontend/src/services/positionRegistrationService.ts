@@ -92,6 +92,25 @@ export interface PositionRegistrationResponse {
   qualifications: QualificationResponse[];
   experiences: ExperienceResponse[];
   documents: DocumentResponse[];
+  workflowInfo?: WorkflowInfo;
+}
+
+export interface WorkflowInfo {
+  assignedJuniorEngineerId?: number;
+  assignedJuniorEngineerName?: string;
+  assignedJuniorEngineerEmail?: string;
+  assignedDate?: string;
+  progressPercentage: number;
+  currentStage: string;
+  nextAction: string;
+  hasAppointment: boolean;
+  appointmentDate?: string;
+  appointmentPlace?: string;
+  totalDocumentsCount: number;
+  verifiedDocumentsCount: number;
+  allDocumentsVerified: boolean;
+  hasDigitalSignature: boolean;
+  signatureCompletedDate?: string;
 }
 
 export interface AddressResponse {

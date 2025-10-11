@@ -420,3 +420,6 @@ export interface ReportData {
   averageProcessingTime: number;
   revenueByMonth: { month: string; revenue: number }[];
 }
+
+// JE Workflow Types
+export * from "./jeWorkflow";

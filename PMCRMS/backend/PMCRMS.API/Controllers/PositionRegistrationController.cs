@@ -16,19 +16,22 @@ namespace PMCRMS.API.Controllers
         private readonly Services.IEmailService _emailService;
         private readonly IConfiguration _configuration;
         private readonly Services.IAutoAssignmentService _autoAssignmentService;
+        private readonly Services.IJEWorkflowService _jeWorkflowService;
 
         public PositionRegistrationController(
             PMCRMSDbContext context,
             ILogger<PositionRegistrationController> logger,
             Services.IEmailService emailService,
             IConfiguration configuration,
-            Services.IAutoAssignmentService autoAssignmentService)
+            Services.IAutoAssignmentService autoAssignmentService,
+            Services.IJEWorkflowService jeWorkflowService)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
             _configuration = configuration;
             _autoAssignmentService = autoAssignmentService;
+            _jeWorkflowService = jeWorkflowService;
         }
 
         // POST: api/PositionRegistration
@@ -552,6 +555,105 @@ namespace PMCRMS.API.Controllers
             }
         }
 
+        // GET: api/PositionRegistration/5/workflow
+        /// <summary>
+        /// Get detailed JE workflow status for an application
+        /// </summary>
+        [HttpGet("{id}/workflow")]
+        public async Task<ActionResult<JEWorkflowStatusDto>> GetApplicationWorkflow(int id)
+        {
+            try
+            {
+                var application = await _context.PositionApplications.FindAsync(id);
+                if (application == null)
+                {
+                    return NotFound(new { error = "Application not found" });
+                }
+
+                // Check if application is in JE workflow stage
+                if (!IsInJEWorkflowStage(application.Status))
+                {
+                    return BadRequest(new { error = "Application is not in JE workflow stage" });
+                }
+
+                var workflowStatus = await _jeWorkflowService.GetWorkflowStatusAsync(id);
+                
+                if (workflowStatus == null)
+                {
+                    return NotFound(new { error = "Workflow status not found" });
+                }
+
+                return Ok(workflowStatus);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving workflow for application {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while processing your request" });
+            }
+        }
+
+        // GET: api/PositionRegistration/5/workflow/history
+        /// <summary>
+        /// Get JE workflow history for an application
+        /// </summary>
+        [HttpGet("{id}/workflow/history")]
+        public async Task<ActionResult<WorkflowHistoryDto>> GetApplicationWorkflowHistory(int id)
+        {
+            try
+            {
+                var application = await _context.PositionApplications.FindAsync(id);
+                if (application == null)
+                {
+                    return NotFound(new { error = "Application not found" });
+                }
+
+                var workflowHistory = await _jeWorkflowService.GetWorkflowHistoryAsync(id);
+                
+                if (workflowHistory == null)
+                {
+                    return NotFound(new { error = "Workflow history not found" });
+                }
+
+                return Ok(workflowHistory);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving workflow history for application {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while processing your request" });
+            }
+        }
+
+        // GET: api/PositionRegistration/5/workflow/timeline
+        /// <summary>
+        /// Get JE workflow timeline for an application
+        /// </summary>
+        [HttpGet("{id}/workflow/timeline")]
+        public async Task<ActionResult<List<WorkflowTimelineEventDto>>> GetApplicationWorkflowTimeline(int id)
+        {
+            try
+            {
+                var application = await _context.PositionApplications.FindAsync(id);
+                if (application == null)
+                {
+                    return NotFound(new { error = "Application not found" });
+                }
+
+                var timeline = await _jeWorkflowService.GetWorkflowTimelineAsync(id);
+                
+                if (timeline == null)
+                {
+                    return NotFound(new { error = "Workflow timeline not found" });
+                }
+
+                return Ok(timeline);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving workflow timeline for application {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while processing your request" });
+            }
+        }
+
         #region Private Helper Methods
 
         private int GetCurrentUserId()
@@ -571,6 +673,11 @@ namespace PMCRMS.API.Controllers
                 .Include(a => a.Qualifications)
                 .Include(a => a.Experiences)
                 .Include(a => a.Documents)
+                .Include(a => a.AssignedJuniorEngineer) // For workflow info
+                .Include(a => a.AssignmentHistories) // For workflow timeline
+                .Include(a => a.Appointments) // For workflow info
+                .Include(a => a.DocumentVerifications) // For workflow info
+                .Include(a => a.DigitalSignatures) // For workflow info
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (application == null)
@@ -586,7 +693,7 @@ namespace PMCRMS.API.Controllers
             var age = DateTime.Today.Year - application.DateOfBirth.Year;
             if (application.DateOfBirth.Date > DateTime.Today.AddYears(-age)) age--;
 
-            return new PositionRegistrationResponseDTO
+            var response = new PositionRegistrationResponseDTO
             {
                 Id = application.Id,
                 ApplicationNumber = application.ApplicationNumber ?? "",
@@ -667,6 +774,14 @@ namespace PMCRMS.API.Controllers
                     VerificationRemarks = d.VerificationRemarks
                 }).ToList()
             };
+
+            // Add JE workflow information if application is in JE stage
+            if (IsInJEWorkflowStage(application.Status))
+            {
+                response.WorkflowInfo = BuildWorkflowInfo(application);
+            }
+
+            return response;
         }
 
         private List<string> ValidateRequest(PositionRegistrationRequestDTO request)
@@ -755,6 +870,235 @@ namespace PMCRMS.API.Controllers
             var totalDays = (toDate - fromDate).TotalDays;
             var years = (decimal)(totalDays / 365.25);
             return Math.Round(years, 2);
+        }
+
+        /// <summary>
+        /// Check if application status is in JE workflow stage
+        /// </summary>
+        private bool IsInJEWorkflowStage(ApplicationCurrentStatus status)
+        {
+            return status == ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING ||
+                   status == ApplicationCurrentStatus.APPOINTMENT_SCHEDULED ||
+                   status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING ||
+                   status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS ||
+                   status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED ||
+                   status == ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE;
+        }
+
+        /// <summary>
+        /// Build workflow information for application
+        /// </summary>
+        private JEWorkflowInfo BuildWorkflowInfo(PositionApplication application)
+        {
+            var workflowInfo = new JEWorkflowInfo
+            {
+                AssignedJuniorEngineerId = application.AssignedJuniorEngineerId,
+                AssignedJuniorEngineerName = application.AssignedJuniorEngineer?.Name,
+                AssignedJuniorEngineerEmail = application.AssignedJuniorEngineer?.Email,
+                CurrentStage = GetWorkflowStage(application.Status),
+                NextAction = GetNextWorkflowAction(application.Status)
+            };
+
+            // Get assignment date from assignment history
+            var assignment = application.AssignmentHistories
+                .Where(ah => ah.AssignedToOfficerId == application.AssignedJuniorEngineerId)
+                .OrderByDescending(ah => ah.AssignedDate)
+                .FirstOrDefault();
+            
+            workflowInfo.AssignedDate = assignment?.AssignedDate;
+
+            // Calculate progress percentage
+            workflowInfo.ProgressPercentage = CalculateJEWorkflowProgress(application.Status);
+
+            // Get appointment information
+            var appointment = application.Appointments
+                .OrderByDescending(a => a.ReviewDate)
+                .FirstOrDefault();
+            
+            if (appointment != null)
+            {
+                workflowInfo.HasAppointment = true;
+                workflowInfo.AppointmentDate = appointment.ReviewDate;
+                workflowInfo.AppointmentPlace = appointment.Place;
+            }
+
+            // Get document verification information
+            var documentVerifications = application.DocumentVerifications.ToList();
+            workflowInfo.TotalDocumentsCount = application.Documents.Count;
+            workflowInfo.VerifiedDocumentsCount = documentVerifications
+                .Count(dv => dv.Status == Models.VerificationStatus.Approved);
+            workflowInfo.AllDocumentsVerified = application.AllDocumentsVerified;
+
+            // Get digital signature information
+            var digitalSignature = application.DigitalSignatures
+                .OrderByDescending(ds => ds.CreatedDate)
+                .FirstOrDefault();
+            
+            if (digitalSignature != null)
+            {
+                workflowInfo.HasDigitalSignature = true;
+                workflowInfo.SignatureCompletedDate = digitalSignature.SignedDate;
+            }
+
+            // Build timeline
+            workflowInfo.Timeline = BuildWorkflowTimeline(application);
+
+            return workflowInfo;
+        }
+
+        /// <summary>
+        /// Get human-readable workflow stage
+        /// </summary>
+        private string GetWorkflowStage(ApplicationCurrentStatus status)
+        {
+            return status switch
+            {
+                ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING => "Assignment Pending",
+                ApplicationCurrentStatus.APPOINTMENT_SCHEDULED => "Appointment Scheduled",
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING => "Awaiting Document Verification",
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS => "Documents Being Verified",
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED => "Documents Verified",
+                ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => "Awaiting JE Signature",
+                _ => status.ToString()
+            };
+        }
+
+        /// <summary>
+        /// Get next recommended workflow action
+        /// </summary>
+        private string GetNextWorkflowAction(ApplicationCurrentStatus status)
+        {
+            return status switch
+            {
+                ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING => "Assign to Junior Engineer",
+                ApplicationCurrentStatus.APPOINTMENT_SCHEDULED => "Complete Appointment",
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING => "Start Document Verification",
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS => "Complete Document Verification",
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED => "Initiate Digital Signature",
+                ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => "Complete Digital Signature",
+                _ => "No action required"
+            };
+        }
+
+        /// <summary>
+        /// Calculate JE workflow progress percentage (0-100)
+        /// </summary>
+        private int CalculateJEWorkflowProgress(ApplicationCurrentStatus status)
+        {
+            return status switch
+            {
+                ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING => 0,
+                ApplicationCurrentStatus.APPOINTMENT_SCHEDULED => 20,
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING => 40,
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS => 60,
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED => 80,
+                ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => 90,
+                ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING => 100,
+                _ => 0
+            };
+        }
+
+        /// <summary>
+        /// Build workflow timeline from application history
+        /// </summary>
+        private List<WorkflowTimelineEvent> BuildWorkflowTimeline(PositionApplication application)
+        {
+            var timeline = new List<WorkflowTimelineEvent>();
+
+            // Application submission
+            if (application.SubmittedDate.HasValue)
+            {
+                timeline.Add(new WorkflowTimelineEvent
+                {
+                    EventType = "Submission",
+                    Description = "Application submitted",
+                    Timestamp = application.SubmittedDate.Value,
+                    PerformedBy = $"{application.FirstName} {application.LastName}"
+                });
+            }
+
+            // JE Assignment
+            var jeAssignment = application.AssignmentHistories
+                .Where(ah => ah.AssignedToOfficerId == application.AssignedJuniorEngineerId)
+                .OrderBy(ah => ah.AssignedDate)
+                .FirstOrDefault();
+            
+            if (jeAssignment != null)
+            {
+                timeline.Add(new WorkflowTimelineEvent
+                {
+                    EventType = "Assignment",
+                    Description = $"Assigned to {application.AssignedJuniorEngineer?.Name ?? "Junior Engineer"}",
+                    Timestamp = jeAssignment.AssignedDate,
+                    PerformedBy = "Auto-Assignment System"
+                });
+            }
+
+            // Appointments
+            foreach (var appointment in application.Appointments.OrderBy(a => a.ReviewDate))
+            {
+                timeline.Add(new WorkflowTimelineEvent
+                {
+                    EventType = "Appointment",
+                    Description = $"Appointment scheduled at {appointment.Place}",
+                    Timestamp = appointment.CreatedDate,
+                    PerformedBy = application.AssignedJuniorEngineer?.Name
+                });
+
+                if (appointment.Status == Models.AppointmentStatus.Completed)
+                {
+                    timeline.Add(new WorkflowTimelineEvent
+                    {
+                        EventType = "AppointmentCompleted",
+                        Description = "Appointment completed",
+                        Timestamp = appointment.UpdatedDate ?? appointment.CreatedDate,
+                        PerformedBy = application.AssignedJuniorEngineer?.Name
+                    });
+                }
+            }
+
+            // Document Verifications
+            var verifications = application.DocumentVerifications
+                .Where(dv => dv.Status == Models.VerificationStatus.Approved || 
+                            dv.Status == Models.VerificationStatus.Rejected)
+                .OrderBy(dv => dv.VerifiedDate);
+            
+            foreach (var verification in verifications)
+            {
+                var document = application.Documents.FirstOrDefault(d => d.Id == verification.DocumentId);
+                timeline.Add(new WorkflowTimelineEvent
+                {
+                    EventType = verification.Status == Models.VerificationStatus.Approved ? "DocumentVerified" : "DocumentRejected",
+                    Description = $"Document {document?.DocumentType.ToString() ?? "Unknown"} {(verification.Status == Models.VerificationStatus.Approved ? "verified" : "rejected")}",
+                    Timestamp = verification.VerifiedDate ?? verification.CreatedDate,
+                    PerformedBy = application.AssignedJuniorEngineer?.Name
+                });
+            }
+
+            // Digital Signatures
+            foreach (var signature in application.DigitalSignatures.OrderBy(ds => ds.CreatedDate))
+            {
+                timeline.Add(new WorkflowTimelineEvent
+                {
+                    EventType = "SignatureInitiated",
+                    Description = "Digital signature process initiated",
+                    Timestamp = signature.CreatedDate,
+                    PerformedBy = application.AssignedJuniorEngineer?.Name
+                });
+
+                if (signature.SignedDate.HasValue)
+                {
+                    timeline.Add(new WorkflowTimelineEvent
+                    {
+                        EventType = "SignatureCompleted",
+                        Description = "Digital signature completed",
+                        Timestamp = signature.SignedDate.Value,
+                        PerformedBy = application.AssignedJuniorEngineer?.Name
+                    });
+                }
+            }
+
+            return timeline.OrderBy(t => t.Timestamp).ToList();
         }
 
         #endregion
