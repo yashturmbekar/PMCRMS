@@ -62,9 +62,9 @@ const LoginPage: React.FC = () => {
         localStorage.setItem("pmcrms_token", response.data.token);
         localStorage.setItem("pmcrms_user", JSON.stringify(response.data.user));
 
-        // Force reload to trigger AuthContext initialization
-        // This will make useEffect in AuthContext read the new localStorage values
-        window.location.href = "/dashboard";
+        // Redirect based on user role
+        const redirectPath = response.data.user.role === "Admin" ? "/admin" : "/dashboard";
+        window.location.href = redirectPath;
       } else {
         throw new Error(
           response.message || "OTP verification failed. Please try again."

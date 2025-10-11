@@ -21,7 +21,7 @@ import { Layout } from "./components/Layout";
 import { PageLoader } from "./components";
 import "./index.css";
 
-// Proper protected route component using AuthContext
+// Protected route component with admin redirect
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -33,6 +33,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Redirect admins to admin dashboard
+  if (user.role === "Admin" && window.location.pathname === "/dashboard") {
+    return <Navigate to="/admin" replace />;
   }
 
   return <>{children}</>;
@@ -55,6 +60,26 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   return <>{children}</>;
+};
+
+// Smart redirect component for root path
+const DefaultRedirect: React.FC = () => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <PageLoader message="Loading..." />;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Redirect based on user role
+  if (user.role === "Admin") {
+    return <Navigate to="/admin" replace />;
+  }
+
+  return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -88,6 +113,16 @@ function App() {
                   <AdminRoute>
                     <Layout>
                       <AdminApplicationsPage />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/applications/:id"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <ViewPositionApplication />
                     </Layout>
                   </AdminRoute>
                 }
@@ -166,8 +201,8 @@ function App() {
                 }
               />
 
-              {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              {/* Default redirect - role-based */}
+              <Route path="/" element={<DefaultRedirect />} />
 
               {/* 404 fallback */}
               <Route

@@ -469,7 +469,7 @@ const AdminApplicationsPage: React.FC = () => {
                             }}
                           >
                             <Eye style={{ width: "14px", height: "14px" }} />
-                            Review
+                            View
                           </button>
                         </td>
                       </tr>

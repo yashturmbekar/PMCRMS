@@ -13,12 +13,25 @@ import {
   DollarSign,
   UserCog,
   Mail,
+  Eye,
 } from "lucide-react";
 import { PageLoader } from "../../components";
+
+interface ApplicationSummary {
+  applicationId: number;
+  applicationNumber: string;
+  applicantName: string;
+  applicationType: string;
+  status: string;
+  submittedOn: string;
+}
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+  const [recentApplications, setRecentApplications] = useState<
+    ApplicationSummary[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -29,11 +42,31 @@ const AdminDashboard: React.FC = () => {
   const loadDashboardStats = async () => {
     try {
       setLoading(true);
-      const response = await adminService.getDashboardStats();
-      if (response.success && response.data) {
-        setStats(response.data);
+      const [statsResponse, applicationsResponse] = await Promise.all([
+        adminService.getDashboardStats(),
+        adminService.getAllApplications({ pageSize: 5 }),
+      ]);
+
+      if (statsResponse.success && statsResponse.data) {
+        setStats(statsResponse.data);
       } else {
-        setError(response.message || "Failed to load dashboard statistics");
+        setError(
+          statsResponse.message || "Failed to load dashboard statistics"
+        );
+      }
+
+      if (applicationsResponse.success && applicationsResponse.data) {
+        // Sort by submission date and take the 5 most recent
+        const apps = applicationsResponse.data as ApplicationSummary[];
+        const sortedApps = apps
+          .filter((app) => app.submittedOn) // Only show submitted applications
+          .sort(
+            (a, b) =>
+              new Date(b.submittedOn).getTime() -
+              new Date(a.submittedOn).getTime()
+          )
+          .slice(0, 5);
+        setRecentApplications(sortedApps);
       }
     } catch (err) {
       console.error("Error loading dashboard:", err);
@@ -477,7 +510,7 @@ const AdminDashboard: React.FC = () => {
               }}
             >
               <FileText style={{ width: "20px", height: "20px" }} />
-              <span className="pmc-font-semibold">View Applications</span>
+              <span className="pmc-font-semibold">View All Applications</span>
             </button>
             <button
               className="pmc-button pmc-button-secondary"
@@ -497,195 +530,207 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: "24px",
-        }}
-        className="pmc-slideInRight"
-      >
-        <div className="pmc-card">
-          <div className="pmc-card-header">
-            <h2 className="pmc-card-title">Officer Distribution</h2>
-            <p className="pmc-card-subtitle">Officers by role</p>
-          </div>
-          <div className="pmc-card-body">
-            <div className="pmc-table-container">
-              <div className="pmc-table-responsive">
-                {stats.roleDistribution && stats.roleDistribution.length > 0 ? (
-                  <table className="pmc-table">
-                    <thead>
-                      <tr>
-                        <th
-                          className="pmc-text-xs pmc-font-semibold"
-                          style={{
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--pmc-gray-700)",
-                          }}
-                        >
-                          Role
-                        </th>
-                        <th
-                          className="pmc-text-xs pmc-font-semibold"
-                          style={{
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--pmc-gray-700)",
-                          }}
-                        >
-                          Total
-                        </th>
-                        <th
-                          className="pmc-text-xs pmc-font-semibold"
-                          style={{
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--pmc-gray-700)",
-                          }}
-                        >
-                          Active
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.roleDistribution.map((role) => (
-                        <tr key={role.role}>
-                          <td
-                            className="pmc-text-sm pmc-font-medium"
-                            style={{ color: "var(--pmc-gray-800)" }}
-                          >
-                            {role.role}
-                          </td>
-                          <td
-                            className="pmc-text-sm"
-                            style={{ color: "var(--pmc-gray-600)" }}
-                          >
-                            {role.count}
-                          </td>
-                          <td>
-                            <span className="pmc-badge pmc-status-approved">
-                              {role.activeCount}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div
-                    style={{
-                      padding: "32px 16px",
-                      textAlign: "center",
-                      color: "var(--pmc-gray-500)",
-                    }}
-                  >
-                    <Users
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        margin: "0 auto 12px",
-                        opacity: 0.3,
-                      }}
-                    />
-                    <p className="pmc-text-sm">No officers yet</p>
-                  </div>
-                )}
-              </div>
+      {/* Recent Submitted Applications */}
+      <div className="pmc-card pmc-slideInRight">
+        <div className="pmc-card-header">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <h2 className="pmc-card-title">Recent Submitted Applications</h2>
+              <p className="pmc-card-subtitle">Latest 5 applications</p>
             </div>
+            <button
+              className="pmc-button pmc-button-primary pmc-button-sm"
+              onClick={() => navigate("/admin/applications")}
+            >
+              View All
+            </button>
           </div>
         </div>
-
-        <div className="pmc-card">
-          <div className="pmc-card-header">
-            <h2 className="pmc-card-title">Recent Trends</h2>
-            <p className="pmc-card-subtitle">Last 7 days activity</p>
-          </div>
-          <div className="pmc-card-body">
-            <div className="pmc-table-container">
-              <div className="pmc-table-responsive">
-                {stats.applicationTrends &&
-                stats.applicationTrends.length > 0 ? (
-                  <table className="pmc-table">
-                    <thead>
-                      <tr>
-                        <th
-                          className="pmc-text-xs pmc-font-semibold"
-                          style={{
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--pmc-gray-700)",
-                          }}
+        <div className="pmc-card-body">
+          <div className="pmc-table-container">
+            <div className="pmc-table-responsive">
+              {recentApplications.length > 0 ? (
+                <table className="pmc-table">
+                  <thead>
+                    <tr>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Application #
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Applicant
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Type
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Submitted
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Status
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentApplications.map((app) => (
+                      <tr key={app.applicationId}>
+                        <td
+                          className="pmc-text-sm pmc-font-semibold"
+                          style={{ color: "var(--pmc-primary)" }}
                         >
-                          Date
-                        </th>
-                        <th
-                          className="pmc-text-xs pmc-font-semibold"
-                          style={{
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--pmc-gray-700)",
-                          }}
+                          #{app.applicationNumber}
+                        </td>
+                        <td
+                          className="pmc-text-sm pmc-font-medium"
+                          style={{ color: "var(--pmc-gray-800)" }}
                         >
-                          Status
-                        </th>
-                        <th
-                          className="pmc-text-xs pmc-font-semibold"
-                          style={{
-                            textTransform: "uppercase",
-                            letterSpacing: "0.05em",
-                            color: "var(--pmc-gray-700)",
-                          }}
+                          {app.applicantName}
+                        </td>
+                        <td
+                          className="pmc-text-sm"
+                          style={{ color: "var(--pmc-gray-600)" }}
                         >
-                          Count
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.applicationTrends.map((trend, index) => (
-                        <tr key={index}>
-                          <td
-                            className="pmc-text-sm pmc-font-medium"
-                            style={{ color: "var(--pmc-gray-800)" }}
+                          {app.applicationType}
+                        </td>
+                        <td
+                          className="pmc-text-sm"
+                          style={{ color: "var(--pmc-gray-600)" }}
+                        >
+                          {new Date(app.submittedOn).toLocaleDateString()}
+                        </td>
+                        <td>
+                          <span
+                            className={`pmc-badge ${
+                              app.status.toLowerCase() === "approved"
+                                ? "pmc-status-approved"
+                                : app.status.toLowerCase() === "rejected"
+                                ? "pmc-status-rejected"
+                                : "pmc-status-under-review"
+                            }`}
                           >
-                            {new Date(trend.date).toLocaleDateString()}
-                          </td>
-                          <td
-                            className="pmc-text-sm"
-                            style={{ color: "var(--pmc-gray-600)" }}
-                          >
-                            {trend.status}
-                          </td>
-                          <td>
-                            <span className="pmc-badge pmc-status-under-review">
-                              {trend.count}
+                            <span
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "4px",
+                              }}
+                            >
+                              {app.status.toLowerCase() === "approved" ? (
+                                <CheckCircle
+                                  style={{ width: "14px", height: "14px" }}
+                                />
+                              ) : app.status.toLowerCase() === "rejected" ? (
+                                <XCircle
+                                  style={{ width: "14px", height: "14px" }}
+                                />
+                              ) : (
+                                <Clock
+                                  style={{ width: "14px", height: "14px" }}
+                                />
+                              )}
+                              {app.status}
                             </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/admin/applications/${app.applicationId}`
+                              )
+                            }
+                            className="pmc-button pmc-button-primary pmc-button-sm"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <Eye style={{ width: "14px", height: "14px" }} />
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div
+                  style={{
+                    padding: "48px 24px",
+                    textAlign: "center",
+                    color: "var(--pmc-gray-500)",
+                  }}
+                >
+                  <FileText
                     style={{
-                      padding: "32px 16px",
-                      textAlign: "center",
-                      color: "var(--pmc-gray-500)",
+                      width: "48px",
+                      height: "48px",
+                      margin: "0 auto 16px",
+                      opacity: 0.3,
                     }}
+                  />
+                  <p
+                    className="pmc-text-base pmc-font-medium"
+                    style={{ marginBottom: "8px" }}
                   >
-                    <Clock
-                      style={{
-                        width: "32px",
-                        height: "32px",
-                        margin: "0 auto 12px",
-                        opacity: 0.3,
-                      }}
-                    />
-                    <p className="pmc-text-sm">No recent activity</p>
-                  </div>
-                )}
-              </div>
+                    No applications found
+                  </p>
+                  <p className="pmc-text-sm">
+                    Applications will appear here once users submit them
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

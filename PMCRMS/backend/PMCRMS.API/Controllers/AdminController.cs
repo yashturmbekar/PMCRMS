@@ -1098,9 +1098,9 @@ namespace PMCRMS.API.Controllers
         #region Application Management
 
         [HttpGet("applications")]
-        public async Task<ActionResult<ApiResponse<List<ApplicationDto>>>> GetAllApplications(
+        public async Task<ActionResult<ApiResponse<List<ApplicationSummaryDto>>>> GetAllApplications(
             [FromQuery] string? status = null,
-            [FromQuery] string? type = null,
+            [FromQuery] string? positionType = null,
             [FromQuery] string? search = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
@@ -1108,35 +1108,33 @@ namespace PMCRMS.API.Controllers
             try
             {
                 var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
-                _logger.LogInformation("Admin {AdminId} fetching all applications", adminId);
+                _logger.LogInformation("Admin {AdminId} fetching all position applications", adminId);
 
-                var query = _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Documents)
-                    .Include(a => a.StatusHistory)
-                        .ThenInclude(s => s.UpdatedByOfficer) // Changed from UpdatedByUser
+                var query = _context.PositionApplications
+                    .Include(a => a.User)
                     .AsQueryable();
 
                 // Filter by status
                 if (!string.IsNullOrEmpty(status) && Enum.TryParse<ApplicationCurrentStatus>(status, out var statusEnum))
                 {
-                    query = query.Where(a => a.CurrentStatus == statusEnum);
+                    query = query.Where(a => a.Status == statusEnum);
                 }
 
-                // Filter by type
-                if (!string.IsNullOrEmpty(type) && Enum.TryParse<ApplicationType>(type, out var typeEnum))
+                // Filter by position type
+                if (!string.IsNullOrEmpty(positionType) && Enum.TryParse<PositionType>(positionType, out var positionTypeEnum))
                 {
-                    query = query.Where(a => a.Type == typeEnum);
+                    query = query.Where(a => a.PositionType == positionTypeEnum);
                 }
 
                 // Search filter
                 if (!string.IsNullOrEmpty(search))
                 {
                     query = query.Where(a =>
-                        a.ApplicationNumber.Contains(search) ||
-                        a.ProjectTitle.Contains(search) ||
-                        a.Applicant.Name.Contains(search) ||
-                        a.Applicant.Email.Contains(search));
+                        (a.ApplicationNumber != null && a.ApplicationNumber.Contains(search)) ||
+                        a.FirstName.Contains(search) ||
+                        a.LastName.Contains(search) ||
+                        a.EmailAddress.Contains(search) ||
+                        a.MobileNumber.Contains(search));
                 }
 
                 var totalCount = await query.CountAsync();
@@ -1146,39 +1144,17 @@ namespace PMCRMS.API.Controllers
                     .Take(pageSize)
                     .ToListAsync();
 
-                var applicationDtos = applications.Select(app => new ApplicationDto
+                var applicationDtos = applications.Select(app => new ApplicationSummaryDto
                 {
-                    Id = app.Id,
-                    ApplicationNumber = app.ApplicationNumber,
-                    ApplicantId = app.ApplicantId,
-                    ApplicantName = app.Applicant?.Name ?? "Unknown",
-                    ApplicationType = app.Type.ToString(),
-                    ProjectTitle = app.ProjectTitle,
-                    ProjectDescription = app.ProjectDescription,
-                    SiteAddress = app.SiteAddress,
-                    PlotArea = app.PlotArea,
-                    BuiltUpArea = app.BuiltUpArea,
-                    EstimatedCost = app.EstimatedCost,
-                    CurrentStatus = app.CurrentStatus.ToString(),
-                    AssignedOfficerId = app.AssignedOfficerId,
-                    AssignedOfficerName = app.AssignedOfficerName,
-                    AssignedOfficerDesignation = app.AssignedOfficerDesignation,
-                    AssignedDate = app.AssignedDate,
-                    CreatedAt = app.CreatedDate,
-                    UpdatedAt = app.UpdatedDate ?? app.CreatedDate,
-                    CertificateIssuedDate = app.CertificateIssuedDate,
-                    CertificateNumber = app.CertificateNumber,
-                    Documents = app.Documents.Select(d => new DocumentDto
-                    {
-                        Id = d.Id,
-                        FileName = d.FileName,
-                        DocumentType = d.Type.ToString(),
-                        FileSize = d.FileSize,
-                        UploadedAt = d.CreatedDate
-                    }).ToList()
+                    ApplicationId = app.Id,
+                    ApplicationNumber = app.ApplicationNumber ?? "N/A",
+                    ApplicantName = $"{app.FirstName} {app.MiddleName} {app.LastName}".Replace("  ", " ").Trim(),
+                    ApplicationType = app.PositionType.ToString(),
+                    Status = app.Status.ToString(),
+                    SubmittedOn = app.CreatedDate.ToString("yyyy-MM-ddTHH:mm:ss")
                 }).ToList();
 
-                return Ok(new ApiResponse<List<ApplicationDto>>
+                return Ok(new ApiResponse<List<ApplicationSummaryDto>>
                 {
                     Success = true,
                     Data = applicationDtos,
@@ -1187,7 +1163,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching applications for admin");
+                _logger.LogError(ex, "Error fetching position applications for admin");
                 return StatusCode(500, new ApiResponse
                 {
                     Success = false,
@@ -1203,16 +1179,14 @@ namespace PMCRMS.API.Controllers
             try
             {
                 var adminId = int.Parse(User.FindFirst("user_id")?.Value ?? "0");
-                _logger.LogInformation("Admin {AdminId} fetching application detail {ApplicationId}", adminId, id);
+                _logger.LogInformation("Admin {AdminId} fetching position application detail {ApplicationId}", adminId, id);
 
-                var application = await _context.Applications
-                    .Include(a => a.Applicant)
+                var application = await _context.PositionApplications
+                    .Include(a => a.User)
+                    .Include(a => a.Addresses)
+                    .Include(a => a.Qualifications)
+                    .Include(a => a.Experiences)
                     .Include(a => a.Documents)
-                    .Include(a => a.StatusHistory)
-                        .ThenInclude(s => s.UpdatedByOfficer) // Changed from UpdatedByUser
-                    .Include(a => a.Comments)
-                        .ThenInclude(c => c.CommentedByOfficer) // Changed from CommentedByUser
-                    .Include(a => a.Payments)
                     .FirstOrDefaultAsync(a => a.Id == id);
 
                 if (application == null)
@@ -1224,30 +1198,105 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
+                var age = DateTime.Today.Year - application.DateOfBirth.Year;
+                if (application.DateOfBirth.Date > DateTime.Today.AddYears(-age)) age--;
+
                 var applicationDetail = new ApplicationDetailDto
                 {
-                    Id = application.Id,
-                    ApplicationNumber = application.ApplicationNumber,
-                    ApplicantId = application.ApplicantId,
-                    ApplicantName = application.Applicant?.Name ?? "Unknown",
-                    ApplicantEmail = application.Applicant?.Email ?? "",
-                    ApplicantPhone = application.Applicant?.PhoneNumber ?? "",
-                    ApplicationType = application.Type.ToString(),
-                    ProjectTitle = application.ProjectTitle,
-                    ProjectDescription = application.ProjectDescription,
-                    SiteAddress = application.SiteAddress,
-                    PlotArea = application.PlotArea,
-                    BuiltUpArea = application.BuiltUpArea,
-                    EstimatedCost = application.EstimatedCost,
-                    CurrentStatus = application.CurrentStatus.ToString(),
-                    AssignedOfficerId = application.AssignedOfficerId,
-                    AssignedOfficerName = application.AssignedOfficerName,
-                    AssignedOfficerDesignation = application.AssignedOfficerDesignation,
-                    AssignedDate = application.AssignedDate,
-                    FeeAmount = application.FeeAmount,
-                    PaymentDueDate = application.PaymentDueDate,
-                    CertificateNumber = application.CertificateNumber,
-                    CertificateIssuedDate = application.CertificateIssuedDate,
+                    ApplicationId = application.Id,
+                    ApplicationNumber = application.ApplicationNumber ?? "N/A",
+                    ApplicantId = application.UserId,
+                    ApplicantName = $"{application.FirstName} {application.MiddleName} {application.LastName}".Replace("  ", " ").Trim(),
+                    ApplicantEmail = application.EmailAddress,
+                    ApplicantPhone = application.MobileNumber,
+                    ApplicationType = application.PositionType.ToString(),
+                    Status = application.Status.ToString(),
+                    SubmittedOn = application.CreatedDate.ToString("yyyy-MM-ddTHH:mm:ss"),
+                    LastUpdated = (application.UpdatedDate ?? application.CreatedDate).ToString("yyyy-MM-ddTHH:mm:ss"),
+                    FormData = new
+                    {
+                        // Personal Information
+                        firstName = application.FirstName,
+                        middleName = application.MiddleName,
+                        lastName = application.LastName,
+                        motherName = application.MotherName,
+                        mobileNumber = application.MobileNumber,
+                        emailAddress = application.EmailAddress,
+                        positionType = application.PositionType.ToString(),
+                        bloodGroup = application.BloodGroup,
+                        height = application.Height,
+                        gender = application.Gender.ToString(),
+                        dateOfBirth = application.DateOfBirth.ToString("yyyy-MM-dd"),
+                        age = age,
+                        panCardNumber = application.PanCardNumber,
+                        aadharCardNumber = application.AadharCardNumber,
+                        coaCardNumber = application.CoaCardNumber,
+                        
+                        // Status Information
+                        applicationNumber = application.ApplicationNumber,
+                        status = application.Status.ToString(),
+                        submittedDate = application.SubmittedDate?.ToString("yyyy-MM-dd"),
+                        approvedDate = application.ApprovedDate?.ToString("yyyy-MM-dd"),
+                        remarks = application.Remarks,
+                        
+                        // Addresses
+                        addresses = application.Addresses.Select(addr => new
+                        {
+                            addressType = addr.AddressType,
+                            addressLine1 = addr.AddressLine1,
+                            addressLine2 = addr.AddressLine2,
+                            addressLine3 = addr.AddressLine3,
+                            city = addr.City,
+                            state = addr.State,
+                            country = addr.Country,
+                            pinCode = addr.PinCode
+                        }).ToList(),
+                        
+                        // Qualifications
+                        qualifications = application.Qualifications.Select(qual => new
+                        {
+                            instituteName = qual.InstituteName,
+                            universityName = qual.UniversityName,
+                            specialization = qual.Specialization.ToString(),
+                            degreeName = qual.DegreeName,
+                            passingMonth = qual.PassingMonth,
+                            yearOfPassing = qual.YearOfPassing.Year
+                        }).ToList(),
+                        
+                        // Experiences
+                        experiences = application.Experiences.Select(exp => new
+                        {
+                            companyName = exp.CompanyName,
+                            position = exp.Position,
+                            yearsOfExperience = exp.YearsOfExperience,
+                            fromDate = exp.FromDate.ToString("yyyy-MM-dd"),
+                            toDate = exp.ToDate.ToString("yyyy-MM-dd")
+                        }).ToList(),
+                        
+                        // Documents
+                        documents = application.Documents.Select(doc => new
+                        {
+                            documentType = doc.DocumentType.ToString(),
+                            fileName = doc.FileName,
+                            fileId = doc.FileId,
+                            isVerified = doc.IsVerified,
+                            verifiedDate = doc.VerifiedDate?.ToString("yyyy-MM-dd")
+                        }).ToList()
+                    },
+                    ProjectTitle = null,
+                    ProjectDescription = null,
+                    SiteAddress = null,
+                    PlotArea = null,
+                    BuiltUpArea = null,
+                    EstimatedCost = null,
+                    AssignedOfficerId = null,
+                    AssignedOfficerName = null,
+                    AssignedOfficerDesignation = null,
+                    AssignedDate = null,
+                    FeeAmount = null,
+                    PaymentDueDate = null,
+                    CertificateNumber = null,
+                    CertificateIssuedDate = null,
                     Remarks = application.Remarks,
                     CreatedAt = application.CreatedDate,
                     UpdatedAt = application.UpdatedDate ?? application.CreatedDate,
@@ -1255,52 +1304,18 @@ namespace PMCRMS.API.Controllers
                     {
                         Id = d.Id,
                         FileName = d.FileName,
-                        DocumentType = d.Type.ToString(),
-                        FileSize = d.FileSize,
+                        DocumentType = d.DocumentType.ToString(),
+                        FileSize = d.FileSize.HasValue ? (long)d.FileSize.Value : null,
                         FilePath = d.FilePath,
                         IsVerified = d.IsVerified,
                         VerifiedBy = d.VerifiedBy,
-                        VerifiedByName = d.VerifiedByOfficer?.Name, // Changed from VerifiedByUser
+                        VerifiedByName = d.VerifiedByOfficer?.Name,
                         VerifiedDate = d.VerifiedDate,
                         UploadedAt = d.CreatedDate
                     }).ToList(),
-                    StatusHistory = application.StatusHistory
-                        .OrderByDescending(s => s.StatusDate)
-                        .Select(s => new ApplicationStatusDto
-                        {
-                            Id = s.Id,
-                            Status = s.Status.ToString(),
-                            Remarks = s.Remarks,
-                            UpdatedBy = s.UpdatedByOfficer?.Name ?? "System", // Changed from UpdatedByUser
-                            UpdatedByRole = s.UpdatedByOfficer?.Role.ToString() ?? "", // Changed from UpdatedByUser
-                            StatusDate = s.StatusDate,
-                            CreatedAt = s.CreatedDate
-                        }).ToList(),
-                    Comments = application.Comments
-                        .OrderByDescending(c => c.CreatedDate)
-                        .Select(c => new ApplicationCommentDto
-                        {
-                            Id = c.Id,
-                            Comment = c.Comment,
-                            CommentType = c.CommentType,
-                            IsInternal = c.IsInternal,
-                            CommentedBy = c.CommentedByOfficer?.Name ?? "Unknown", // Changed from CommentedByUser
-                            CommentedByRole = c.CommentedByOfficer?.Role.ToString() ?? "", // Changed from CommentedByUser
-                            CreatedAt = c.CreatedDate
-                        }).ToList(),
-                    Payments = application.Payments
-                        .OrderByDescending(p => p.CreatedDate)
-                        .Select(p => new ApplicationPaymentDto
-                        {
-                            Id = p.Id,
-                            PaymentId = p.PaymentId,
-                            Amount = p.Amount,
-                            Status = p.Status.ToString(),
-                            Method = p.Method.ToString(),
-                            TransactionId = p.TransactionId,
-                            PaymentDate = p.PaymentDate,
-                            CreatedAt = p.CreatedDate
-                        }).ToList()
+                    StatusHistory = new List<ApplicationStatusDto>(),
+                    Comments = new List<ApplicationCommentDto>(),
+                    Payments = new List<ApplicationPaymentDto>()
                 };
 
                 return Ok(new ApiResponse<ApplicationDetailDto>
@@ -1312,7 +1327,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching application detail {ApplicationId}", id);
+                _logger.LogError(ex, "Error fetching position application detail");
                 return StatusCode(500, new ApiResponse
                 {
                     Success = false,

@@ -2,6 +2,17 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PMCRMS.API.DTOs
 {
+    // Simplified DTO for application summary/list view
+    public class ApplicationSummaryDto
+    {
+        public int ApplicationId { get; set; }
+        public string ApplicationNumber { get; set; } = string.Empty;
+        public string ApplicantName { get; set; } = string.Empty;
+        public string ApplicationType { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string SubmittedOn { get; set; } = string.Empty;
+    }
+
     public class CreateApplicationRequest
     {
         public string ApplicationType { get; set; } = string.Empty;
@@ -93,20 +104,23 @@ namespace PMCRMS.API.DTOs
     // Extended DTOs for Admin View
     public class ApplicationDetailDto
     {
-        public int Id { get; set; }
+        public int ApplicationId { get; set; }
         public string ApplicationNumber { get; set; } = string.Empty;
         public int ApplicantId { get; set; }
         public string ApplicantName { get; set; } = string.Empty;
         public string ApplicantEmail { get; set; } = string.Empty;
         public string ApplicantPhone { get; set; } = string.Empty;
         public string ApplicationType { get; set; } = string.Empty;
-        public string ProjectTitle { get; set; } = string.Empty;
-        public string ProjectDescription { get; set; } = string.Empty;
-        public string SiteAddress { get; set; } = string.Empty;
-        public decimal PlotArea { get; set; }
-        public decimal BuiltUpArea { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string SubmittedOn { get; set; } = string.Empty;
+        public string LastUpdated { get; set; } = string.Empty;
+        public object FormData { get; set; } = new { };
+        public string? ProjectTitle { get; set; }
+        public string? ProjectDescription { get; set; }
+        public string? SiteAddress { get; set; }
+        public decimal? PlotArea { get; set; }
+        public decimal? BuiltUpArea { get; set; }
         public decimal? EstimatedCost { get; set; }
-        public string CurrentStatus { get; set; } = string.Empty;
         public int? AssignedOfficerId { get; set; }
         public string? AssignedOfficerName { get; set; }
         public string? AssignedOfficerDesignation { get; set; }
@@ -129,7 +143,7 @@ namespace PMCRMS.API.DTOs
         public int Id { get; set; }
         public string FileName { get; set; } = string.Empty;
         public string DocumentType { get; set; } = string.Empty;
-        public long FileSize { get; set; }
+        public long? FileSize { get; set; }
         public string FilePath { get; set; } = string.Empty;
         public bool IsVerified { get; set; }
         public int? VerifiedBy { get; set; }
@@ -145,6 +159,7 @@ namespace PMCRMS.API.DTOs
         public string? Remarks { get; set; }
         public string UpdatedBy { get; set; } = string.Empty;
         public string UpdatedByRole { get; set; } = string.Empty;
+        public string UpdatedAt { get; set; } = string.Empty;
         public DateTime StatusDate { get; set; }
         public DateTime CreatedAt { get; set; }
     }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useContext } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
   Download,
@@ -11,14 +11,22 @@ import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
 import { PageLoader } from "../components";
+import AuthContext from "../contexts/AuthContext";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const authContext = useContext(AuthContext);
+  const user = authContext?.user;
   const [application, setApplication] =
     useState<PositionRegistrationResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Determine if accessed from admin context
+  const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
+  const backPath = isAdminView ? "/admin/applications" : "/dashboard";
 
   useEffect(() => {
     const fetchApplication = async () => {
@@ -61,12 +69,12 @@ const ViewPositionApplication: React.FC = () => {
             <h2 style={{ marginTop: "16px", color: "#dc2626" }}>Error</h2>
             <p style={{ color: "#64748b", marginTop: "8px" }}>{error}</p>
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(backPath)}
               className="pmc-button pmc-button-primary"
               style={{ marginTop: "24px" }}
             >
               <ArrowLeft size={16} style={{ marginRight: "8px" }} />
-              Back to Dashboard
+              {isAdminView ? "Back to Applications" : "Back to Dashboard"}
             </button>
           </div>
         </div>
@@ -98,12 +106,12 @@ const ViewPositionApplication: React.FC = () => {
       {/* Header */}
       <div style={{ marginBottom: "24px" }}>
         <button
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(backPath)}
           className="pmc-button pmc-button-secondary pmc-button-sm"
           style={{ marginBottom: "16px" }}
         >
           <ArrowLeft size={16} style={{ marginRight: "8px" }} />
-          Back to Dashboard
+          {isAdminView ? "Back to Applications" : "Back to Dashboard"}
         </button>
 
         <div
