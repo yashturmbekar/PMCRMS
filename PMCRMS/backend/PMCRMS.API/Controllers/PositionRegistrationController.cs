@@ -15,17 +15,20 @@ namespace PMCRMS.API.Controllers
         private readonly ILogger<PositionRegistrationController> _logger;
         private readonly Services.IEmailService _emailService;
         private readonly IConfiguration _configuration;
+        private readonly Services.IAutoAssignmentService _autoAssignmentService;
 
         public PositionRegistrationController(
             PMCRMSDbContext context,
             ILogger<PositionRegistrationController> logger,
             Services.IEmailService emailService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            Services.IAutoAssignmentService autoAssignmentService)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
             _configuration = configuration;
+            _autoAssignmentService = autoAssignmentService;
         }
 
         // POST: api/PositionRegistration
@@ -162,6 +165,32 @@ namespace PMCRMS.API.Controllers
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Position registration application created successfully. ID: {Id}", application.Id);
+
+                // Trigger auto-assignment if application is submitted
+                if (request.Status == ApplicationCurrentStatus.Submitted)
+                {
+                    try
+                    {
+                        _logger.LogInformation("Triggering auto-assignment for application {ApplicationId}", application.Id);
+                        var assignmentResult = await _autoAssignmentService.AssignApplicationAsync(application.Id);
+                        
+                        if (assignmentResult != null)
+                        {
+                            _logger.LogInformation("Application {ApplicationId} auto-assigned to officer {OfficerId}", 
+                                application.Id, assignmentResult.AssignedToOfficerId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Auto-assignment failed for application {ApplicationId} - no available officer", 
+                                application.Id);
+                        }
+                    }
+                    catch (Exception assignEx)
+                    {
+                        _logger.LogError(assignEx, "Error during auto-assignment for application {ApplicationId}", application.Id);
+                        // Don't fail the request if auto-assignment fails
+                    }
+                }
 
                 // Send email if application is submitted
                 if (request.Status == ApplicationCurrentStatus.Submitted && !string.IsNullOrEmpty(application.ApplicationNumber))
@@ -377,12 +406,38 @@ namespace PMCRMS.API.Controllers
 
                 _logger.LogInformation("Position registration application updated successfully. ID: {Id}", id);
 
-                // Send email if application status changed to submitted
+                // Trigger auto-assignment if application status changed to submitted
                 var wasJustSubmitted = request.Status == ApplicationCurrentStatus.Submitted && 
                                       !string.IsNullOrEmpty(application.ApplicationNumber) &&
                                       application.SubmittedDate.HasValue &&
                                       (DateTime.UtcNow - application.SubmittedDate.Value).TotalSeconds < 10;
 
+                if (wasJustSubmitted)
+                {
+                    try
+                    {
+                        _logger.LogInformation("Triggering auto-assignment for updated application {ApplicationId}", application.Id);
+                        var assignmentResult = await _autoAssignmentService.AssignApplicationAsync(application.Id);
+                        
+                        if (assignmentResult != null)
+                        {
+                            _logger.LogInformation("Application {ApplicationId} auto-assigned to officer {OfficerId}", 
+                                application.Id, assignmentResult.AssignedToOfficerId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Auto-assignment failed for application {ApplicationId} - no available officer", 
+                                application.Id);
+                        }
+                    }
+                    catch (Exception assignEx)
+                    {
+                        _logger.LogError(assignEx, "Error during auto-assignment for application {ApplicationId}", application.Id);
+                        // Don't fail the request if auto-assignment fails
+                    }
+                }
+
+                // Send email if application status changed to submitted
                 if (wasJustSubmitted && !string.IsNullOrEmpty(application.ApplicationNumber))
                 {
                     try

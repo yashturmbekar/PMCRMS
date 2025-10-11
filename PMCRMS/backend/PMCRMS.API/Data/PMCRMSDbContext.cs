@@ -33,6 +33,13 @@ namespace PMCRMS.API.Data
         public DbSet<SEExperience> SEExperiences { get; set; }
         public DbSet<SEDocument> SEDocuments { get; set; }
 
+        // Junior Engineer Workflow entities
+        public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<DocumentVerification> DocumentVerifications { get; set; }
+        public DbSet<DigitalSignature> DigitalSignatures { get; set; }
+        public DbSet<AutoAssignmentRule> AutoAssignmentRules { get; set; }
+        public DbSet<AssignmentHistory> AssignmentHistories { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -182,6 +189,8 @@ namespace PMCRMS.API.Data
             modelBuilder.Entity<PositionApplication>(entity =>
             {
                 entity.HasIndex(e => e.ApplicationNumber).IsUnique();
+                entity.HasIndex(e => e.AssignedJuniorEngineerId);
+                entity.HasIndex(e => new { e.Status, e.AssignedJuniorEngineerId });
                 entity.Property(e => e.PositionType).HasConversion<int>();
                 entity.Property(e => e.Gender).HasConversion<int>();
                 entity.Property(e => e.Status).HasConversion<int>();
@@ -190,6 +199,11 @@ namespace PMCRMS.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+                    
+                entity.HasOne(e => e.AssignedJuniorEngineer)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedJuniorEngineerId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure SEAddress entity
@@ -253,6 +267,120 @@ namespace PMCRMS.API.Data
                 entity.HasOne(e => e.Officer)
                     .WithOne(e => e.Invitation)
                     .HasForeignKey<OfficerInvitation>(e => e.OfficerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure Appointment entity
+            modelBuilder.Entity<Appointment>(entity =>
+            {
+                entity.HasIndex(e => e.ApplicationId);
+                entity.HasIndex(e => e.ScheduledByOfficerId);
+                entity.HasIndex(e => new { e.Status, e.ReviewDate });
+                entity.Property(e => e.Status).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.Appointments)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.ScheduledByOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.ScheduledByOfficerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                entity.HasOne(e => e.RescheduledToAppointment)
+                    .WithOne(e => e.RescheduledFromAppointment)
+                    .HasForeignKey<Appointment>(e => e.RescheduledToAppointmentId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure DocumentVerification entity
+            modelBuilder.Entity<DocumentVerification>(entity =>
+            {
+                entity.HasIndex(e => e.ApplicationId);
+                entity.HasIndex(e => e.DocumentId);
+                entity.HasIndex(e => e.VerifiedByOfficerId);
+                entity.HasIndex(e => new { e.Status, e.VerifiedDate });
+                entity.Property(e => e.Status).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.DocumentVerifications)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.Document)
+                    .WithMany()
+                    .HasForeignKey(e => e.DocumentId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                entity.HasOne(e => e.VerifiedByOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.VerifiedByOfficerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure DigitalSignature entity
+            modelBuilder.Entity<DigitalSignature>(entity =>
+            {
+                entity.HasIndex(e => e.ApplicationId);
+                entity.HasIndex(e => e.SignedByOfficerId);
+                entity.HasIndex(e => e.HsmTransactionId);
+                entity.HasIndex(e => new { e.Status, e.SignedDate });
+                entity.Property(e => e.Type).HasConversion<int>();
+                entity.Property(e => e.Status).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.DigitalSignatures)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.SignedByOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.SignedByOfficerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure AutoAssignmentRule entity
+            modelBuilder.Entity<AutoAssignmentRule>(entity =>
+            {
+                entity.HasIndex(e => new { e.PositionType, e.IsActive });
+                entity.HasIndex(e => new { e.TargetOfficerRole, e.IsActive });
+                entity.HasIndex(e => e.Priority);
+                entity.Property(e => e.PositionType).HasConversion<int>();
+                entity.Property(e => e.TargetOfficerRole).HasConversion<int>();
+                entity.Property(e => e.Strategy).HasConversion<int>();
+                entity.Property(e => e.EscalationRole).HasConversion<int>();
+            });
+
+            // Configure AssignmentHistory entity
+            modelBuilder.Entity<AssignmentHistory>(entity =>
+            {
+                entity.HasIndex(e => e.ApplicationId);
+                entity.HasIndex(e => e.AssignedToOfficerId);
+                entity.HasIndex(e => e.PreviousOfficerId);
+                entity.HasIndex(e => new { e.IsActive, e.AssignedDate });
+                entity.Property(e => e.Action).HasConversion<int>();
+                entity.Property(e => e.StrategyUsed).HasConversion<int>();
+                entity.Property(e => e.ApplicationStatusAtAssignment).HasConversion<int>();
+                
+                entity.HasOne(e => e.Application)
+                    .WithMany(e => e.AssignmentHistories)
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.PreviousOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.PreviousOfficerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+                    
+                entity.HasOne(e => e.AssignedToOfficer)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedToOfficerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                    
+                entity.HasOne(e => e.AutoAssignmentRule)
+                    .WithMany(e => e.AssignmentHistories)
+                    .HasForeignKey(e => e.AutoAssignmentRuleId)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

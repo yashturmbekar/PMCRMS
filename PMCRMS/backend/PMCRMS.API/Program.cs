@@ -216,6 +216,8 @@ builder.Services.AddScoped<IDataSeeder, DataSeeder>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<PdfService>(); // PDF Generation Service
+builder.Services.AddScoped<IAutoAssignmentService, AutoAssignmentService>(); // Auto-assignment for Junior Engineer workflow
+builder.Services.AddScoped<IAppointmentService, AppointmentService>(); // Appointment scheduling for Junior Engineer workflow
 // TODO: Add more service registrations here
 
 var app = builder.Build();

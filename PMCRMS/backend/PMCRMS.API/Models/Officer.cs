@@ -27,6 +27,11 @@ namespace PMCRMS.API.Models
         [Required]
         [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Alias for Name to maintain compatibility with assignment service
+        /// </summary>
+        public string FullName => Name;
         
         [Required]
         [EmailAddress]
@@ -42,6 +47,11 @@ namespace PMCRMS.API.Models
         [Required]
         [MaxLength(50)]
         public string EmployeeId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Experience in months - used for priority-based assignment
+        /// </summary>
+        public int? ExperienceMonths { get; set; }
         
         [Required]
         [MaxLength(500)]

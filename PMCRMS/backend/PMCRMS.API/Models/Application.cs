@@ -35,7 +35,27 @@ namespace PMCRMS.API.Models
         DigitalSignatureCompletedByEE2 = 20,
         UnderFinalApprovalByCE2 = 21,
         CertificateIssued = 22,
-        Completed = 23
+        Completed = 23,
+        
+        // JUNIOR ENGINEER WORKFLOW STATUSES
+        JUNIOR_ENGINEER_PENDING = 24,              // Application assigned to JE, awaiting action
+        APPOINTMENT_SCHEDULED = 25,                // JE has scheduled appointment with applicant
+        DOCUMENT_VERIFICATION_PENDING = 26,        // Documents ready for JE review
+        DOCUMENT_VERIFICATION_IN_PROGRESS = 27,    // JE currently verifying documents
+        DOCUMENT_VERIFICATION_COMPLETED = 28,      // All documents verified by JE
+        AWAITING_JE_DIGITAL_SIGNATURE = 29,        // Documents verified, awaiting JE signature
+        
+        // WORKFLOW PROGRESSION STATUSES
+        ASSISTANT_ENGINEER_PENDING = 30,           // Forwarded to Assistant Engineer
+        EXECUTIVE_ENGINEER_PENDING = 31,           // Forwarded to Executive Engineer
+        EXECUTIVE_ENGINEER_SIGN_PENDING = 32,      // Awaiting EE digital signature
+        CITY_ENGINEER_PENDING = 33,                // Forwarded to City Engineer
+        CITY_ENGINEER_SIGN_PENDING = 34,           // Awaiting CE digital signature
+        CLERK_PENDING = 35,                        // Forwarded to Clerk for processing
+        
+        // FINAL STATUSES
+        APPROVED = 36,                             // Application approved
+        REJECTED = 37                              // Application rejected
     }
 
     public class Application : BaseEntity

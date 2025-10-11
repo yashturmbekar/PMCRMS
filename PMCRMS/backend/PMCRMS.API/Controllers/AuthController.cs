@@ -153,9 +153,29 @@ namespace PMCRMS.API.Controllers
                     Data = responseData
                 });
             }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(dbEx, 
+                    "Database error while sending OTP for {Email}. Inner exception: {InnerException}. Stack trace: {StackTrace}", 
+                    request.Email, 
+                    dbEx.InnerException?.Message ?? "None",
+                    dbEx.StackTrace);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Database error occurred while sending OTP. Please try again later.",
+                    Errors = new List<string> { "Database operation failed" }
+                });
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending OTP for {Email}", request.Email);
+                _logger.LogError(ex, 
+                    "Unexpected error sending OTP for {Email}. Exception type: {ExceptionType}, Message: {Message}, Inner exception: {InnerException}, Stack trace: {StackTrace}", 
+                    request.Email,
+                    ex.GetType().Name,
+                    ex.Message,
+                    ex.InnerException?.Message ?? "None",
+                    ex.StackTrace);
                 return StatusCode(500, new ApiResponse
                 {
                     Success = false,
@@ -335,13 +355,35 @@ namespace PMCRMS.API.Controllers
                     Data = loginResponse
                 });
             }
-            catch (Exception ex)
+            catch (DbUpdateException dbEx)
             {
-                _logger.LogError(ex, "Error verifying OTP");
+                _logger.LogError(dbEx,
+                    "Database error during OTP verification for {Identifier}. Purpose: {Purpose}, Inner exception: {InnerException}, Stack trace: {StackTrace}",
+                    request.Identifier,
+                    request.Purpose,
+                    dbEx.InnerException?.Message ?? "None",
+                    dbEx.StackTrace);
                 return StatusCode(500, new ApiResponse
                 {
                     Success = false,
-                    Message = "Failed to verify OTP",
+                    Message = "Database error occurred during OTP verification. Please try again.",
+                    Errors = new List<string> { "Database operation failed" }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Unexpected error verifying OTP for {Identifier}. Purpose: {Purpose}, Exception type: {ExceptionType}, Message: {Message}, Inner exception: {InnerException}, Stack trace: {StackTrace}",
+                    request.Identifier,
+                    request.Purpose,
+                    ex.GetType().Name,
+                    ex.Message,
+                    ex.InnerException?.Message ?? "None",
+                    ex.StackTrace);
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to verify OTP. Please try again.",
                     Errors = new List<string> { "Internal server error" }
                 });
             }

@@ -107,15 +107,76 @@ namespace PMCRMS.API.Models
         [MaxLength(1000)]
         public string? Remarks { get; set; }
 
+        // Junior Engineer Workflow Properties
+        /// <summary>
+        /// Junior Engineer assigned to this application
+        /// </summary>
+        public int? AssignedJuniorEngineerId { get; set; }
+
+        /// <summary>
+        /// Date when application was assigned to Junior Engineer
+        /// </summary>
+        public DateTime? AssignedToJEDate { get; set; }
+
+        /// <summary>
+        /// Date when Junior Engineer completed their review
+        /// </summary>
+        public DateTime? JECompletedDate { get; set; }
+
+        /// <summary>
+        /// Whether all documents have been verified by JE
+        /// </summary>
+        public bool AllDocumentsVerified { get; set; } = false;
+
+        /// <summary>
+        /// Date when all documents were verified
+        /// </summary>
+        public DateTime? DocumentsVerifiedDate { get; set; }
+
+        /// <summary>
+        /// Whether digital signature has been applied by JE
+        /// </summary>
+        public bool DigitalSignatureApplied { get; set; } = false;
+
+        /// <summary>
+        /// Date when digital signature was applied
+        /// </summary>
+        public DateTime? DigitalSignatureDate { get; set; }
+
+        /// <summary>
+        /// Whether appointment has been scheduled
+        /// </summary>
+        public bool AppointmentScheduled { get; set; } = false;
+
+        /// <summary>
+        /// Date when appointment was scheduled
+        /// </summary>
+        public DateTime? AppointmentScheduledDate { get; set; }
+
+        /// <summary>
+        /// Current workflow stage comments from JE
+        /// </summary>
+        [MaxLength(2000)]
+        public string? JEComments { get; set; }
+
         // Foreign Keys
         [ForeignKey("UserId")]
         public virtual User User { get; set; } = null!;
+
+        [ForeignKey("AssignedJuniorEngineerId")]
+        public virtual Officer? AssignedJuniorEngineer { get; set; }
 
         // Navigation properties
         public virtual ICollection<SEAddress> Addresses { get; set; } = new List<SEAddress>();
         public virtual ICollection<SEQualification> Qualifications { get; set; } = new List<SEQualification>();
         public virtual ICollection<SEExperience> Experiences { get; set; } = new List<SEExperience>();
         public virtual ICollection<SEDocument> Documents { get; set; } = new List<SEDocument>();
+
+        // Junior Engineer Workflow Collections
+        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+        public virtual ICollection<DocumentVerification> DocumentVerifications { get; set; } = new List<DocumentVerification>();
+        public virtual ICollection<DigitalSignature> DigitalSignatures { get; set; } = new List<DigitalSignature>();
+        public virtual ICollection<AssignmentHistory> AssignmentHistories { get; set; } = new List<AssignmentHistory>();
     }
 
     public class SEAddress : BaseEntity
