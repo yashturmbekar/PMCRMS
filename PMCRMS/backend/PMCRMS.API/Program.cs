@@ -212,7 +212,38 @@ builder.Services.AddSwaggerGen(c =>
 // Register application services
 builder.Services.AddHttpClient(); // For Brevo API
 
+// Configure HSM Configuration
+builder.Services.Configure<PMCRMS.API.Configuration.HsmConfiguration>(
+    builder.Configuration.GetSection(PMCRMS.API.Configuration.HsmConfiguration.SectionName));
+
 // Configure HSM HTTP clients for digital signature
+builder.Services.AddHttpClient("HsmClient", (serviceProvider, client) =>
+{
+    var hsmConfig = builder.Configuration.GetSection(PMCRMS.API.Configuration.HsmConfiguration.SectionName)
+        .Get<PMCRMS.API.Configuration.HsmConfiguration>();
+    
+    var otpUrl = hsmConfig?.OtpServiceUrl ?? builder.Configuration["HSM:OtpBaseUrl"] ?? "http://210.212.188.44:8001/jrequest/";
+    client.BaseAddress = new Uri(otpUrl);
+    
+    var timeout = hsmConfig?.TimeoutSeconds ?? 60;
+    client.Timeout = TimeSpan.FromSeconds(timeout);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+});
+
+builder.Services.AddHttpClient("SignerClient", (serviceProvider, client) =>
+{
+    var hsmConfig = builder.Configuration.GetSection(PMCRMS.API.Configuration.HsmConfiguration.SectionName)
+        .Get<PMCRMS.API.Configuration.HsmConfiguration>();
+    
+    var signUrl = hsmConfig?.SignerServiceUrl ?? builder.Configuration["HSM:SignBaseUrl"] ?? "http://210.212.188.35:8080/emSigner/";
+    client.BaseAddress = new Uri(signUrl);
+    
+    var timeout = hsmConfig?.TimeoutSeconds ?? 60;
+    client.Timeout = TimeSpan.FromSeconds(timeout);
+    client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/xml"));
+});
+
+// Legacy HSM clients (for backward compatibility)
 builder.Services.AddHttpClient("HSM_OTP", client =>
 {
     var hsmOtpUrl = builder.Configuration["HSM:OtpBaseUrl"] ?? "http://210.212.188.44:8001/jrequest/";
@@ -241,6 +272,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IWorkflowNotificationService, WorkflowNotificationService>(); // Workflow email notifications to applicants
 builder.Services.AddScoped<PdfService>(); // PDF Generation Service
+builder.Services.AddScoped<IHsmService, HsmService>(); // HSM service for digital signatures
 builder.Services.AddScoped<IAutoAssignmentService, AutoAssignmentService>(); // Auto-assignment for Junior Engineer workflow
 builder.Services.AddScoped<IAppointmentService, AppointmentService>(); // Appointment scheduling for Junior Engineer workflow
 builder.Services.AddScoped<IDocumentVerificationService, DocumentVerificationService>(); // Document verification for Junior Engineer workflow
@@ -253,6 +285,7 @@ builder.Services.AddScoped<ClerkWorkflowService>(); // Clerk workflow service (P
 builder.Services.AddScoped<EEStage2WorkflowService>(); // EE Stage 2 workflow service (Certificate Digital Signature)
 builder.Services.AddScoped<CEStage2WorkflowService>(); // CE Stage 2 workflow service (Final Certificate Signature)
 builder.Services.AddScoped<DocumentDownloadService>(); // Document download service with OTP authentication (Public Access)
+builder.Services.AddScoped<IChallanService, ChallanService>(); // Challan generation service with bilingual PDF support
 
 // BillDesk Payment Gateway Services
 builder.Services.AddSingleton<IBillDeskConfigService, BillDeskConfigService>(); // BillDesk configuration (singleton)
@@ -323,10 +356,10 @@ using (var scope = app.Services.CreateScope())
         await dataSeeder.EnsureSystemAdminExistsAsync();
         Log.Information("System Admin check completed.");
         
-        // Seed officer passwords
-        Log.Information("Seeding officer passwords...");
-        await dataSeeder.SeedOfficerPasswordsAsync();
-        Log.Information("Officer password seeding completed.");
+        // Update officer credentials
+        Log.Information("Updating officer credentials...");
+        await dataSeeder.UpdateOfficerCredentialsAsync();
+        Log.Information("Officer credentials update completed.");
     }
     catch (Exception ex)
     {

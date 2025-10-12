@@ -45,6 +45,9 @@ namespace PMCRMS.API.Data
         public DbSet<DownloadToken> DownloadTokens { get; set; }
         public DbSet<DownloadAuditLog> DownloadAuditLogs { get; set; }
 
+        // Challan entities
+        public DbSet<Challan> Challans { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -414,6 +417,20 @@ namespace PMCRMS.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.ChangedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Configure Challan entity
+            modelBuilder.Entity<Challan>(entity =>
+            {
+                entity.HasIndex(e => e.ApplicationId);
+                entity.HasIndex(e => e.ChallanNumber).IsUnique();
+                entity.HasIndex(e => new { e.ApplicationId, e.IsGenerated });
+                entity.Property(e => e.Amount).HasPrecision(18, 2);
+                
+                entity.HasOne(e => e.PositionApplication)
+                    .WithMany()
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Seed initial data
