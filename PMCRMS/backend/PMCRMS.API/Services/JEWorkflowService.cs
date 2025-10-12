@@ -20,6 +20,7 @@ namespace PMCRMS.API.Services
         private readonly INotificationService _notificationService;
         private readonly PdfService _pdfService;
         private readonly IEmailService _emailService;
+        private readonly IWorkflowNotificationService _workflowNotificationService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
 
@@ -33,6 +34,7 @@ namespace PMCRMS.API.Services
             INotificationService notificationService,
             PdfService pdfService,
             IEmailService emailService,
+            IWorkflowNotificationService workflowNotificationService,
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration)
         {
@@ -45,6 +47,7 @@ namespace PMCRMS.API.Services
             _notificationService = notificationService;
             _pdfService = pdfService;
             _emailService = emailService;
+            _workflowNotificationService = workflowNotificationService;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
         }
@@ -97,6 +100,12 @@ namespace PMCRMS.API.Services
                 application.AssignedJuniorEngineerId = assignmentHistory.AssignedToOfficerId;
                 application.AssignedToJEDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING
+                );
 
                 // Send notification
                 var officer = await _context.Officers.FindAsync(assignmentHistory.AssignedToOfficerId);
@@ -168,6 +177,12 @@ namespace PMCRMS.API.Services
                 application.AppointmentScheduledDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.APPOINTMENT_SCHEDULED
+                );
+
                 // Generate recommendation form PDF after appointment is scheduled
                 try
                 {
@@ -222,6 +237,12 @@ namespace PMCRMS.API.Services
                 // Update application
                 appointment.Application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING;
                 await _context.SaveChangesAsync();
+
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    appointment.ApplicationId,
+                    ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING
+                );
 
                 return new WorkflowActionResultDto
                 {
@@ -375,6 +396,12 @@ namespace PMCRMS.API.Services
                 if (application.Status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING)
                 {
                     application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS;
+                    
+                    // Send email notification to applicant
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                        application.Id,
+                        ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS
+                    );
                 }
 
                 // Set AllDocumentsVerified to true
@@ -493,6 +520,12 @@ namespace PMCRMS.API.Services
                 application.AllDocumentsVerified = true;
                 application.DocumentsVerifiedDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
+
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED
+                );
 
                 return new WorkflowActionResultDto
                 {
@@ -658,6 +691,12 @@ namespace PMCRMS.API.Services
                 application.Status = ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE;
                 await _context.SaveChangesAsync();
 
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE
+                );
+
                 return new WorkflowActionResultDto
                 {
                     Success = true,
@@ -687,6 +726,13 @@ namespace PMCRMS.API.Services
 
                 // Update application - JE workflow complete
                 application.Status = ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING;
+                
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING
+                );
+
                 application.DigitalSignatureApplied = true;
                 application.DigitalSignatureDate = DateTime.UtcNow;
                 application.JECompletedDate = DateTime.UtcNow;
@@ -1096,6 +1142,13 @@ namespace PMCRMS.API.Services
                 application.Status = ApplicationCurrentStatus.REJECTED;
                 application.Remarks = $"Cancelled: {reason}";
                 await _context.SaveChangesAsync();
+
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.REJECTED,
+                    $"Cancelled: {reason}"
+                );
 
                 return new WorkflowActionResultDto
                 {

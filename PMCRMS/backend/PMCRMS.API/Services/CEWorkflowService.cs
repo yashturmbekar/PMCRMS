@@ -15,6 +15,7 @@ namespace PMCRMS.API.Services
         private readonly ILogger<CEWorkflowService> _logger;
         private readonly IDigitalSignatureService _digitalSignatureService;
         private readonly INotificationService _notificationService;
+        private readonly IWorkflowNotificationService _workflowNotificationService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
 
@@ -23,6 +24,7 @@ namespace PMCRMS.API.Services
             ILogger<CEWorkflowService> logger,
             IDigitalSignatureService digitalSignatureService,
             INotificationService notificationService,
+            IWorkflowNotificationService workflowNotificationService,
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration)
         {
@@ -30,6 +32,7 @@ namespace PMCRMS.API.Services
             _logger = logger;
             _digitalSignatureService = digitalSignatureService;
             _notificationService = notificationService;
+            _workflowNotificationService = workflowNotificationService;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
         }
@@ -352,6 +355,12 @@ namespace PMCRMS.API.Services
 
                     await _context.SaveChangesAsync();
 
+                    // Send email notification to applicant
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                        application.Id,
+                        ApplicationCurrentStatus.APPROVED
+                    );
+
                     _logger.LogInformation(
                         "Application {ApplicationId} FINALLY APPROVED by City Engineer {OfficerId}", 
                         applicationId, officerId);
@@ -410,6 +419,13 @@ namespace PMCRMS.API.Services
                 application.Remarks = $"FINAL REJECTION by City Engineer: {rejectionComments}";
 
                 await _context.SaveChangesAsync();
+
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.REJECTED,
+                    rejectionComments
+                );
 
                 _logger.LogInformation("Application {ApplicationId} FINALLY REJECTED by CE", applicationId);
 

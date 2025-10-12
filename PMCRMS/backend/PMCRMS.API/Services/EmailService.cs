@@ -21,6 +21,9 @@ namespace PMCRMS.API.Services
         Task<bool> SendEE2SignatureCompletedEmailAsync(string toEmail, string applicantName, string applicationNumber, string eeOfficerName, string viewUrl);
         Task<bool> SendCE2SignaturePendingEmailAsync(string toEmail, string ceOfficerName, string applicationNumber, string applicantName, string viewUrl);
         Task<bool> SendCertificateReadyEmailAsync(string toEmail, string applicantName, string applicationNumber, string certificateNumber, string downloadLink);
+        
+        // Workflow stage notification emails to applicants
+        Task<bool> SendWorkflowStageEmailAsync(string toEmail, string applicantName, string applicationNumber, string stageName, string stageDescription, string viewUrl);
     }
 
     public class EmailService : IEmailService
@@ -1823,6 +1826,207 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogError(ex, "[EmailService] Error sending certificate ready email to {Email} for application {ApplicationNumber}", 
                     toEmail, applicationNumber);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send workflow stage notification to applicant
+        /// </summary>
+        public async Task<bool> SendWorkflowStageEmailAsync(
+            string toEmail, 
+            string applicantName, 
+            string applicationNumber, 
+            string stageName, 
+            string stageDescription, 
+            string viewUrl)
+        {
+            try
+            {
+                string subject = $"Application Update - {stageName} - {applicationNumber}";
+
+                string body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }}
+        .header {{
+            background-color: #0c4a6e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }}
+        .logo-container {{
+            margin-bottom: 15px;
+        }}
+        .badge {{
+            background-color: #f59e0b;
+            color: white;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }}
+        .status-badge {{
+            background-color: #3b82f6;
+            color: white;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 15px 0;
+        }}
+        .header h1 {{
+            margin: 10px 0 5px 0;
+            font-size: 24px;
+        }}
+        .header p {{
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        .content {{
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }}
+        .info-box {{
+            background-color: #f0f9ff;
+            border: 2px solid #0c4a6e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }}
+        .info-row {{
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        .info-row:last-child {{
+            border-bottom: none;
+        }}
+        .info-label {{
+            font-weight: bold;
+            color: #0c4a6e;
+            min-width: 180px;
+        }}
+        .info-value {{
+            color: #333;
+        }}
+        .btn-primary {{
+            display: inline-block;
+            background-color: #0c4a6e;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }}
+        .info-notice {{
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 15px 0;
+        }}
+        .status-icon {{
+            font-size: 48px;
+            text-align: center;
+            margin: 10px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <div class='logo-container'>
+                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+            </div>
+            <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
+            <h1>Pune Municipal Corporation</h1>
+            <p>Permit Management & Certificate Recommendation System</p>
+        </div>
+        <div class='content'>
+            <div class='status-icon'>🔄</div>
+            <div class='status-badge'>Application Status Update</div>
+            
+            <h2>Dear {applicantName},</h2>
+            <p>Your application has progressed to the next stage in our review process.</p>
+            
+            <div class='info-box'>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{applicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Current Stage:</div>
+                    <div class='info-value'><span style='color: #3b82f6; font-weight: bold;'>{stageName}</span></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Update Time:</div>
+                    <div class='info-value'>{DateTime.UtcNow:MMMM dd, yyyy h:mm tt} UTC</div>
+                </div>
+            </div>
+            
+            <div class='info-notice'>
+                <strong>📋 What This Means:</strong>
+                <p style='margin: 10px 0 0 0;'>{stageDescription}</p>
+                <p style='margin: 10px 0 0 0;'>We will notify you via email when there are further updates on your application.</p>
+            </div>
+            
+            <div style='text-align: center;'>
+                <a href='{viewUrl}' class='btn-primary'>View Application Status</a>
+            </div>
+            
+            <p>If you have any questions about your application, please don't hesitate to contact us.</p>
+            <p>Thank you for your patience.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        <div class='footer'>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>For support, please visit our website or contact us at support@pmcrms.gov.in</p>
+            <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending workflow stage email to {Email} for application {ApplicationNumber}, stage {StageName}", 
+                    toEmail, applicationNumber, stageName);
                 return false;
             }
         }

@@ -121,6 +121,9 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Application {ApplicationId} assigned to officer {OfficerId} ({OfficerName}) using {Strategy} strategy",
                     applicationId, officer.Id, officer.FullName, rule.Strategy);
 
+                // Reload assignment history to include navigation properties
+                await _context.Entry(assignmentHistory).Reference(h => h.Application).LoadAsync();
+
                 // Send notification asynchronously
                 _ = Task.Run(async () =>
                 {

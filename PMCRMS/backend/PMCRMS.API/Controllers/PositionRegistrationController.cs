@@ -198,12 +198,17 @@ namespace PMCRMS.API.Controllers
                         
                         if (assignmentResult != null)
                         {
-                            _logger.LogInformation("Application {ApplicationId} auto-assigned to officer {OfficerId}", 
-                                application.Id, assignmentResult.AssignedToOfficerId);
+                            _logger.LogInformation("Application {ApplicationId} auto-assigned to officer {OfficerId}. AssignedJuniorEngineerId: {JEId}, AssignedToJEDate: {JEDate}", 
+                                application.Id, assignmentResult.AssignedToOfficerId, 
+                                assignmentResult.Application?.AssignedJuniorEngineerId, 
+                                assignmentResult.Application?.AssignedToJEDate);
+                            
+                            // Reload application to get updated assignment info
+                            await _context.Entry(application).ReloadAsync();
                         }
                         else
                         {
-                            _logger.LogWarning("Auto-assignment failed for application {ApplicationId} - no available officer", 
+                            _logger.LogWarning("Auto-assignment failed for application {ApplicationId} - no available officer or no assignment rules configured", 
                                 application.Id);
                         }
                     }
@@ -462,12 +467,17 @@ namespace PMCRMS.API.Controllers
                         
                         if (assignmentResult != null)
                         {
-                            _logger.LogInformation("Application {ApplicationId} auto-assigned to officer {OfficerId}", 
-                                application.Id, assignmentResult.AssignedToOfficerId);
+                            _logger.LogInformation("Application {ApplicationId} auto-assigned to officer {OfficerId}. AssignedJuniorEngineerId: {JEId}, AssignedToJEDate: {JEDate}", 
+                                application.Id, assignmentResult.AssignedToOfficerId,
+                                assignmentResult.Application?.AssignedJuniorEngineerId,
+                                assignmentResult.Application?.AssignedToJEDate);
+                            
+                            // Reload application to get updated assignment info
+                            await _context.Entry(application).ReloadAsync();
                         }
                         else
                         {
-                            _logger.LogWarning("Auto-assignment failed for application {ApplicationId} - no available officer", 
+                            _logger.LogWarning("Auto-assignment failed for application {ApplicationId} - no available officer or no assignment rules configured", 
                                 application.Id);
                         }
                     }

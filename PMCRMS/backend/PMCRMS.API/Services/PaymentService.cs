@@ -16,17 +16,20 @@ namespace PMCRMS.API.Services
         private readonly ILogger<PaymentService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IBillDeskPaymentService _billDeskPaymentService;
+        private readonly IWorkflowNotificationService _workflowNotificationService;
 
         public PaymentService(
             PMCRMSDbContext context,
             ILogger<PaymentService> logger,
             IHttpClientFactory httpClientFactory,
-            IBillDeskPaymentService billDeskPaymentService)
+            IBillDeskPaymentService billDeskPaymentService,
+            IWorkflowNotificationService workflowNotificationService)
         {
             _context = context;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _billDeskPaymentService = billDeskPaymentService;
+            _workflowNotificationService = workflowNotificationService;
         }
 
         /// <summary>
@@ -164,6 +167,12 @@ namespace PMCRMS.API.Services
 
                 await _context.SaveChangesAsync();
 
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.PaymentCompleted
+                );
+
                 _logger.LogInformation($"[PaymentService] Payment processed successfully for application: {request.ApplicationId}");
                 _logger.LogInformation($"[PaymentService] Application moved to PaymentCompleted status");
 
@@ -229,6 +238,8 @@ namespace PMCRMS.API.Services
 
                 await _context.SaveChangesAsync();
 
+                // Send email notification to applicant about payment failure (optional)
+                // Could use PaymentPending or create a specific failure notification
                 _logger.LogInformation($"[PaymentService] Payment failure recorded for application: {request.ApplicationId}");
 
                 return new PaymentSuccessResponse
