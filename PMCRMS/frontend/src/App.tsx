@@ -17,6 +17,7 @@ import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
 import FormManagementPage from "./pages/admin/FormManagementPage";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import ViewPositionApplication from "./pages/ViewPositionApplication";
+import PaymentCallback from "./pages/PaymentCallback";
 import LoaderShowcase from "./components/LoaderShowcase";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -189,6 +190,9 @@ function App() {
               {/* Public routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/officer-login" element={<OfficerLoginPage />} />
+
+              {/* Payment callback - No auth required (BillDesk redirect) */}
+              <Route path="/payment/callback" element={<PaymentCallback />} />
 
               {/* Loader Showcase - For demo purposes */}
               <Route path="/loaders" element={<LoaderShowcase />} />

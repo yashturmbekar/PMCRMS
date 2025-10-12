@@ -226,6 +226,15 @@ builder.Services.AddHttpClient("HSM_SIGN", client =>
     client.BaseAddress = new Uri(hsmSignUrl);
     client.Timeout = TimeSpan.Parse(builder.Configuration["HSM:Timeout"] ?? "00:00:30");
 });
+
+// Configure BillDesk Payment HTTP client
+builder.Services.AddHttpClient("BillDesk_Payment", client =>
+{
+    var paymentUrl = builder.Configuration["BillDesk:PaymentGatewayUrl"] ?? "https://pay.billdesk.com/web/v1_2/embeddedsdk";
+    client.BaseAddress = new Uri(paymentUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -239,7 +248,12 @@ builder.Services.AddScoped<IJEWorkflowService, JEWorkflowService>(); // Workflow
 builder.Services.AddScoped<IAEWorkflowService, AEWorkflowService>(); // Assistant Engineer workflow service
 builder.Services.AddScoped<IEEWorkflowService, EEWorkflowService>(); // Executive Engineer workflow service
 builder.Services.AddScoped<ICEWorkflowService, CEWorkflowService>(); // City Engineer workflow service (Final Approval)
-// TODO: Add more service registrations here
+
+// BillDesk Payment Gateway Services
+builder.Services.AddSingleton<IBillDeskConfigService, BillDeskConfigService>(); // BillDesk configuration (singleton)
+builder.Services.AddScoped<IPluginContextService, PluginContextService>(); // Plugin context for BillDesk operations
+builder.Services.AddScoped<IBillDeskPaymentService, BillDeskPaymentService>(); // BillDesk payment service
+builder.Services.AddScoped<PaymentService>(); // Main payment orchestration service
 
 var app = builder.Build();
 

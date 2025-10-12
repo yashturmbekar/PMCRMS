@@ -20,6 +20,7 @@ namespace PMCRMS.API.Data
         public DbSet<ApplicationStatus> ApplicationStatuses { get; set; }
         public DbSet<ApplicationComment> ApplicationComments { get; set; }
         public DbSet<Payment> Payments { get; set; }
+        public DbSet<Transaction> Transactions { get; set; } // BillDesk payment transactions
         public DbSet<OtpVerification> OtpVerifications { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<OfficerInvitation> OfficerInvitations { get; set; }

@@ -158,6 +158,8 @@ namespace PMCRMS.API.Controllers
                     AssignedOfficerName = application.AssignedOfficerName,
                     AssignedOfficerDesignation = application.AssignedOfficerDesignation,
                     AssignedDate = application.AssignedDate,
+                    IsPaymentComplete = application.IsPaymentComplete,
+                    PaymentCompletedDate = application.PaymentCompletedDate,
                     CreatedAt = application.CreatedDate,
                     UpdatedAt = application.UpdatedDate ?? application.CreatedDate,
                     CertificateIssuedDate = application.CertificateIssuedDate,

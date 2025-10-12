@@ -120,6 +120,11 @@ namespace PMCRMS.API.Models
         public string? AssignedOfficerDesignation { get; set; }
 
         public DateTime? AssignedDate { get; set; }
+
+        // Payment tracking
+        public bool IsPaymentComplete { get; set; } = false;
+
+        public DateTime? PaymentCompletedDate { get; set; }
         
         // Foreign Keys
         [ForeignKey("ApplicantId")]
@@ -129,6 +134,7 @@ namespace PMCRMS.API.Models
         public virtual ICollection<ApplicationDocument> Documents { get; set; } = new List<ApplicationDocument>();
         public virtual ICollection<ApplicationStatus> StatusHistory { get; set; } = new List<ApplicationStatus>();
         public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
         public virtual ICollection<ApplicationComment> Comments { get; set; } = new List<ApplicationComment>();
     }
 }

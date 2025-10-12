@@ -97,6 +97,8 @@ export interface PositionRegistrationResponse {
   remarks?: string;
   createdDate: string;
   updatedDate?: string;
+  isPaymentComplete?: boolean;
+  paymentCompletedDate?: string;
   addresses: AddressResponse[];
   qualifications: QualificationResponse[];
   experiences: ExperienceResponse[];

@@ -65,6 +65,8 @@ namespace PMCRMS.API.DTOs
         public string? AssignedOfficerName { get; set; }
         public string? AssignedOfficerDesignation { get; set; }
         public DateTime? AssignedDate { get; set; }
+        public bool IsPaymentComplete { get; set; }
+        public DateTime? PaymentCompletedDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public DateTime? CertificateIssuedDate { get; set; }

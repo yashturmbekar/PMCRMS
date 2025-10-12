@@ -20,6 +20,8 @@ import AuthContext from "../contexts/AuthContext";
 import { jeWorkflowService } from "../services/jeWorkflowService";
 import NotificationModal from "../components/common/NotificationModal";
 import type { NotificationType } from "../components/common/NotificationModal";
+import PaymentButton from "../components/PaymentButton";
+import PaymentStatusModal from "../components/PaymentStatusModal";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -64,6 +66,7 @@ const ViewPositionApplication: React.FC = () => {
     fileBase64?: string; // Add base64 for all documents
   } | null>(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
@@ -863,6 +866,130 @@ const ViewPositionApplication: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment Section - Shows when CE approved (status 13) */}
+        {application.status === 13 && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                color: "white",
+                padding: "12px 16px",
+                borderBottom: "2px solid #1d4ed8",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                }}
+              >
+                <h2
+                  className="pmc-card-title"
+                  style={{ color: "white", margin: 0 }}
+                >
+                  Payment Required
+                </h2>
+                {application.isPaymentComplete && (
+                  <span
+                    style={{
+                      padding: "4px 12px",
+                      background: "#10b981",
+                      color: "white",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      borderRadius: "9999px",
+                    }}
+                  >
+                    ✓ Payment Completed
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="pmc-card-body">
+              {!application.isPaymentComplete ? (
+                <>
+                  <div style={{ marginBottom: "16px" }}>
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        color: "#64748b",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Your application has been approved by the City Engineer.
+                      Please complete the payment of <strong>₹3,000</strong> to
+                      proceed to the next stage.
+                    </p>
+                    <div
+                      style={{
+                        padding: "12px",
+                        background: "#eff6ff",
+                        borderLeft: "4px solid #3b82f6",
+                        borderRadius: "4px",
+                        fontSize: "13px",
+                        color: "#1e40af",
+                      }}
+                    >
+                      <strong>Note:</strong> After successful payment, your
+                      application will be forwarded to the Clerk for further
+                      processing.
+                    </div>
+                  </div>
+                  <PaymentButton
+                    applicationId={application.id}
+                    applicationStatus={application.status}
+                    isPaymentComplete={application.isPaymentComplete || false}
+                    onPaymentInitiated={() => {
+                      console.log(
+                        "Payment initiated for application:",
+                        application.id
+                      );
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: "16px" }}>
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        color: "#64748b",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      Your payment has been successfully completed. Your
+                      application will now proceed to the Clerk for further
+                      processing.
+                    </p>
+                    {application.paymentCompletedDate && (
+                      <p style={{ fontSize: "13px", color: "#94a3b8" }}>
+                        Payment completed on:{" "}
+                        {new Date(
+                          application.paymentCompletedDate
+                        ).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    className="pmc-button pmc-button-primary"
+                    onClick={() => setShowPaymentModal(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <FileText size={18} />
+                    View Payment Details
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -1685,6 +1812,13 @@ const ViewPositionApplication: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Payment Status Modal */}
+        <PaymentStatusModal
+          applicationId={application.id}
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+        />
       </div>
     </>
   );
