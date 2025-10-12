@@ -41,6 +41,10 @@ namespace PMCRMS.API.Data
         public DbSet<AutoAssignmentRule> AutoAssignmentRules { get; set; }
         public DbSet<AssignmentHistory> AssignmentHistories { get; set; }
 
+        // Document Download entities
+        public DbSet<DownloadToken> DownloadTokens { get; set; }
+        public DbSet<DownloadAuditLog> DownloadAuditLogs { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

@@ -15,6 +15,12 @@ namespace PMCRMS.API.Services
         Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string temporaryPassword, string loginUrl);
         Task<bool> SendClerkApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string remarks, string viewUrl);
         Task<bool> SendClerkRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectionReason, string viewUrl);
+        
+        // Post-payment workflow email notifications
+        Task<bool> SendEE2SignatureRequestEmailAsync(string toEmail, string eeOfficerName, string applicationNumber, string applicantName, string viewUrl);
+        Task<bool> SendEE2SignatureCompletedEmailAsync(string toEmail, string applicantName, string applicationNumber, string eeOfficerName, string viewUrl);
+        Task<bool> SendCE2SignaturePendingEmailAsync(string toEmail, string ceOfficerName, string applicationNumber, string applicantName, string viewUrl);
+        Task<bool> SendCertificateReadyEmailAsync(string toEmail, string applicantName, string applicationNumber, string certificateNumber, string downloadLink);
     }
 
     public class EmailService : IEmailService
@@ -1494,6 +1500,328 @@ namespace PMCRMS.API.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "[EmailService] Error sending clerk rejection email to {Email} for application {ApplicationNumber}", 
+                    toEmail, applicationNumber);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send notification to Executive Engineer that digital signature is required (after clerk processing)
+        /// </summary>
+        public async Task<bool> SendEE2SignatureRequestEmailAsync(
+            string toEmail, 
+            string eeOfficerName, 
+            string applicationNumber, 
+            string applicantName, 
+            string viewUrl)
+        {
+            try
+            {
+                string subject = $"Action Required: Digital Signature - Application {applicationNumber}";
+
+                string body = $@"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>{GetCommonEmailStyles()}</style>
+                </head>
+                <body>
+                    {GetEmailHeader()}
+                    
+                    <div class='content'>
+                        <p>Dear {eeOfficerName},</p>
+                        
+                        <p>A building permission certificate is ready for your digital signature.</p>
+                        
+                        <div class='highlight' style='background-color: #fff7ed; border-left: 4px solid #f97316; padding: 15px; margin: 20px 0; border-radius: 6px;'>
+                            <p style='margin: 0; font-weight: bold; color: #ea580c;'>⚠️ Action Required: Digital Signature</p>
+                            <p style='margin: 10px 0 0 0; color: #9a3412;'>This certificate requires your HSM-based digital signature before it can proceed to the City Engineer for final approval.</p>
+                        </div>
+                        
+                        <div class='info-box'>
+                            <p><strong>Application Number:</strong> {applicationNumber}</p>
+                            <p><strong>Applicant Name:</strong> {applicantName}</p>
+                            <p><strong>Current Status:</strong> Processed by Clerk</p>
+                            <p><strong>Assigned To:</strong> {eeOfficerName} (Executive Engineer)</p>
+                            <p><strong>Assigned Date:</strong> {DateTime.UtcNow:dd MMMM yyyy, hh:mm tt} UTC</p>
+                        </div>
+                        
+                        <div class='info-notice'>
+                            <p><strong>Next Steps:</strong></p>
+                            <ol>
+                                <li>Log in to your dashboard</li>
+                                <li>Review the application details and certificate</li>
+                                <li>Request OTP for digital signature</li>
+                                <li>Enter OTP to apply your digital signature using HSM</li>
+                                <li>Certificate will be forwarded to City Engineer for final signature</li>
+                            </ol>
+                        </div>
+                        
+                        <p style='text-align: center; margin: 30px 0;'>
+                            <a href='{viewUrl}' class='button' style='background-color: #ea580c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;'>
+                                View Application & Apply Signature
+                            </a>
+                        </p>
+                        
+                        <p>Your prompt action ensures timely certificate issuance to the applicant.</p>
+                        <p>Best regards,<br>Pune Municipal Corporation</p>
+                    </div>
+                    
+                    {GetEmailFooter()}
+                </body>
+                </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending EE2 signature request email to {Email} for application {ApplicationNumber}", 
+                    toEmail, applicationNumber);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send notification to applicant that Executive Engineer has completed digital signature
+        /// </summary>
+        public async Task<bool> SendEE2SignatureCompletedEmailAsync(
+            string toEmail, 
+            string applicantName, 
+            string applicationNumber, 
+            string eeOfficerName, 
+            string viewUrl)
+        {
+            try
+            {
+                string subject = $"Progress Update: Certificate Signed by Executive Engineer - {applicationNumber}";
+
+                string body = $@"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>{GetCommonEmailStyles()}</style>
+                </head>
+                <body>
+                    {GetEmailHeader()}
+                    
+                    <div class='content'>
+                        <p>Dear {applicantName},</p>
+                        
+                        <p>Good news! Your building permission certificate has been digitally signed by the Executive Engineer.</p>
+                        
+                        <div class='success' style='background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 15px; margin: 20px 0; border-radius: 6px;'>
+                            <p style='margin: 0; font-weight: bold; color: #16a34a;'>✓ Executive Engineer Digital Signature Completed</p>
+                            <p style='margin: 10px 0 0 0; color: #166534;'>Your certificate is now being forwarded to the City Engineer for final approval.</p>
+                        </div>
+                        
+                        <div class='info-box'>
+                            <p><strong>Application Number:</strong> {applicationNumber}</p>
+                            <p><strong>Applicant Name:</strong> {applicantName}</p>
+                            <p><strong>Current Status:</strong> Executive Engineer Signature Completed</p>
+                            <p><strong>Signed By:</strong> {eeOfficerName} (Executive Engineer)</p>
+                            <p><strong>Signature Date:</strong> {DateTime.UtcNow:dd MMMM yyyy, hh:mm tt} UTC</p>
+                        </div>
+                        
+                        <div class='info-notice'>
+                            <p><strong>What Happens Next:</strong></p>
+                            <ol>
+                                <li>Certificate forwarded to City Engineer for review</li>
+                                <li>City Engineer will apply final digital signature</li>
+                                <li>Once complete, your certificate will be ready for download</li>
+                                <li>You will receive download instructions via email</li>
+                            </ol>
+                        </div>
+                        
+                        <p style='text-align: center; margin: 30px 0;'>
+                            <a href='{viewUrl}' class='button' style='background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;'>
+                                Track Application Status
+                            </a>
+                        </p>
+                        
+                        <p>Thank you for your patience. Your certificate should be ready soon!</p>
+                        <p>Best regards,<br>Pune Municipal Corporation</p>
+                    </div>
+                    
+                    {GetEmailFooter()}
+                </body>
+                </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending EE2 signature completed email to {Email} for application {ApplicationNumber}", 
+                    toEmail, applicationNumber);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send notification to City Engineer that final signature is required
+        /// </summary>
+        public async Task<bool> SendCE2SignaturePendingEmailAsync(
+            string toEmail, 
+            string ceOfficerName, 
+            string applicationNumber, 
+            string applicantName, 
+            string viewUrl)
+        {
+            try
+            {
+                string subject = $"Action Required: Final Certificate Signature - Application {applicationNumber}";
+
+                string body = $@"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>{GetCommonEmailStyles()}</style>
+                </head>
+                <body>
+                    {GetEmailHeader()}
+                    
+                    <div class='content'>
+                        <p>Dear {ceOfficerName},</p>
+                        
+                        <p>A building permission certificate has been signed by the Executive Engineer and is now ready for your final approval and signature.</p>
+                        
+                        <div class='highlight' style='background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 6px;'>
+                            <p style='margin: 0; font-weight: bold; color: #d97706;'>⚠️ Action Required: Final Certificate Signature</p>
+                            <p style='margin: 10px 0 0 0; color: #92400e;'>Your digital signature will complete the certificate issuance process and make it available for applicant download.</p>
+                        </div>
+                        
+                        <div class='info-box'>
+                            <p><strong>Application Number:</strong> {applicationNumber}</p>
+                            <p><strong>Applicant Name:</strong> {applicantName}</p>
+                            <p><strong>Current Status:</strong> Executive Engineer Signature Completed</p>
+                            <p><strong>Assigned To:</strong> {ceOfficerName} (City Engineer)</p>
+                            <p><strong>Assigned Date:</strong> {DateTime.UtcNow:dd MMMM yyyy, hh:mm tt} UTC</p>
+                        </div>
+                        
+                        <div class='info-notice'>
+                            <p><strong>Next Steps:</strong></p>
+                            <ol>
+                                <li>Log in to your dashboard</li>
+                                <li>Review the application details and certificate</li>
+                                <li>Verify Executive Engineer's signature is present</li>
+                                <li>Request OTP for your final digital signature</li>
+                                <li>Enter OTP to issue the certificate using HSM</li>
+                                <li>Certificate will be immediately available for applicant download</li>
+                            </ol>
+                        </div>
+                        
+                        <p style='text-align: center; margin: 30px 0;'>
+                            <a href='{viewUrl}' class='button' style='background-color: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;'>
+                                View Application & Issue Certificate
+                            </a>
+                        </p>
+                        
+                        <p><strong>Important:</strong> Once you issue the certificate, it cannot be modified. Please review carefully before signing.</p>
+                        <p>Best regards,<br>Pune Municipal Corporation</p>
+                    </div>
+                    
+                    {GetEmailFooter()}
+                </body>
+                </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending CE2 signature pending email to {Email} for application {ApplicationNumber}", 
+                    toEmail, applicationNumber);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send notification to applicant that certificate is ready for download with OTP portal link
+        /// </summary>
+        public async Task<bool> SendCertificateReadyEmailAsync(
+            string toEmail, 
+            string applicantName, 
+            string applicationNumber, 
+            string certificateNumber, 
+            string downloadLink)
+        {
+            try
+            {
+                string subject = $"🎉 Certificate Issued! Download Your Building Permission Certificate - {applicationNumber}";
+
+                string body = $@"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>{GetCommonEmailStyles()}</style>
+                </head>
+                <body>
+                    {GetEmailHeader()}
+                    
+                    <div class='content'>
+                        <p>Dear {applicantName},</p>
+                        
+                        <p>Congratulations! Your building permission certificate has been successfully issued by the Pune Municipal Corporation.</p>
+                        
+                        <div class='success' style='background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 20px; margin: 20px 0; border-radius: 6px; text-align: center;'>
+                            <p style='margin: 0; font-size: 18px; font-weight: bold; color: #16a34a;'>✓ Certificate Issued Successfully!</p>
+                            <p style='margin: 10px 0; font-size: 24px; font-weight: bold; color: #166534;'>{certificateNumber}</p>
+                            <p style='margin: 0; color: #166534;'>Your certificate is now ready for download</p>
+                        </div>
+                        
+                        <div class='info-box'>
+                            <p><strong>Application Number:</strong> {applicationNumber}</p>
+                            <p><strong>Certificate Number:</strong> {certificateNumber}</p>
+                            <p><strong>Applicant Name:</strong> {applicantName}</p>
+                            <p><strong>Issue Date:</strong> {DateTime.UtcNow:dd MMMM yyyy, hh:mm tt} UTC</p>
+                            <p><strong>Digitally Signed By:</strong> Executive Engineer & City Engineer</p>
+                        </div>
+                        
+                        <div class='info-notice' style='background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 6px;'>
+                            <p style='margin: 0; font-weight: bold; color: #1e40af;'>📥 How to Download Your Certificate:</p>
+                            <ol style='margin: 10px 0 0 0; color: #1e3a8a;'>
+                                <li>Click the download button below</li>
+                                <li>Enter your application number and registered email</li>
+                                <li>You will receive a 6-digit OTP via email</li>
+                                <li>Enter the OTP to verify your identity</li>
+                                <li>Download your certificate, recommendation form, and payment challan</li>
+                            </ol>
+                        </div>
+                        
+                        <p style='text-align: center; margin: 30px 0;'>
+                            <a href='{downloadLink}' class='button' style='background-color: #16a34a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold; font-size: 16px;'>
+                                📥 Download Certificate Now
+                            </a>
+                        </p>
+                        
+                        <div class='warning' style='background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0; border-radius: 6px;'>
+                            <p style='margin: 0; font-weight: bold; color: #dc2626;'>⚠️ Important Notes:</p>
+                            <ul style='margin: 10px 0 0 0; color: #991b1b;'>
+                                <li>Download link is valid for 48 hours after OTP verification</li>
+                                <li>Keep your certificate safe - you will need it for construction</li>
+                                <li>Do not share the OTP with anyone</li>
+                                <li>For any issues, contact our support team</li>
+                            </ul>
+                        </div>
+                        
+                        <p><strong>What's Included in Your Download:</strong></p>
+                        <ul>
+                            <li>✓ Building Permission Certificate (digitally signed)</li>
+                            <li>✓ Recommendation Form</li>
+                            <li>✓ Payment Challan</li>
+                        </ul>
+                        
+                        <p>Thank you for using the Pune Municipal Corporation online services. We wish you success with your construction project!</p>
+                        <p>Best regards,<br>Pune Municipal Corporation</p>
+                    </div>
+                    
+                    {GetEmailFooter()}
+                </body>
+                </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending certificate ready email to {Email} for application {ApplicationNumber}", 
                     toEmail, applicationNumber);
                 return false;
             }

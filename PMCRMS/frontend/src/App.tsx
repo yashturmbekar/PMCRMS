@@ -12,6 +12,9 @@ import AEDashboard from "./pages/AEDashboard";
 import EEDashboard from "./pages/EEDashboard";
 import CEDashboard from "./pages/CEDashboard";
 import ClerkDashboard from "./pages/ClerkDashboard";
+import EEStage2Dashboard from "./pages/EEStage2Dashboard";
+import CEStage2Dashboard from "./pages/CEStage2Dashboard";
+import CertificateDownloadPortal from "./pages/CertificateDownloadPortal";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
@@ -195,6 +198,16 @@ function App() {
               {/* Payment callback - No auth required (BillDesk redirect) */}
               <Route path="/payment/callback" element={<PaymentCallback />} />
 
+              {/* Certificate Download Portal - Public access with OTP authentication */}
+              <Route
+                path="/download-certificate"
+                element={<CertificateDownloadPortal />}
+              />
+              <Route
+                path="/download-certificate/:applicationNumber"
+                element={<CertificateDownloadPortal />}
+              />
+
               {/* Loader Showcase - For demo purposes */}
               <Route path="/loaders" element={<LoaderShowcase />} />
 
@@ -333,6 +346,30 @@ function App() {
                   <OfficerRoute allowedRoles={["Clerk"]}>
                     <Layout>
                       <ClerkDashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* EE Stage 2 Dashboard - Certificate Digital Signature */}
+              <Route
+                path="/ee-stage2-dashboard"
+                element={
+                  <OfficerRoute allowedRoles={["ExecutiveEngineer"]}>
+                    <Layout>
+                      <EEStage2Dashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* CE Stage 2 Dashboard - Final Certificate Signature */}
+              <Route
+                path="/ce-stage2-dashboard"
+                element={
+                  <OfficerRoute allowedRoles={["CityEngineer"]}>
+                    <Layout>
+                      <CEStage2Dashboard />
                     </Layout>
                   </OfficerRoute>
                 }

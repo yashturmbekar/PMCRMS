@@ -249,6 +249,9 @@ builder.Services.AddScoped<IAEWorkflowService, AEWorkflowService>(); // Assistan
 builder.Services.AddScoped<IEEWorkflowService, EEWorkflowService>(); // Executive Engineer workflow service
 builder.Services.AddScoped<ICEWorkflowService, CEWorkflowService>(); // City Engineer workflow service (Final Approval)
 builder.Services.AddScoped<ClerkWorkflowService>(); // Clerk workflow service (Post-Payment Processing)
+builder.Services.AddScoped<EEStage2WorkflowService>(); // EE Stage 2 workflow service (Certificate Digital Signature)
+builder.Services.AddScoped<CEStage2WorkflowService>(); // CE Stage 2 workflow service (Final Certificate Signature)
+builder.Services.AddScoped<DocumentDownloadService>(); // Document download service with OTP authentication (Public Access)
 
 // BillDesk Payment Gateway Services
 builder.Services.AddSingleton<IBillDeskConfigService, BillDeskConfigService>(); // BillDesk configuration (singleton)
