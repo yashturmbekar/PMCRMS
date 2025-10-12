@@ -649,8 +649,53 @@ const OfficerDashboard: React.FC = () => {
             >
               {officerConfig.tabs.map((tab) => {
                 const Icon = tab.icon;
-                const tabApps =
-                  activeTab === tab.id ? filteredApplications : [];
+
+                // Calculate count for each tab independently
+                let tabCount = 0;
+                if (officerConfig.type === "JE") {
+                  if (tab.id === "tab1") {
+                    // Schedule Appointment tab
+                    tabCount = applications.filter((app) => {
+                      const isAppointmentScheduled =
+                        app.currentStage === "Appointment Scheduled" ||
+                        app.currentStage === "APPOINTMENT_SCHEDULED";
+                      return !isAppointmentScheduled;
+                    }).length;
+                  } else if (tab.id === "tab2") {
+                    // JE Pending tab
+                    tabCount = applications.filter((app) => {
+                      const isAppointmentScheduled =
+                        app.currentStage === "Appointment Scheduled" ||
+                        app.currentStage === "APPOINTMENT_SCHEDULED";
+                      const isAutoForwarded =
+                        app.verificationInfo?.allVerified === true &&
+                        app.currentStatus === "ASSISTANT_ENGINEER_PENDING";
+                      return isAppointmentScheduled && !isAutoForwarded;
+                    }).length;
+                  }
+                } else if (
+                  officerConfig.type === "EE" ||
+                  officerConfig.type === "CE"
+                ) {
+                  if (tab.id === "tab1") {
+                    // Stage 1
+                    tabCount = applications.filter(
+                      (app) =>
+                        app.status?.includes("PENDING") &&
+                        !app.status?.includes("STAGE2")
+                    ).length;
+                  } else if (tab.id === "tab2") {
+                    // Stage 2
+                    tabCount = applications.filter(
+                      (app) =>
+                        app.status?.includes("STAGE2") ||
+                        app.status?.includes("CERTIFICATE")
+                    ).length;
+                  }
+                } else {
+                  // AE and Clerk - single tab, show all
+                  tabCount = applications.length;
+                }
 
                 return (
                   <button
@@ -703,7 +748,7 @@ const OfficerDashboard: React.FC = () => {
                           fontWeight: "bold",
                         }}
                       >
-                        {activeTab === tab.id ? tabApps.length : 0}
+                        {tabCount}
                       </span>
                     </div>
                   </button>
