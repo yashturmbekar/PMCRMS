@@ -360,6 +360,11 @@ using (var scope = app.Services.CreateScope())
         Log.Information("Updating officer credentials...");
         await dataSeeder.UpdateOfficerCredentialsAsync();
         Log.Information("Officer credentials update completed.");
+        
+        // Seed auto-assignment rules
+        Log.Information("Seeding auto-assignment rules...");
+        await dataSeeder.SeedAutoAssignmentRulesAsync();
+        Log.Information("Auto-assignment rules seeding completed.");
     }
     catch (Exception ex)
     {

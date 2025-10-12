@@ -586,6 +586,7 @@ namespace PMCRMS.API.Controllers
                     .Include(a => a.Qualifications)
                     .Include(a => a.Experiences)
                     .Include(a => a.Documents)
+                    .Include(a => a.AssignedJuniorEngineer)
                     .AsQueryable();
 
                 if (positionType.HasValue)
@@ -783,6 +784,8 @@ namespace PMCRMS.API.Controllers
                 Remarks = application.Remarks,
                 CreatedDate = application.CreatedDate,
                 UpdatedDate = application.UpdatedDate,
+                AssignedJuniorEngineerId = application.AssignedJuniorEngineerId,
+                AssignedJuniorEngineerName = application.AssignedJuniorEngineer?.Name,
                 Addresses = application.Addresses.Select(a => new AddressResponseDTO
                 {
                     Id = a.Id,

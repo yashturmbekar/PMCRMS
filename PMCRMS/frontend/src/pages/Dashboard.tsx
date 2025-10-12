@@ -604,9 +604,29 @@ const Dashboard: React.FC = () => {
                       color: "var(--pmc-gray-700)",
                     }}
                   >
+                    Assigned Officer
+                  </th>
+                  <th
+                    className="pmc-text-xs pmc-font-semibold"
+                    style={{
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--pmc-gray-700)",
+                    }}
+                  >
                     {activeTab === "submitted"
                       ? "Submitted Date"
                       : "Created Date"}
+                  </th>
+                  <th
+                    className="pmc-text-xs pmc-font-semibold"
+                    style={{
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                      color: "var(--pmc-gray-700)",
+                    }}
+                  >
+                    Last Updated
                   </th>
                   <th
                     className="pmc-text-xs pmc-font-semibold"
@@ -655,6 +675,49 @@ const Dashboard: React.FC = () => {
                       {app.fullName}
                     </td>
                     <td
+                      className="pmc-text-sm pmc-font-medium"
+                      style={{ color: "var(--pmc-gray-700)" }}
+                    >
+                      {app.assignedJuniorEngineerName ? (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "4px 10px",
+                            background: "var(--pmc-gray-100)",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                          </svg>
+                          {app.assignedJuniorEngineerName}
+                        </span>
+                      ) : (
+                        <span
+                          className="pmc-text-sm"
+                          style={{
+                            color: "var(--pmc-gray-400)",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Not assigned yet
+                        </span>
+                      )}
+                    </td>
+                    <td
                       className="pmc-text-sm"
                       style={{ color: "var(--pmc-gray-600)" }}
                     >
@@ -672,6 +735,33 @@ const Dashboard: React.FC = () => {
                             : app.createdDate
                         ).toLocaleDateString()}
                       </div>
+                    </td>
+                    <td
+                      className="pmc-text-sm"
+                      style={{ color: "var(--pmc-gray-600)" }}
+                    >
+                      {app.updatedDate ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <Clock style={{ width: "14px", height: "14px" }} />
+                          {new Date(app.updatedDate).toLocaleDateString()}
+                        </div>
+                      ) : (
+                        <span
+                          className="pmc-text-sm"
+                          style={{
+                            color: "var(--pmc-gray-400)",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          —
+                        </span>
+                      )}
                     </td>
                     <td>
                       <span

@@ -219,6 +219,10 @@ namespace PMCRMS.API.DTOs
         public string? Remarks { get; set; }
         public DateTime CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
+        
+        // Assigned Officer Information
+        public int? AssignedJuniorEngineerId { get; set; }
+        public string? AssignedJuniorEngineerName { get; set; }
 
         public List<AddressResponseDTO> Addresses { get; set; } = new List<AddressResponseDTO>();
         public List<QualificationResponseDTO> Qualifications { get; set; } = new List<QualificationResponseDTO>();

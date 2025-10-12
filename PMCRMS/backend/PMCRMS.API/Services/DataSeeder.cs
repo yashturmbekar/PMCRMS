@@ -8,6 +8,7 @@ namespace PMCRMS.API.Services
     {
         Task UpdateOfficerCredentialsAsync();
         Task EnsureSystemAdminExistsAsync();
+        Task SeedAutoAssignmentRulesAsync();
     }
 
     public class DataSeeder : IDataSeeder
@@ -226,6 +227,156 @@ namespace PMCRMS.API.Services
             };
 
             return $"PMC-{roleCode}";
+        }
+
+        /// <summary>
+        /// Seeds default auto-assignment rules for all position types
+        /// Creates workload-based assignment rules with auto-assign on submission
+        /// </summary>
+        public async Task SeedAutoAssignmentRulesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Checking auto-assignment rules...");
+
+                // Check if any rules already exist
+                var existingRulesCount = await _context.AutoAssignmentRules.CountAsync();
+                
+                if (existingRulesCount > 0)
+                {
+                    _logger.LogInformation("Auto-assignment rules already exist ({Count} rules). Skipping seed.", existingRulesCount);
+                    return;
+                }
+
+                _logger.LogInformation("No auto-assignment rules found. Creating default rules...");
+
+                var rules = new List<AutoAssignmentRule>
+                {
+                    // Architect - WorkloadBased
+                    new AutoAssignmentRule
+                    {
+                        PositionType = PositionType.Architect,
+                        TargetOfficerRole = OfficerRole.JuniorArchitect,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 1,
+                        MaxWorkloadPerOfficer = 50,
+                        IsActive = true,
+                        AutoAssignOnSubmission = true,
+                        SendNotification = true,
+                        Description = "Auto-assign Architect applications to Junior Architects based on workload",
+                        EscalationTimeHours = 72,
+                        EscalationRole = OfficerRole.AssistantArchitect,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    },
+
+                    // Structural Engineer - WorkloadBased
+                    new AutoAssignmentRule
+                    {
+                        PositionType = PositionType.StructuralEngineer,
+                        TargetOfficerRole = OfficerRole.JuniorStructuralEngineer,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 1,
+                        MaxWorkloadPerOfficer = 50,
+                        IsActive = true,
+                        AutoAssignOnSubmission = true,
+                        SendNotification = true,
+                        Description = "Auto-assign Structural Engineer applications to Junior Structural Engineers based on workload",
+                        EscalationTimeHours = 72,
+                        EscalationRole = OfficerRole.AssistantStructuralEngineer,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    },
+
+                    // Licence Engineer - WorkloadBased
+                    new AutoAssignmentRule
+                    {
+                        PositionType = PositionType.LicenceEngineer,
+                        TargetOfficerRole = OfficerRole.JuniorLicenceEngineer,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 1,
+                        MaxWorkloadPerOfficer = 50,
+                        IsActive = true,
+                        AutoAssignOnSubmission = true,
+                        SendNotification = true,
+                        Description = "Auto-assign Licence Engineer applications to Junior Licence Engineers based on workload",
+                        EscalationTimeHours = 72,
+                        EscalationRole = OfficerRole.AssistantLicenceEngineer,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    },
+
+                    // Supervisor1 - WorkloadBased
+                    new AutoAssignmentRule
+                    {
+                        PositionType = PositionType.Supervisor1,
+                        TargetOfficerRole = OfficerRole.JuniorSupervisor1,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 1,
+                        MaxWorkloadPerOfficer = 50,
+                        IsActive = true,
+                        AutoAssignOnSubmission = true,
+                        SendNotification = true,
+                        Description = "Auto-assign Supervisor1 applications to Junior Supervisor1 based on workload",
+                        EscalationTimeHours = 72,
+                        EscalationRole = OfficerRole.AssistantSupervisor1,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    },
+
+                    // Supervisor2 - WorkloadBased
+                    new AutoAssignmentRule
+                    {
+                        PositionType = PositionType.Supervisor2,
+                        TargetOfficerRole = OfficerRole.JuniorSupervisor2,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 1,
+                        MaxWorkloadPerOfficer = 50,
+                        IsActive = true,
+                        AutoAssignOnSubmission = true,
+                        SendNotification = true,
+                        Description = "Auto-assign Supervisor2 applications to Junior Supervisor2 based on workload",
+                        EscalationTimeHours = 72,
+                        EscalationRole = OfficerRole.AssistantSupervisor2,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    }
+                };
+
+                _context.AutoAssignmentRules.AddRange(rules);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "✅ Auto-assignment rules created successfully! Total rules: {Count}", 
+                    rules.Count
+                );
+
+                foreach (var rule in rules)
+                {
+                    _logger.LogInformation(
+                        "  ✓ {PositionType} → {Role} (Strategy: {Strategy}, Max Workload: {MaxWorkload})",
+                        rule.PositionType,
+                        rule.TargetOfficerRole,
+                        rule.Strategy,
+                        rule.MaxWorkloadPerOfficer
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error seeding auto-assignment rules");
+                throw;
+            }
         }
     }
 }
