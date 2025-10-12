@@ -11,6 +11,7 @@ import JEDashboard from "./pages/JEDashboard";
 import AEDashboard from "./pages/AEDashboard";
 import EEDashboard from "./pages/EEDashboard";
 import CEDashboard from "./pages/CEDashboard";
+import ClerkDashboard from "./pages/ClerkDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
@@ -320,6 +321,18 @@ function App() {
                   <OfficerRoute allowedRoles={["CityEngineer"]}>
                     <Layout>
                       <CEDashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* Clerk Dashboard */}
+              <Route
+                path="/clerk-dashboard"
+                element={
+                  <OfficerRoute allowedRoles={["Clerk"]}>
+                    <Layout>
+                      <ClerkDashboard />
                     </Layout>
                   </OfficerRoute>
                 }

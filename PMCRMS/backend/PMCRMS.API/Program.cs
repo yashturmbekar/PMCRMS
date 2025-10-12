@@ -248,6 +248,7 @@ builder.Services.AddScoped<IJEWorkflowService, JEWorkflowService>(); // Workflow
 builder.Services.AddScoped<IAEWorkflowService, AEWorkflowService>(); // Assistant Engineer workflow service
 builder.Services.AddScoped<IEEWorkflowService, EEWorkflowService>(); // Executive Engineer workflow service
 builder.Services.AddScoped<ICEWorkflowService, CEWorkflowService>(); // City Engineer workflow service (Final Approval)
+builder.Services.AddScoped<ClerkWorkflowService>(); // Clerk workflow service (Post-Payment Processing)
 
 // BillDesk Payment Gateway Services
 builder.Services.AddSingleton<IBillDeskConfigService, BillDeskConfigService>(); // BillDesk configuration (singleton)

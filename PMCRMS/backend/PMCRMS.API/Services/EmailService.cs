@@ -13,6 +13,8 @@ namespace PMCRMS.API.Services
         Task<bool> SendApplicationRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectedBy, string rejectedRole, string remarks, string viewUrl);
         Task<bool> SendAssignmentNotificationEmailAsync(string toEmail, string officerName, string applicationNumber, string applicationType, string applicantName, string assignedBy, string viewUrl);
         Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string temporaryPassword, string loginUrl);
+        Task<bool> SendClerkApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string remarks, string viewUrl);
+        Task<bool> SendClerkRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectionReason, string viewUrl);
     }
 
     public class EmailService : IEmailService
@@ -1354,6 +1356,147 @@ namespace PMCRMS.API.Services
             <p>For support, please visit our website or contact us at support@pmcrms.gov.in</p>
             <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
         </div>";
+        }
+
+        /// <summary>
+        /// Send email notification when clerk approves application (forwards to EE Stage 2)
+        /// </summary>
+        public async Task<bool> SendClerkApprovalEmailAsync(
+            string toEmail, 
+            string applicantName, 
+            string applicationNumber, 
+            string remarks, 
+            string viewUrl)
+        {
+            try
+            {
+                var subject = $"Application {applicationNumber} - Processed by Clerk";
+                
+                var body = $@"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>{GetCommonEmailStyles()}</style>
+                </head>
+                <body>
+                    {GetEmailHeader()}
+                    
+                    <div class='content'>
+                        <p>Dear {applicantName},</p>
+                        
+                        <p>Your application <strong>{applicationNumber}</strong> has been processed by the clerk and forwarded to the Executive Engineer for digital signature.</p>
+                        
+                        <div class='info-box'>
+                            <p><strong>Application Number:</strong> {applicationNumber}</p>
+                            <p><strong>Status:</strong> Forwarded to Executive Engineer (Stage 2)</p>
+                            <p><strong>Processed Date:</strong> {DateTime.UtcNow:dd MMMM yyyy, hh:mm tt} UTC</p>
+                            {(!string.IsNullOrEmpty(remarks) ? $"<p><strong>Clerk Remarks:</strong> {remarks}</p>" : "")}
+                        </div>
+                        
+                        <div class='info-notice'>
+                            <p><strong>Next Steps:</strong></p>
+                            <ul>
+                                <li>Your application is now being reviewed by the Executive Engineer</li>
+                                <li>Digital signature will be applied to your certificate</li>
+                                <li>You will be notified once this step is completed</li>
+                            </ul>
+                        </div>
+                        
+                        <p style='text-align: center; margin: 30px 0;'>
+                            <a href='{viewUrl}' class='button' style='background-color: #10b981; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;'>
+                                View Application Status
+                            </a>
+                        </p>
+                        
+                        <p>Thank you for your patience.</p>
+                        <p>Best regards,<br>Pune Municipal Corporation</p>
+                    </div>
+                    
+                    {GetEmailFooter()}
+                </body>
+                </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending clerk approval email to {Email} for application {ApplicationNumber}", 
+                    toEmail, applicationNumber);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send email notification when clerk rejects application
+        /// </summary>
+        public async Task<bool> SendClerkRejectionEmailAsync(
+            string toEmail, 
+            string applicantName, 
+            string applicationNumber, 
+            string rejectionReason, 
+            string viewUrl)
+        {
+            try
+            {
+                var subject = $"Application {applicationNumber} - Rejected by Clerk";
+                
+                var body = $@"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>{GetCommonEmailStyles()}</style>
+                </head>
+                <body>
+                    {GetEmailHeader()}
+                    
+                    <div class='content'>
+                        <p>Dear {applicantName},</p>
+                        
+                        <p>We regret to inform you that your application <strong>{applicationNumber}</strong> has been rejected during clerk review.</p>
+                        
+                        <div class='warning'>
+                            <p><strong>Rejection Reason:</strong></p>
+                            <p>{rejectionReason}</p>
+                        </div>
+                        
+                        <div class='info-box'>
+                            <p><strong>Application Number:</strong> {applicationNumber}</p>
+                            <p><strong>Status:</strong> Rejected by Clerk</p>
+                            <p><strong>Rejection Date:</strong> {DateTime.UtcNow:dd MMMM yyyy, hh:mm tt} UTC</p>
+                        </div>
+                        
+                        <div class='info-notice'>
+                            <p><strong>What You Can Do:</strong></p>
+                            <ul>
+                                <li>Review the rejection reason carefully</li>
+                                <li>Address the issues mentioned in the rejection reason</li>
+                                <li>Submit a new application with corrected information</li>
+                                <li>Contact our office for clarification if needed</li>
+                            </ul>
+                        </div>
+                        
+                        <p style='text-align: center; margin: 30px 0;'>
+                            <a href='{viewUrl}' class='button' style='background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;'>
+                                View Application Details
+                            </a>
+                        </p>
+                        
+                        <p>If you have any questions, please contact our support team.</p>
+                        <p>Best regards,<br>Pune Municipal Corporation</p>
+                    </div>
+                    
+                    {GetEmailFooter()}
+                </body>
+                </html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[EmailService] Error sending clerk rejection email to {Email} for application {ApplicationNumber}", 
+                    toEmail, applicationNumber);
+                return false;
+            }
         }
     }
 }
