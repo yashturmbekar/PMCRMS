@@ -97,7 +97,7 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                _logger.LogInformation("Starting officer credentials update...");
+                _logger.LogInformation("Starting officer credentials update/creation...");
 
                 // Define officer credentials mapping
                 var officerCredentials = new Dictionary<OfficerRole, string>
@@ -119,13 +119,17 @@ namespace PMCRMS.API.Services
 
                 var password = "Test@123";
                 var hashedPassword = _passwordHasher.HashPassword(password);
-                var updateCount = 0;
+                var createdCount = 0;
+                var updatedCount = 0;
 
-                // Update all officers
+                // Load all existing officers into memory for efficient checking
+                var existingOfficers = await _context.Officers.ToListAsync();
+                _logger.LogInformation("Found {Count} existing officers in database", existingOfficers.Count);
+
+                // Update or create all officers
                 foreach (var (role, email) in officerCredentials)
                 {
-                    var officer = await _context.Officers
-                        .FirstOrDefaultAsync(o => o.Role == role);
+                    var officer = existingOfficers.FirstOrDefault(o => o.Role == role);
 
                     if (officer != null)
                     {
@@ -134,16 +138,16 @@ namespace PMCRMS.API.Services
                         officer.PasswordHash = hashedPassword;
                         officer.UpdatedBy = "System";
                         officer.UpdatedDate = DateTime.UtcNow;
-                        updateCount++;
+                        updatedCount++;
                         
                         _logger.LogInformation(
-                            "Updated officer: {Role} → Email: {Email}, Password: Test@123",
+                            "✓ Updated officer: {Role} → Email: {Email}",
                             role, email
                         );
                     }
                     else
                     {
-                        _logger.LogWarning("Officer with role {Role} not found. Creating new officer...", role);
+                        _logger.LogInformation("✓ Creating new officer: {Role} → Email: {Email}", role, email);
                         
                         // Create new officer if doesn't exist
                         var newOfficer = new Officer
@@ -154,6 +158,7 @@ namespace PMCRMS.API.Services
                             Role = role,
                             EmployeeId = GenerateEmployeeId(role),
                             IsActive = true,
+                            PhoneNumber = "9999999999", // Default phone number
                             CreatedBy = "System",
                             CreatedDate = DateTime.UtcNow,
                             UpdatedBy = "System",
@@ -161,25 +166,20 @@ namespace PMCRMS.API.Services
                         };
                         
                         _context.Officers.Add(newOfficer);
-                        updateCount++;
-                        
-                        _logger.LogInformation(
-                            "Created new officer: {Role} → Email: {Email}, Password: Test@123",
-                            role, email
-                        );
+                        createdCount++;
                     }
                 }
 
                 await _context.SaveChangesAsync();
                 
                 _logger.LogInformation(
-                    "Officer credentials update completed. {Count} officers updated/created. Password: Test@123",
-                    updateCount
+                    "✅ Officer seeding completed! Created: {Created}, Updated: {Updated}, Total: {Total}, Password: Test@123",
+                    createdCount, updatedCount, createdCount + updatedCount
                 );
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during officer credentials update");
+                _logger.LogError(ex, "❌ Error during officer credentials update/creation");
                 throw;
             }
         }
@@ -209,24 +209,23 @@ namespace PMCRMS.API.Services
         {
             var roleCode = role switch
             {
-                OfficerRole.Clerk => "CLK",
-                OfficerRole.JuniorArchitect => "JA",
-                OfficerRole.AssistantArchitect => "AA",
-                OfficerRole.JuniorLicenceEngineer => "JLE",
-                OfficerRole.AssistantLicenceEngineer => "ALE",
-                OfficerRole.JuniorStructuralEngineer => "JSE",
-                OfficerRole.AssistantStructuralEngineer => "ASE",
-                OfficerRole.JuniorSupervisor1 => "JS1",
-                OfficerRole.AssistantSupervisor1 => "AS1",
-                OfficerRole.JuniorSupervisor2 => "JS2",
-                OfficerRole.AssistantSupervisor2 => "AS2",
-                OfficerRole.ExecutiveEngineer => "EE",
-                OfficerRole.CityEngineer => "CE",
-                _ => "OFF"
+                OfficerRole.Clerk => "CLK001",
+                OfficerRole.JuniorArchitect => "JA001",
+                OfficerRole.AssistantArchitect => "AA001",
+                OfficerRole.JuniorLicenceEngineer => "JLE001",
+                OfficerRole.AssistantLicenceEngineer => "ALE001",
+                OfficerRole.JuniorStructuralEngineer => "JSE001",
+                OfficerRole.AssistantStructuralEngineer => "ASE001",
+                OfficerRole.JuniorSupervisor1 => "JS1001",
+                OfficerRole.AssistantSupervisor1 => "AS1001",
+                OfficerRole.JuniorSupervisor2 => "JS2001",
+                OfficerRole.AssistantSupervisor2 => "AS2001",
+                OfficerRole.ExecutiveEngineer => "EE001",
+                OfficerRole.CityEngineer => "CE001",
+                _ => "OFF001"
             };
 
-            var timestamp = DateTime.UtcNow.Ticks % 10000;
-            return $"PMC-{roleCode}-{timestamp:D4}";
+            return $"PMC-{roleCode}";
         }
     }
 }

@@ -177,11 +177,9 @@ namespace PMCRMS.API.Services
                 application.JEAppointmentScheduledDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
-                // Send email notification to applicant
-                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
-                    application.Id,
-                    ApplicationCurrentStatus.APPOINTMENT_SCHEDULED
-                );
+                // NOTE: Email notification is sent by AppointmentService.ScheduleAppointmentAsync
+                // with detailed appointment information (date, time, location, contact person, etc.)
+                // No need to send a separate generic status update email here
 
                 // Generate recommendation form PDF after appointment is scheduled
                 try
