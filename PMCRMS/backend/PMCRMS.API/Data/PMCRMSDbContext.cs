@@ -427,8 +427,8 @@ namespace PMCRMS.API.Data
                 new SystemAdmin
                 {
                     Id = 1,
-                    Name = "System Administrator",
-                    Email = "admin@gmail.com",
+                    Name = "PMC Administrator",
+                    Email = "pmc@mailinator.com",
                     PhoneNumber = "9999999999",
                     EmployeeId = "ADMIN001",
                     IsActive = true,

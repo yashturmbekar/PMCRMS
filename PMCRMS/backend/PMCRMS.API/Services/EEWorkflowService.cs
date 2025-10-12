@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using PMCRMS.API.Configuration;
 using PMCRMS.API.Data;
 using PMCRMS.API.DTOs;
 using PMCRMS.API.Models;
@@ -18,6 +20,8 @@ namespace PMCRMS.API.Services
         private readonly IWorkflowNotificationService _workflowNotificationService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
+        private readonly IHsmService _hsmService;
+        private readonly IOptions<HsmConfiguration> _hsmConfig;
 
         public EEWorkflowService(
             PMCRMSDbContext context,
@@ -26,7 +30,9 @@ namespace PMCRMS.API.Services
             INotificationService notificationService,
             IWorkflowNotificationService workflowNotificationService,
             IHttpClientFactory httpClientFactory,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IHsmService hsmService,
+            IOptions<HsmConfiguration> hsmConfig)
         {
             _context = context;
             _logger = logger;
@@ -35,6 +41,8 @@ namespace PMCRMS.API.Services
             _workflowNotificationService = workflowNotificationService;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _hsmService = hsmService;
+            _hsmConfig = hsmConfig;
         }
 
         public async Task<List<EEWorkflowStatusDto>> GetPendingApplicationsAsync(int officerId)
@@ -185,13 +193,43 @@ namespace PMCRMS.API.Services
                     throw new Exception("Officer not found");
                 }
 
-                _logger.LogInformation("Generating OTP from HSM for EE application {ApplicationId} and officer {OfficerId}", 
-                    applicationId, officerId);
+                // Get application to determine position type
+                var application = await _context.PositionApplications.FindAsync(applicationId);
+                if (application == null)
+                {
+                    throw new Exception("Application not found");
+                }
 
-                var otp = await CallHsmOtpServiceAsync(officer.Email, officer.PhoneNumber);
+                // For EE, all positions use the same key label
+                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("EE", application.PositionType.ToString());
+                
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    throw new Exception("HSM key label not configured for EE officer");
+                }
+
+                _logger.LogInformation(
+                    "Generating OTP from HSM for EE officer {OfficerId} with key label {KeyLabel}",
+                    officerId, keyLabel);
+
+                var hsmResult = await _hsmService.GenerateOtpAsync(
+                    transactionId: applicationId.ToString(),
+                    keyLabel: keyLabel,
+                    otpType: "single"
+                );
+
+                if (!hsmResult.Success)
+                {
+                    _logger.LogError("HSM OTP generation failed: {Error}", hsmResult.ErrorMessage);
+                    throw new Exception($"Failed to generate OTP: {hsmResult.ErrorMessage}");
+                }
+
                 _logger.LogInformation("OTP generated successfully from HSM for EE officer {OfficerId}", officerId);
 
-                // Store OTP in database for validation
+                // Generate a mock OTP for database storage (actual OTP is sent by HSM)
+                var otp = new Random().Next(100000, 999999).ToString();
+
+                // Store OTP verification record in database
                 var otpVerification = new OtpVerification
                 {
                     Identifier = officer.Email,
@@ -207,7 +245,8 @@ namespace PMCRMS.API.Services
                 _context.OtpVerifications.Add(otpVerification);
                 await _context.SaveChangesAsync();
 
-                return otp;
+                // Return success message (don't return actual OTP)
+                return "OTP sent successfully via HSM";
             }
             catch (Exception ex)
             {
@@ -238,30 +277,6 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
                 }
 
-                // Validate OTP
-                var otpVerification = await _context.OtpVerifications
-                    .Where(o => o.Identifier == officer.Email 
-                             && o.OtpCode == otp 
-                             && (o.Purpose == "DIGITAL_SIGNATURE_EE" || o.Purpose == "DIGITAL_SIGNATURE")
-                             && !o.IsUsed
-                             && o.IsActive
-                             && o.ExpiryTime > DateTime.UtcNow)
-                    .OrderByDescending(o => o.CreatedDate)
-                    .FirstOrDefaultAsync();
-
-                if (otpVerification == null)
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "Invalid or expired OTP. Please generate a new OTP." 
-                    };
-                }
-
-                // Mark OTP as used
-                otpVerification.IsUsed = true;
-                otpVerification.VerifiedAt = DateTime.UtcNow;
-
                 // Get recommendation form PDF
                 var recommendationForm = await _context.SEDocuments
                     .FirstOrDefaultAsync(d => d.ApplicationId == applicationId 
@@ -276,122 +291,110 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Save PDF temporarily for HSM signing
-                var tempPdfPath = Path.Combine(Path.GetTempPath(), $"recommendation_ee_{applicationId}.pdf");
-                await File.WriteAllBytesAsync(tempPdfPath, recommendationForm.FileContent);
-
-                try
+                // Get HSM key label for EE
+                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("EE", application.PositionType.ToString());
+                
+                if (string.IsNullOrEmpty(keyLabel))
                 {
-                    // Initiate digital signature with HSM
-                    var coordinates = $"{100},{600},{200},{150},{1}"; // Different position than JE and AE
-                    var ipAddress = "";
-                    var userAgent = "PMCRMS_API_EE";
-
-                    var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
-                        applicationId: applicationId,
-                        signedByOfficerId: officerId,
-                        signatureType: SignatureType.ExecutiveEngineer,
-                        documentPath: tempPdfPath,
-                        coordinates: coordinates,
-                        ipAddress: ipAddress,
-                        userAgent: userAgent
-                    );
-
-                    if (!initiateResult.Success || initiateResult.SignatureId == null)
-                    {
-                        return new WorkflowActionResultDto 
-                        { 
-                            Success = false, 
-                            Message = $"Failed to initiate digital signature: {initiateResult.Message}" 
-                        };
-                    }
-
-                    // Complete signature with OTP
-                    var completeResult = await _digitalSignatureService.CompleteSignatureAsync(
-                        signatureId: initiateResult.SignatureId.Value,
-                        otp: otp,
-                        completedBy: officer.Email
-                    );
-
-                    if (!completeResult.Success)
-                    {
-                        return new WorkflowActionResultDto 
-                        { 
-                            Success = false, 
-                            Message = $"Digital signature failed: {completeResult.Message}" 
-                        };
-                    }
-
-                    // Update recommendation form with signed PDF
-                    if (!string.IsNullOrEmpty(completeResult.SignedDocumentPath) && 
-                        File.Exists(completeResult.SignedDocumentPath))
-                    {
-                        var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
-                        recommendationForm.FileContent = signedPdfBytes;
-                        recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                        recommendationForm.UpdatedDate = DateTime.UtcNow;
-                        
-                        _logger.LogInformation(
-                            "Updated recommendation form with EE digitally signed PDF for application {ApplicationId}", 
-                            applicationId);
-                    }
-
-                    // Update application
-                    var signatureDate = DateTime.UtcNow;
-                    application.ExecutiveEngineerApprovalStatus = true;
-                    application.ExecutiveEngineerApprovalComments = comments;
-                    application.ExecutiveEngineerApprovalDate = signatureDate;
-                    application.ExecutiveEngineerDigitalSignatureApplied = true;
-                    application.ExecutiveEngineerDigitalSignatureDate = signatureDate;
-
-                    // Forward to City Engineer
-                    var cityEngineer = await _context.Officers
-                        .Where(o => o.Role == OfficerRole.CityEngineer && o.IsActive)
-                        .OrderBy(o => o.Id)
-                        .FirstOrDefaultAsync();
-
-                    if (cityEngineer != null)
-                    {
-                        application.AssignedCityEngineerId = cityEngineer.Id;
-                        application.AssignedToCityEngineerDate = DateTime.UtcNow;
-                        application.Status = ApplicationCurrentStatus.CITY_ENGINEER_PENDING;
-
-                        // Send email notification to applicant
-                        await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
-                            application.Id,
-                            ApplicationCurrentStatus.CITY_ENGINEER_PENDING
-                        );
-
-                        // Send notification to CE
-                        await _notificationService.NotifyOfficerAssignmentAsync(
-                            cityEngineer.Id,
-                            application.ApplicationNumber ?? "N/A",
-                            application.Id,
-                            application.PositionType.ToString(),
-                            $"{application.FirstName} {application.LastName}",
-                            officerId.ToString());
-
-                        _logger.LogInformation(
-                            "Application {ApplicationId} forwarded to City Engineer {OfficerId}", 
-                            applicationId, cityEngineer.Id);
-                    }
-
-                    await _context.SaveChangesAsync();
-
-                    return new WorkflowActionResultDto
-                    {
-                        Success = true,
-                        Message = "Documents verified, recommendation form digitally signed, and application forwarded to City Engineer successfully",
-                        NewStatus = application.Status
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "HSM key label not configured for EE officer" 
                     };
                 }
-                finally
+
+                // Convert PDF to Base64 for HSM signing
+                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
+
+                // Sign PDF with HSM
+                var signRequest = new HsmSignRequest
                 {
-                    if (File.Exists(tempPdfPath))
-                    {
-                        File.Delete(tempPdfPath);
-                    }
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = keyLabel,
+                    Base64Pdf = base64Pdf,
+                    Otp = otp,
+                    Coordinates = SignatureCoordinates.RecommendationForm
+                };
+
+                var signResult = await _hsmService.SignPdfAsync(signRequest);
+
+                if (!signResult.Success)
+                {
+                    _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
+                    };
                 }
+
+                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "Signed PDF content is empty" 
+                    };
+                }
+
+                // Update recommendation form with signed PDF
+                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                recommendationForm.FileContent = signedPdfBytes;
+                recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                recommendationForm.UpdatedDate = DateTime.UtcNow;
+                
+                _logger.LogInformation(
+                    "Updated recommendation form with EE digitally signed PDF via HSM for application {ApplicationId}", 
+                    applicationId);
+
+                // Update application
+                var signatureDate = DateTime.UtcNow;
+                application.ExecutiveEngineerApprovalStatus = true;
+                application.ExecutiveEngineerApprovalComments = comments;
+                application.ExecutiveEngineerApprovalDate = signatureDate;
+                application.ExecutiveEngineerDigitalSignatureApplied = true;
+                application.ExecutiveEngineerDigitalSignatureDate = signatureDate;
+
+                // Forward to City Engineer
+                var cityEngineer = await _context.Officers
+                    .Where(o => o.Role == OfficerRole.CityEngineer && o.IsActive)
+                    .OrderBy(o => o.Id)
+                    .FirstOrDefaultAsync();
+
+                if (cityEngineer != null)
+                {
+                    application.AssignedCityEngineerId = cityEngineer.Id;
+                    application.AssignedToCityEngineerDate = DateTime.UtcNow;
+                    application.Status = ApplicationCurrentStatus.CITY_ENGINEER_PENDING;
+
+                    // Send email notification to applicant
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                        application.Id,
+                        ApplicationCurrentStatus.CITY_ENGINEER_PENDING
+                    );
+
+                    // Send notification to CE
+                    await _notificationService.NotifyOfficerAssignmentAsync(
+                        cityEngineer.Id,
+                        application.ApplicationNumber ?? "N/A",
+                        application.Id,
+                        application.PositionType.ToString(),
+                        $"{application.FirstName} {application.LastName}",
+                        officerId.ToString());
+
+                    _logger.LogInformation(
+                        "Application {ApplicationId} forwarded to City Engineer {OfficerId}", 
+                        applicationId, cityEngineer.Id);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return new WorkflowActionResultDto
+                {
+                    Success = true,
+                    Message = "Documents verified, recommendation form digitally signed via HSM, and application forwarded to City Engineer successfully",
+                    NewStatus = application.Status
+                };
             }
             catch (Exception ex)
             {
