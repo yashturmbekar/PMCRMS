@@ -230,8 +230,8 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Seeds default auto-assignment rules for all position types
-        /// Creates workload-based assignment rules with auto-assign on submission
+        /// Seeds default auto-assignment rules for all position types and workflow stages
+        /// Creates complete end-to-end workflow auto-assignment from submission to final approval
         /// </summary>
         public async Task SeedAutoAssignmentRulesAsync()
         {
@@ -248,129 +248,335 @@ namespace PMCRMS.API.Services
                     return;
                 }
 
-                _logger.LogInformation("No auto-assignment rules found. Creating default rules...");
+                _logger.LogInformation("No auto-assignment rules found. Creating complete workflow rules...");
 
-                var rules = new List<AutoAssignmentRule>
+                var rules = new List<AutoAssignmentRule>();
+
+                // ============================================================================
+                // STAGE 1: APPLICATION SUBMISSION → JUNIOR ENGINEER ASSIGNMENT
+                // ============================================================================
+                
+                // Architect - Initial Assignment to Junior Architect
+                rules.Add(new AutoAssignmentRule
                 {
-                    // Architect - WorkloadBased
-                    new AutoAssignmentRule
-                    {
-                        PositionType = PositionType.Architect,
-                        TargetOfficerRole = OfficerRole.JuniorArchitect,
-                        Strategy = AssignmentStrategy.WorkloadBased,
-                        Priority = 1,
-                        MaxWorkloadPerOfficer = 50,
-                        IsActive = true,
-                        AutoAssignOnSubmission = true,
-                        SendNotification = true,
-                        Description = "Auto-assign Architect applications to Junior Architects based on workload",
-                        EscalationTimeHours = 72,
-                        EscalationRole = OfficerRole.AssistantArchitect,
-                        CreatedBy = "System",
-                        CreatedDate = DateTime.UtcNow,
-                        UpdatedBy = "System",
-                        UpdatedDate = DateTime.UtcNow
-                    },
+                    PositionType = PositionType.Architect,
+                    TargetOfficerRole = OfficerRole.JuniorArchitect,
+                    Strategy = AssignmentStrategy.WorkloadBased,
+                    Priority = 1,
+                    MaxWorkloadPerOfficer = 50,
+                    IsActive = true,
+                    AutoAssignOnSubmission = true,
+                    SendNotification = true,
+                    Description = "STAGE 1: Auto-assign Architect applications to Junior Architects on submission",
+                    EscalationTimeHours = 72,
+                    EscalationRole = OfficerRole.AssistantArchitect,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedBy = "System",
+                    UpdatedDate = DateTime.UtcNow
+                });
 
-                    // Structural Engineer - WorkloadBased
-                    new AutoAssignmentRule
-                    {
-                        PositionType = PositionType.StructuralEngineer,
-                        TargetOfficerRole = OfficerRole.JuniorStructuralEngineer,
-                        Strategy = AssignmentStrategy.WorkloadBased,
-                        Priority = 1,
-                        MaxWorkloadPerOfficer = 50,
-                        IsActive = true,
-                        AutoAssignOnSubmission = true,
-                        SendNotification = true,
-                        Description = "Auto-assign Structural Engineer applications to Junior Structural Engineers based on workload",
-                        EscalationTimeHours = 72,
-                        EscalationRole = OfficerRole.AssistantStructuralEngineer,
-                        CreatedBy = "System",
-                        CreatedDate = DateTime.UtcNow,
-                        UpdatedBy = "System",
-                        UpdatedDate = DateTime.UtcNow
-                    },
+                // Structural Engineer - Initial Assignment to Junior Structural Engineer
+                rules.Add(new AutoAssignmentRule
+                {
+                    PositionType = PositionType.StructuralEngineer,
+                    TargetOfficerRole = OfficerRole.JuniorStructuralEngineer,
+                    Strategy = AssignmentStrategy.WorkloadBased,
+                    Priority = 1,
+                    MaxWorkloadPerOfficer = 50,
+                    IsActive = true,
+                    AutoAssignOnSubmission = true,
+                    SendNotification = true,
+                    Description = "STAGE 1: Auto-assign Structural Engineer applications to Junior Structural Engineers on submission",
+                    EscalationTimeHours = 72,
+                    EscalationRole = OfficerRole.AssistantStructuralEngineer,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedBy = "System",
+                    UpdatedDate = DateTime.UtcNow
+                });
 
-                    // Licence Engineer - WorkloadBased
-                    new AutoAssignmentRule
-                    {
-                        PositionType = PositionType.LicenceEngineer,
-                        TargetOfficerRole = OfficerRole.JuniorLicenceEngineer,
-                        Strategy = AssignmentStrategy.WorkloadBased,
-                        Priority = 1,
-                        MaxWorkloadPerOfficer = 50,
-                        IsActive = true,
-                        AutoAssignOnSubmission = true,
-                        SendNotification = true,
-                        Description = "Auto-assign Licence Engineer applications to Junior Licence Engineers based on workload",
-                        EscalationTimeHours = 72,
-                        EscalationRole = OfficerRole.AssistantLicenceEngineer,
-                        CreatedBy = "System",
-                        CreatedDate = DateTime.UtcNow,
-                        UpdatedBy = "System",
-                        UpdatedDate = DateTime.UtcNow
-                    },
+                // Licence Engineer - Initial Assignment to Junior Licence Engineer
+                rules.Add(new AutoAssignmentRule
+                {
+                    PositionType = PositionType.LicenceEngineer,
+                    TargetOfficerRole = OfficerRole.JuniorLicenceEngineer,
+                    Strategy = AssignmentStrategy.WorkloadBased,
+                    Priority = 1,
+                    MaxWorkloadPerOfficer = 50,
+                    IsActive = true,
+                    AutoAssignOnSubmission = true,
+                    SendNotification = true,
+                    Description = "STAGE 1: Auto-assign Licence Engineer applications to Junior Licence Engineers on submission",
+                    EscalationTimeHours = 72,
+                    EscalationRole = OfficerRole.AssistantLicenceEngineer,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedBy = "System",
+                    UpdatedDate = DateTime.UtcNow
+                });
 
-                    // Supervisor1 - WorkloadBased
-                    new AutoAssignmentRule
-                    {
-                        PositionType = PositionType.Supervisor1,
-                        TargetOfficerRole = OfficerRole.JuniorSupervisor1,
-                        Strategy = AssignmentStrategy.WorkloadBased,
-                        Priority = 1,
-                        MaxWorkloadPerOfficer = 50,
-                        IsActive = true,
-                        AutoAssignOnSubmission = true,
-                        SendNotification = true,
-                        Description = "Auto-assign Supervisor1 applications to Junior Supervisor1 based on workload",
-                        EscalationTimeHours = 72,
-                        EscalationRole = OfficerRole.AssistantSupervisor1,
-                        CreatedBy = "System",
-                        CreatedDate = DateTime.UtcNow,
-                        UpdatedBy = "System",
-                        UpdatedDate = DateTime.UtcNow
-                    },
+                // Supervisor1 - Initial Assignment to Junior Supervisor1
+                rules.Add(new AutoAssignmentRule
+                {
+                    PositionType = PositionType.Supervisor1,
+                    TargetOfficerRole = OfficerRole.JuniorSupervisor1,
+                    Strategy = AssignmentStrategy.WorkloadBased,
+                    Priority = 1,
+                    MaxWorkloadPerOfficer = 50,
+                    IsActive = true,
+                    AutoAssignOnSubmission = true,
+                    SendNotification = true,
+                    Description = "STAGE 1: Auto-assign Supervisor1 applications to Junior Supervisor1 on submission",
+                    EscalationTimeHours = 72,
+                    EscalationRole = OfficerRole.AssistantSupervisor1,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedBy = "System",
+                    UpdatedDate = DateTime.UtcNow
+                });
 
-                    // Supervisor2 - WorkloadBased
-                    new AutoAssignmentRule
+                // Supervisor2 - Initial Assignment to Junior Supervisor2
+                rules.Add(new AutoAssignmentRule
+                {
+                    PositionType = PositionType.Supervisor2,
+                    TargetOfficerRole = OfficerRole.JuniorSupervisor2,
+                    Strategy = AssignmentStrategy.WorkloadBased,
+                    Priority = 1,
+                    MaxWorkloadPerOfficer = 50,
+                    IsActive = true,
+                    AutoAssignOnSubmission = true,
+                    SendNotification = true,
+                    Description = "STAGE 1: Auto-assign Supervisor2 applications to Junior Supervisor2 on submission",
+                    EscalationTimeHours = 72,
+                    EscalationRole = OfficerRole.AssistantSupervisor2,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedBy = "System",
+                    UpdatedDate = DateTime.UtcNow
+                });
+
+                // ============================================================================
+                // STAGE 2: ASSISTANT ENGINEER APPROVAL (After JE Digital Signature)
+                // ============================================================================
+                
+                foreach (var positionType in new[] { 
+                    PositionType.Architect, 
+                    PositionType.StructuralEngineer, 
+                    PositionType.LicenceEngineer, 
+                    PositionType.Supervisor1, 
+                    PositionType.Supervisor2 
+                })
+                {
+                    var assistantRole = positionType switch
                     {
-                        PositionType = PositionType.Supervisor2,
-                        TargetOfficerRole = OfficerRole.JuniorSupervisor2,
+                        PositionType.Architect => OfficerRole.AssistantArchitect,
+                        PositionType.StructuralEngineer => OfficerRole.AssistantStructuralEngineer,
+                        PositionType.LicenceEngineer => OfficerRole.AssistantLicenceEngineer,
+                        PositionType.Supervisor1 => OfficerRole.AssistantSupervisor1,
+                        PositionType.Supervisor2 => OfficerRole.AssistantSupervisor2,
+                        _ => OfficerRole.AssistantStructuralEngineer
+                    };
+
+                    rules.Add(new AutoAssignmentRule
+                    {
+                        PositionType = positionType,
+                        TargetOfficerRole = assistantRole,
                         Strategy = AssignmentStrategy.WorkloadBased,
-                        Priority = 1,
+                        Priority = 2,
                         MaxWorkloadPerOfficer = 50,
                         IsActive = true,
-                        AutoAssignOnSubmission = true,
+                        AutoAssignOnSubmission = false, // Triggered after JE stage
                         SendNotification = true,
-                        Description = "Auto-assign Supervisor2 applications to Junior Supervisor2 based on workload",
-                        EscalationTimeHours = 72,
-                        EscalationRole = OfficerRole.AssistantSupervisor2,
+                        Description = $"STAGE 2: Auto-assign {positionType} to {assistantRole} after JE digital signature",
+                        EscalationTimeHours = 48,
+                        EscalationRole = OfficerRole.ExecutiveEngineer,
                         CreatedBy = "System",
                         CreatedDate = DateTime.UtcNow,
                         UpdatedBy = "System",
                         UpdatedDate = DateTime.UtcNow
-                    }
-                };
+                    });
+                }
+
+                // ============================================================================
+                // STAGE 3: EXECUTIVE ENGINEER APPROVAL - STAGE 1 (After AE Approval)
+                // ============================================================================
+                
+                foreach (var positionType in new[] { 
+                    PositionType.Architect, 
+                    PositionType.StructuralEngineer, 
+                    PositionType.LicenceEngineer, 
+                    PositionType.Supervisor1, 
+                    PositionType.Supervisor2 
+                })
+                {
+                    rules.Add(new AutoAssignmentRule
+                    {
+                        PositionType = positionType,
+                        TargetOfficerRole = OfficerRole.ExecutiveEngineer,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 3,
+                        MaxWorkloadPerOfficer = 100,
+                        IsActive = true,
+                        AutoAssignOnSubmission = false, // Triggered after AE stage
+                        SendNotification = true,
+                        Description = $"STAGE 3: Auto-assign {positionType} to Executive Engineer (Stage 1) after AE approval",
+                        EscalationTimeHours = 48,
+                        EscalationRole = OfficerRole.CityEngineer,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // ============================================================================
+                // STAGE 4: CITY ENGINEER APPROVAL (After EE Stage 1)
+                // Routes to payment after approval
+                // ============================================================================
+                
+                foreach (var positionType in new[] { 
+                    PositionType.Architect, 
+                    PositionType.StructuralEngineer, 
+                    PositionType.LicenceEngineer, 
+                    PositionType.Supervisor1, 
+                    PositionType.Supervisor2 
+                })
+                {
+                    rules.Add(new AutoAssignmentRule
+                    {
+                        PositionType = positionType,
+                        TargetOfficerRole = OfficerRole.CityEngineer,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 4,
+                        MaxWorkloadPerOfficer = 100,
+                        IsActive = true,
+                        AutoAssignOnSubmission = false, // Triggered after EE Stage 1
+                        SendNotification = true,
+                        Description = $"STAGE 4: Auto-assign {positionType} to City Engineer after EE approval (routes to payment)",
+                        EscalationTimeHours = 72,
+                        EscalationRole = null, // City Engineer is top level
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // ============================================================================
+                // STAGE 5: CLERK PROCESSING (After Payment by User)
+                // ============================================================================
+                
+                foreach (var positionType in new[] { 
+                    PositionType.Architect, 
+                    PositionType.StructuralEngineer, 
+                    PositionType.LicenceEngineer, 
+                    PositionType.Supervisor1, 
+                    PositionType.Supervisor2 
+                })
+                {
+                    rules.Add(new AutoAssignmentRule
+                    {
+                        PositionType = positionType,
+                        TargetOfficerRole = OfficerRole.Clerk,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 5,
+                        MaxWorkloadPerOfficer = 200, // Clerks can handle more volume
+                        IsActive = true,
+                        AutoAssignOnSubmission = false, // Triggered after payment
+                        SendNotification = true,
+                        Description = $"STAGE 5: Auto-assign {positionType} to Clerk after payment completion",
+                        EscalationTimeHours = 24,
+                        EscalationRole = OfficerRole.ExecutiveEngineer,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // ============================================================================
+                // STAGE 6: EXECUTIVE ENGINEER - DIGITAL SIGNATURE (After Clerk)
+                // ============================================================================
+                
+                foreach (var positionType in new[] { 
+                    PositionType.Architect, 
+                    PositionType.StructuralEngineer, 
+                    PositionType.LicenceEngineer, 
+                    PositionType.Supervisor1, 
+                    PositionType.Supervisor2 
+                })
+                {
+                    rules.Add(new AutoAssignmentRule
+                    {
+                        PositionType = positionType,
+                        TargetOfficerRole = OfficerRole.ExecutiveEngineer,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 6,
+                        MaxWorkloadPerOfficer = 100,
+                        IsActive = true,
+                        AutoAssignOnSubmission = false, // Triggered after clerk processing
+                        SendNotification = true,
+                        Description = $"STAGE 6: Auto-assign {positionType} to Executive Engineer for digital signature",
+                        EscalationTimeHours = 48,
+                        EscalationRole = OfficerRole.CityEngineer,
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // ============================================================================
+                // STAGE 7: CITY ENGINEER - FINAL DIGITAL SIGNATURE (Final Stage)
+                // ============================================================================
+                
+                foreach (var positionType in new[] { 
+                    PositionType.Architect, 
+                    PositionType.StructuralEngineer, 
+                    PositionType.LicenceEngineer, 
+                    PositionType.Supervisor1, 
+                    PositionType.Supervisor2 
+                })
+                {
+                    rules.Add(new AutoAssignmentRule
+                    {
+                        PositionType = positionType,
+                        TargetOfficerRole = OfficerRole.CityEngineer,
+                        Strategy = AssignmentStrategy.WorkloadBased,
+                        Priority = 7,
+                        MaxWorkloadPerOfficer = 100,
+                        IsActive = true,
+                        AutoAssignOnSubmission = false, // Triggered after EE signature
+                        SendNotification = true,
+                        Description = $"STAGE 7: Auto-assign {positionType} to City Engineer for final digital signature",
+                        EscalationTimeHours = 72,
+                        EscalationRole = null, // Final stage - no escalation
+                        CreatedBy = "System",
+                        CreatedDate = DateTime.UtcNow,
+                        UpdatedBy = "System",
+                        UpdatedDate = DateTime.UtcNow
+                    });
+                }
 
                 _context.AutoAssignmentRules.AddRange(rules);
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation(
-                    "✅ Auto-assignment rules created successfully! Total rules: {Count}", 
+                    "✅ Complete workflow auto-assignment rules created! Total rules: {Count}", 
                     rules.Count
                 );
 
-                foreach (var rule in rules)
-                {
-                    _logger.LogInformation(
-                        "  ✓ {PositionType} → {Role} (Strategy: {Strategy}, Max Workload: {MaxWorkload})",
-                        rule.PositionType,
-                        rule.TargetOfficerRole,
-                        rule.Strategy,
-                        rule.MaxWorkloadPerOfficer
-                    );
-                }
+                _logger.LogInformation("📋 WORKFLOW SUMMARY:");
+                _logger.LogInformation("  Stage 1: Application Submission → Junior Engineer (5 rules)");
+                _logger.LogInformation("  Stage 2: JE Digital Signature → Assistant Engineer (5 rules)");
+                _logger.LogInformation("  Stage 3: AE Approval → Executive Engineer Stage 1 (5 rules)");
+                _logger.LogInformation("  Stage 4: EE Approval → City Engineer (routes to payment) (5 rules)");
+                _logger.LogInformation("  Stage 5: Payment Complete → Clerk (5 rules)");
+                _logger.LogInformation("  Stage 6: Clerk Processing → Executive Engineer Signature (5 rules)");
+                _logger.LogInformation("  Stage 7: EE Signature → City Engineer Final Signature (5 rules)");
+                _logger.LogInformation("  ────────────────────────────────────────");
+                _logger.LogInformation("  Total: {Count} auto-assignment rules", rules.Count);
             }
             catch (Exception ex)
             {

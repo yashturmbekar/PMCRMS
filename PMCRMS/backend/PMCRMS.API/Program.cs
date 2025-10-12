@@ -274,6 +274,7 @@ builder.Services.AddScoped<IWorkflowNotificationService, WorkflowNotificationSer
 builder.Services.AddScoped<PdfService>(); // PDF Generation Service
 builder.Services.AddScoped<IHsmService, HsmService>(); // HSM service for digital signatures
 builder.Services.AddScoped<IAutoAssignmentService, AutoAssignmentService>(); // Auto-assignment for Junior Engineer workflow
+builder.Services.AddScoped<IWorkflowProgressionService, WorkflowProgressionService>(); // Complete workflow progression with auto-assignment
 builder.Services.AddScoped<IAppointmentService, AppointmentService>(); // Appointment scheduling for Junior Engineer workflow
 builder.Services.AddScoped<IDocumentVerificationService, DocumentVerificationService>(); // Document verification for Junior Engineer workflow
 builder.Services.AddScoped<IDigitalSignatureService, DigitalSignatureService>(); // Digital signature with HSM integration for Junior Engineer workflow
