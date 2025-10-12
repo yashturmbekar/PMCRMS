@@ -332,7 +332,12 @@ export const PositionRegistrationPage = () => {
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
-    if (!positionParam) return PositionType.StructuralEngineer;
+    if (!positionParam) {
+      console.log(
+        "[DEBUG] No positionParam in URL, defaulting to StructuralEngineer (2)"
+      );
+      return PositionType.StructuralEngineer;
+    }
 
     const positionMap: { [key: string]: PositionTypeValue } = {
       architect: PositionType.Architect,
@@ -342,10 +347,13 @@ export const PositionRegistrationPage = () => {
       supervisor2: PositionType.Supervisor2,
     };
 
-    return (
+    const mappedValue =
       positionMap[positionParam.toLowerCase()] ??
-      PositionType.StructuralEngineer
-    );
+      PositionType.StructuralEngineer;
+    console.log("[DEBUG] Position param from URL:", positionParam);
+    console.log("[DEBUG] Mapped position type:", mappedValue);
+
+    return mappedValue;
   };
 
   // Use state for selected position type so it can be changed dynamically
@@ -610,6 +618,12 @@ export const PositionRegistrationPage = () => {
     data: FormData,
     status: number
   ): Promise<PositionRegistrationRequest> => {
+    // Debug logging for position type tracking
+    console.log("[DEBUG] mapFormDataToRequest called");
+    console.log("[DEBUG] data.positionType:", data.positionType);
+    console.log("[DEBUG] selectedPositionType:", selectedPositionType);
+    console.log("[DEBUG] positionParam from URL:", positionParam);
+
     // Helper function to convert date strings to ISO 8601 UTC format
     const toUTCDate = (dateStr: string) => {
       if (!dateStr) return dateStr;
@@ -878,6 +892,10 @@ export const PositionRegistrationPage = () => {
     try {
       // Map form data to API request with Submitted status (2)
       const request = await mapFormDataToRequest(formData, 2);
+
+      // Debug logging before API call
+      console.log("[DEBUG] Final request object:", request);
+      console.log("[DEBUG] Final request.positionType:", request.positionType);
 
       let response;
       // If in edit mode, update existing application; otherwise create new

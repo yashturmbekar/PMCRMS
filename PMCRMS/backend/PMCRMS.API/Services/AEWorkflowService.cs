@@ -126,7 +126,7 @@ namespace PMCRMS.API.Services
                     AssignedToAEName = aeName,
                     AssignedToAEDate = aeAssignedDate,
                     AssignedJEName = application.AssignedJuniorEngineer?.Name,
-                    JECompletedDate = application.JECompletedDate,
+                    JEApprovalDate = application.JEApprovalDate,
                     AEApprovalStatus = aeApprovalStatus,
                     AEApprovalComments = aeApprovalComments,
                     AEApprovalDate = aeApprovalDate,
@@ -725,3 +725,4 @@ namespace PMCRMS.API.Services
         }
     }
 }
+

@@ -120,39 +120,34 @@ namespace PMCRMS.API.Models
         public DateTime? AssignedToJEDate { get; set; }
 
         /// <summary>
-        /// Date when Junior Engineer completed their review
-        /// </summary>
-        public DateTime? JECompletedDate { get; set; }
-
-        /// <summary>
         /// Whether all documents have been verified by JE
         /// </summary>
-        public bool AllDocumentsVerified { get; set; } = false;
+        public bool JEAllDocumentsVerified { get; set; } = false;
 
         /// <summary>
-        /// Date when all documents were verified
+        /// Date when all documents were verified by JE
         /// </summary>
-        public DateTime? DocumentsVerifiedDate { get; set; }
+        public DateTime? JEDocumentVerificationDate { get; set; }
 
         /// <summary>
         /// Whether digital signature has been applied by JE
         /// </summary>
-        public bool DigitalSignatureApplied { get; set; } = false;
+        public bool JEDigitalSignatureApplied { get; set; } = false;
 
         /// <summary>
-        /// Date when digital signature was applied
+        /// Date when digital signature was applied by JE
         /// </summary>
-        public DateTime? DigitalSignatureDate { get; set; }
+        public DateTime? JEDigitalSignatureDate { get; set; }
 
         /// <summary>
-        /// Whether appointment has been scheduled
+        /// Whether appointment has been scheduled by JE
         /// </summary>
-        public bool AppointmentScheduled { get; set; } = false;
+        public bool JEAppointmentScheduled { get; set; } = false;
 
         /// <summary>
-        /// Date when appointment was scheduled
+        /// Date when appointment was scheduled by JE
         /// </summary>
-        public DateTime? AppointmentScheduledDate { get; set; }
+        public DateTime? JEAppointmentScheduledDate { get; set; }
 
         /// <summary>
         /// Current workflow stage comments from JE

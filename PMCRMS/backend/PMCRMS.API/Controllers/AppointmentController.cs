@@ -328,12 +328,12 @@ namespace PMCRMS.API.Controllers
                 ApplicantName = appointment.Application != null
                     ? $"{appointment.Application.FirstName} {appointment.Application.LastName}"
                     : "Unknown",
-                ScheduledByOfficerId = appointment.ScheduledByOfficerId,
+                ScheduledByOfficerId = appointment.ScheduledByOfficerId ?? 0,
                 OfficerName = appointment.ScheduledByOfficer?.Name ?? "Unknown",
                 ReviewDate = appointment.ReviewDate,
-                ContactPerson = appointment.ContactPerson,
-                Place = appointment.Place,
-                RoomNumber = appointment.RoomNumber,
+                ContactPerson = appointment.ContactPerson ?? string.Empty,
+                Place = appointment.Place ?? string.Empty,
+                RoomNumber = appointment.RoomNumber ?? string.Empty,
                 Comments = appointment.Comments,
                 Status = appointment.Status,
                 StatusDisplay = appointment.Status.ToString(),
@@ -365,8 +365,8 @@ namespace PMCRMS.API.Controllers
                     ? $"{appointment.Application.FirstName} {appointment.Application.LastName}"
                     : "Unknown",
                 ReviewDate = appointment.ReviewDate,
-                Place = appointment.Place,
-                ContactPerson = appointment.ContactPerson,
+                Place = appointment.Place ?? string.Empty,
+                ContactPerson = appointment.ContactPerson ?? string.Empty,
                 Status = appointment.Status,
                 StatusDisplay = appointment.Status.ToString(),
                 IsUpcoming = appointment.ReviewDate > DateTime.UtcNow &&

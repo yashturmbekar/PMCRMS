@@ -41,11 +41,18 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                // Additional custom validations
-                var validationErrors = ValidateRequest(request);
-                if (validationErrors.Any())
+                // Debug logging for position type tracking
+                _logger.LogInformation("[DEBUG] CreateApplication called - PositionType: {PositionType}", request.PositionType);
+                _logger.LogInformation("[DEBUG] Request JSON: {@Request}", request);
+                
+                // Only validate if status is Submitted (2), skip validation for Draft (1)
+                if (request.Status == ApplicationCurrentStatus.Submitted)
                 {
-                    return BadRequest(new { errors = validationErrors });
+                    var validationErrors = ValidateRequest(request);
+                    if (validationErrors.Any())
+                    {
+                        return BadRequest(new { errors = validationErrors });
+                    }
                 }
 
                 // Note: Removed duplicate checks for PAN, Aadhar, Email, and Mobile
@@ -286,6 +293,9 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
+                // Debug logging for position type tracking
+                _logger.LogInformation("[DEBUG] UpdateApplication called - ID: {Id}, PositionType: {PositionType}", id, request.PositionType);
+                
                 var application = await _context.PositionApplications
                     .Include(a => a.Addresses)
                     .Include(a => a.Qualifications)
@@ -305,11 +315,14 @@ namespace PMCRMS.API.Controllers
                     return BadRequest(new { error = "Cannot update completed or approved applications" });
                 }
 
-                // Additional custom validations
-                var validationErrors = ValidateRequest(request);
-                if (validationErrors.Any())
+                // Only validate if status is Submitted (2), skip validation for Draft (1)
+                if (request.Status == ApplicationCurrentStatus.Submitted)
                 {
-                    return BadRequest(new { errors = validationErrors });
+                    var validationErrors = ValidateRequest(request);
+                    if (validationErrors.Any())
+                    {
+                        return BadRequest(new { errors = validationErrors });
+                    }
                 }
 
                 // Note: Removed duplicate checks for PAN and Aadhar
@@ -923,15 +936,35 @@ namespace PMCRMS.API.Controllers
             var year = DateTime.Now.Year;
             var month = DateTime.Now.Month.ToString("D2");
 
-            var count = await _context.PositionApplications
-                .Where(a => a.PositionType == positionType &&
-                           a.ApplicationNumber != null &&
-                           a.ApplicationNumber.StartsWith($"{prefix}{year}{month}"))
-                .CountAsync();
+            // Retry logic to handle concurrent application submissions
+            for (int attempt = 0; attempt < 5; attempt++)
+            {
+                var count = await _context.PositionApplications
+                    .Where(a => a.PositionType == positionType &&
+                               a.ApplicationNumber != null &&
+                               a.ApplicationNumber.StartsWith($"{prefix}{year}{month}"))
+                    .CountAsync();
 
-            var sequence = (count + 1).ToString("D4");
+                var sequence = (count + 1 + attempt).ToString("D4");
+                var applicationNumber = $"{prefix}{year}{month}{sequence}";
 
-            return $"{prefix}{year}{month}{sequence}";
+                // Check if this number is already taken
+                var exists = await _context.PositionApplications
+                    .AnyAsync(a => a.ApplicationNumber == applicationNumber);
+
+                if (!exists)
+                {
+                    return applicationNumber;
+                }
+
+                // If exists, retry with next sequence
+                _logger.LogWarning("Application number {ApplicationNumber} already exists, retrying with next sequence (attempt {Attempt})",
+                    applicationNumber, attempt + 1);
+            }
+
+            // Fallback: use timestamp-based suffix if all retries fail
+            var timestamp = DateTime.Now.ToString("HHmmss");
+            return $"{prefix}{year}{month}{timestamp}";
         }
 
         private decimal CalculateYearsOfExperience(DateTime fromDate, DateTime toDate)
@@ -989,6 +1022,9 @@ namespace PMCRMS.API.Controllers
                 workflowInfo.HasAppointment = true;
                 workflowInfo.AppointmentDate = appointment.ReviewDate;
                 workflowInfo.AppointmentPlace = appointment.Place;
+                workflowInfo.AppointmentRoomNumber = appointment.RoomNumber;
+                workflowInfo.AppointmentContactPerson = appointment.ContactPerson;
+                workflowInfo.AppointmentComments = appointment.Comments;
             }
 
             // Get document verification information
@@ -996,7 +1032,7 @@ namespace PMCRMS.API.Controllers
             workflowInfo.TotalDocumentsCount = application.Documents.Count;
             workflowInfo.VerifiedDocumentsCount = documentVerifications
                 .Count(dv => dv.Status == Models.VerificationStatus.Approved);
-            workflowInfo.AllDocumentsVerified = application.AllDocumentsVerified;
+            workflowInfo.AllDocumentsVerified = application.JEAllDocumentsVerified;
 
             // Get digital signature information
             var digitalSignature = application.DigitalSignatures
@@ -1173,3 +1209,4 @@ namespace PMCRMS.API.Controllers
         #endregion
     }
 }
+

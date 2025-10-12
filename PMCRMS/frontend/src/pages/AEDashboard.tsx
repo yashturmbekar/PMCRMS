@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { aeWorkflowService } from "../services/aeWorkflowService";
-import { Eye, CheckCircle, XCircle, Clock, Filter } from "lucide-react";
+import { Eye, CheckCircle, XCircle, Clock } from "lucide-react";
 import { PageLoader } from "../components";
 import { OTPVerificationModal } from "../components/workflow";
 import NotificationModal from "../components/common/NotificationModal";
@@ -23,8 +23,26 @@ const AEDashboard: React.FC = () => {
     AEWorkflowStatusDto[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPositionType, setSelectedPositionType] =
-    useState<PositionType>("Architect");
+
+  // Auto-detect position type based on user role
+  const getDefaultPositionType = (): PositionType => {
+    if (!user) return "Architect";
+
+    // Map officer role to position type
+    const roleToPositionType: Record<string, PositionType> = {
+      AssistantArchitect: "Architect",
+      AssistantStructuralEngineer: "StructuralEngineer",
+      AssistantLicenceEngineer: "LicenceEngineer",
+      AssistantSupervisor1: "Supervisor1",
+      AssistantSupervisor2: "Supervisor2",
+    };
+
+    return roleToPositionType[user.role] || "Architect";
+  };
+
+  // Auto-detect and lock position type based on user role (no dropdown)
+  const selectedPositionType = getDefaultPositionType();
+
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [selectedApplication, setSelectedApplication] =
@@ -44,15 +62,6 @@ const AEDashboard: React.FC = () => {
     title: "",
     autoClose: false,
   });
-
-  // Position type options
-  const positionTypes: PositionType[] = [
-    "Architect",
-    "StructuralEngineer",
-    "LicenceEngineer",
-    "Supervisor1",
-    "Supervisor2",
-  ];
 
   // Position type display labels
   const getPositionLabel = (positionType: PositionType): string => {
@@ -424,47 +433,6 @@ const AEDashboard: React.FC = () => {
           <p style={{ color: "#64748b", fontSize: "15px" }}>
             Review and approve applications for position-based verification
           </p>
-        </div>
-
-        {/* Position Type Filter */}
-        <div
-          style={{
-            marginBottom: "20px",
-            padding: "16px 20px",
-            background: "white",
-            borderRadius: "8px",
-            border: "1px solid #e5e7eb",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}
-        >
-          <Filter style={{ width: "20px", height: "20px", color: "#64748b" }} />
-          <label
-            style={{ fontWeight: 600, color: "#334155", fontSize: "14px" }}
-          >
-            Filter by Position Type:
-          </label>
-          <select
-            value={selectedPositionType}
-            onChange={(e) =>
-              setSelectedPositionType(e.target.value as PositionType)
-            }
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: "6px",
-              fontSize: "14px",
-              cursor: "pointer",
-              background: "white",
-            }}
-          >
-            {positionTypes.map((type) => (
-              <option key={type} value={type}>
-                {getPositionLabel(type)}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Auto-Forward Information Banner */}

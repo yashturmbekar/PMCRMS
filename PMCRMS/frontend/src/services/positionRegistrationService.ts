@@ -118,6 +118,9 @@ export interface WorkflowInfo {
   hasAppointment: boolean;
   appointmentDate?: string;
   appointmentPlace?: string;
+  appointmentRoomNumber?: string;
+  appointmentContactPerson?: string;
+  appointmentComments?: string;
   totalDocumentsCount: number;
   verifiedDocumentsCount: number;
   allDocumentsVerified: boolean;

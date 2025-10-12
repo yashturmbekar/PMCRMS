@@ -234,14 +234,14 @@ namespace PMCRMS.API.Services
 
                 // Update application status
                 var application = signature.Application;
-                application.DigitalSignatureApplied = true;
-                application.DigitalSignatureDate = DateTime.UtcNow;
+                application.JEDigitalSignatureApplied = true;
+                application.JEDigitalSignatureDate = DateTime.UtcNow;
                 
                 // Advance workflow based on signature type
                 if (signature.Type == SignatureType.JuniorEngineer)
                 {
                     application.Status = ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE;
-                    application.JECompletedDate = DateTime.UtcNow;
+                    // JE approval date is already set when JE approves
                 }
 
                 application.UpdatedBy = completedBy;

@@ -319,8 +319,8 @@ namespace PMCRMS.API.Services
                 {
                     var application = verification.Application;
                     application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED;
-                    application.AllDocumentsVerified = true;
-                    application.DocumentsVerifiedDate = DateTime.UtcNow;
+                    application.JEAllDocumentsVerified = true;
+                    application.JEDocumentVerificationDate = DateTime.UtcNow;
                     application.UpdatedBy = completedBy;
                     application.UpdatedDate = DateTime.UtcNow;
 

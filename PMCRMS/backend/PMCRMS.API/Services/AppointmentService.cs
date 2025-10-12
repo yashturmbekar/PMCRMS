@@ -8,35 +8,43 @@ namespace PMCRMS.API.Services
     {
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<AppointmentService> _logger;
-        private readonly INotificationService _notificationService;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
         public AppointmentService(
             PMCRMSDbContext context,
             ILogger<AppointmentService> logger,
-            INotificationService notificationService)
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
-            _notificationService = notificationService;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         public async Task<AppointmentResult> ScheduleAppointmentAsync(
             int applicationId,
             int scheduledByOfficerId,
             DateTime reviewDate,
-            string contactPerson,
-            string place,
-            string roomNumber,
+            string? contactPerson,
+            string? place,
+            string? roomNumber,
             string? comments = null)
         {
             try
             {
+                _logger.LogInformation(
+                    "ScheduleAppointmentAsync called - ApplicationId: {ApplicationId}, OfficerId: {OfficerId}, ReviewDate: {ReviewDate}, ContactPerson: {ContactPerson}, Place: {Place}, RoomNumber: {RoomNumber}",
+                    applicationId, scheduledByOfficerId, reviewDate, contactPerson, place, roomNumber);
+
                 var application = await _context.PositionApplications
                     .Include(a => a.User)
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
 
                 if (application == null)
                 {
+                    _logger.LogWarning("Application {ApplicationId} not found", applicationId);
                     return new AppointmentResult
                     {
                         Success = false,
@@ -45,43 +53,19 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                var officer = await _context.Officers.FindAsync(scheduledByOfficerId);
-                if (officer == null || !officer.IsActive)
-                {
-                    return new AppointmentResult
-                    {
-                        Success = false,
-                        Message = "Officer not found or inactive",
-                        Errors = new List<string> { "Invalid officer" }
-                    };
-                }
+                // All validation removed - frontend handles validation
+                _logger.LogInformation("Creating appointment entity for application {ApplicationId}", applicationId);
 
-                if (reviewDate <= DateTime.UtcNow)
-                {
-                    return new AppointmentResult
-                    {
-                        Success = false,
-                        Message = "Review date must be in the future",
-                        Errors = new List<string> { "Invalid review date" }
-                    };
-                }
-
-                var isAvailable = await IsOfficerAvailableAsync(scheduledByOfficerId, reviewDate);
-                if (!isAvailable)
-                {
-                    return new AppointmentResult
-                    {
-                        Success = false,
-                        Message = "Officer is not available at this time",
-                        Errors = new List<string> { "Time slot conflict" }
-                    };
-                }
+                // Convert reviewDate to UTC if needed (PostgreSQL requires UTC timestamps)
+                var utcReviewDate = reviewDate.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(reviewDate, DateTimeKind.Utc)
+                    : reviewDate.ToUniversalTime();
 
                 var appointment = new Appointment
                 {
                     ApplicationId = applicationId,
                     ScheduledByOfficerId = scheduledByOfficerId,
-                    ReviewDate = reviewDate,
+                    ReviewDate = utcReviewDate,
                     ContactPerson = contactPerson,
                     Place = place,
                     RoomNumber = roomNumber,
@@ -92,15 +76,18 @@ namespace PMCRMS.API.Services
                 };
 
                 _context.Appointments.Add(appointment);
+                _logger.LogInformation("Appointment entity added to context. Now updating application status...");
 
                 if (application.Status == ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING)
                 {
                     application.Status = ApplicationCurrentStatus.APPOINTMENT_SCHEDULED;
-                    application.AppointmentScheduled = true;
-                    application.AppointmentScheduledDate = DateTime.UtcNow;
+                    application.JEAppointmentScheduled = true;
+                    application.JEAppointmentScheduledDate = DateTime.UtcNow;
+                    _logger.LogInformation("Application {ApplicationId} status updated to APPOINTMENT_SCHEDULED", applicationId);
                 }
 
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("SaveChangesAsync completed. Appointment {AppointmentId} saved to database", appointment.Id);
 
                 await SendAppointmentNotificationAsync(appointment, "scheduled");
 
@@ -266,34 +253,18 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                if (newReviewDate <= DateTime.UtcNow)
-                {
-                    return new AppointmentResult
-                    {
-                        Success = false,
-                        Message = "New review date must be in the future"
-                    };
-                }
+                // All date and availability validation removed - frontend handles validation
 
-                var isAvailable = await IsOfficerAvailableInternalAsync(
-                    originalAppointment.ScheduledByOfficerId,
-                    newReviewDate,
-                    excludeAppointmentId: appointmentId);
-
-                if (!isAvailable)
-                {
-                    return new AppointmentResult
-                    {
-                        Success = false,
-                        Message = "Officer is not available at this time"
-                    };
-                }
+                // Convert newReviewDate to UTC if needed (PostgreSQL requires UTC timestamps)
+                var utcNewReviewDate = newReviewDate.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(newReviewDate, DateTimeKind.Utc)
+                    : newReviewDate.ToUniversalTime();
 
                 var newAppointment = new Appointment
                 {
                     ApplicationId = originalAppointment.ApplicationId,
                     ScheduledByOfficerId = originalAppointment.ScheduledByOfficerId,
-                    ReviewDate = newReviewDate,
+                    ReviewDate = utcNewReviewDate,
                     ContactPerson = originalAppointment.ContactPerson,
                     Place = originalAppointment.Place,
                     RoomNumber = originalAppointment.RoomNumber,
@@ -580,6 +551,33 @@ namespace PMCRMS.API.Services
                     action, appointment.Id, appointment.ReviewDate, officer.Name,
                     $"{application.FirstName} {application.LastName}");
 
+                // Send email with appointment details
+                var subject = action switch
+                {
+                    "scheduled" => "Appointment Scheduled for Document Verification",
+                    "confirmed" => "Appointment Confirmed",
+                    "cancelled" => "Appointment Cancelled",
+                    "rescheduled" => "Appointment Rescheduled",
+                    "reminder" => "Reminder: Upcoming Appointment",
+                    _ => "Appointment Update"
+                };
+
+                var emailBody = action switch
+                {
+                    "scheduled" => BuildScheduledEmailBody(application, appointment, officer),
+                    "confirmed" => BuildConfirmedEmailBody(application, appointment, officer),
+                    "cancelled" => BuildCancelledEmailBody(application, appointment, officer),
+                    "rescheduled" => BuildRescheduledEmailBody(application, appointment, officer),
+                    "reminder" => BuildReminderEmailBody(application, appointment, officer),
+                    _ => BuildScheduledEmailBody(application, appointment, officer)
+                };
+
+                await _emailService.SendEmailAsync(
+                    application.EmailAddress,
+                    subject,
+                    emailBody
+                );
+
                 if (action == "scheduled")
                 {
                     appointment.EmailNotificationSent = true;
@@ -591,5 +589,307 @@ namespace PMCRMS.API.Services
                 _logger.LogError(ex, "Error sending appointment notification for {AppointmentId}", appointment.Id);
             }
         }
+
+        private string BuildScheduledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
+        {
+            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "https://pmcrms.punemunicipal.gov.in";
+            
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }}
+        .header {{
+            background-color: #0c4a6e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }}
+        .logo-container {{
+            margin-bottom: 15px;
+        }}
+        .badge {{
+            background-color: #f59e0b;
+            color: white;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }}
+        .success-badge {{
+            background-color: #10b981;
+            color: white;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 15px 0;
+        }}
+        .header h1 {{
+            margin: 10px 0 5px 0;
+            font-size: 24px;
+        }}
+        .header p {{
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        .content {{
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }}
+        .info-box {{
+            background-color: #f0f9ff;
+            border: 2px solid #0c4a6e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }}
+        .info-row {{
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        .info-row:last-child {{
+            border-bottom: none;
+        }}
+        .info-label {{
+            font-weight: bold;
+            color: #0c4a6e;
+            min-width: 180px;
+        }}
+        .info-value {{
+            color: #333;
+        }}
+        .highlight-box {{
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }}
+        .instructions-box {{
+            background-color: #f0fdf4;
+            border: 1px solid #86efac;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 6px;
+        }}
+        .instructions-box h3 {{
+            color: #166534;
+            margin-top: 0;
+        }}
+        .instructions-box ul {{
+            margin: 10px 0;
+            padding-left: 20px;
+        }}
+        .instructions-box li {{
+            margin: 8px 0;
+            color: #333;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }}
+        .calendar-icon {{
+            font-size: 48px;
+            color: #0c4a6e;
+            text-align: center;
+            margin: 10px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <div class='logo-container'>
+                <img src='{baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+            </div>
+            <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
+            <h1>Pune Municipal Corporation</h1>
+            <p>Permit Management & Certificate Recommendation System</p>
+        </div>
+        <div class='content'>
+            <div class='calendar-icon'>📅</div>
+            <div class='success-badge'>Appointment Scheduled for Document Verification</div>
+            
+            <h2>Dear {application.FirstName} {application.LastName},</h2>
+            <p>An appointment has been scheduled for document verification and site inspection for your building permit application.</p>
+            
+            <div class='info-box'>
+                <h3 style='margin-top: 0; color: #0c4a6e;'>📋 Appointment Details</h3>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'><strong>{application.ApplicationNumber}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Date & Time:</div>
+                    <div class='info-value'><strong>{appointmentDate:dddd, MMMM dd, yyyy 'at' hh:mm tt}</strong></div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Location:</div>
+                    <div class='info-value'>{appointment.Place ?? "PMC Office"}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Room Number:</div>
+                    <div class='info-value'>{appointment.RoomNumber ?? "TBD"}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Contact Person:</div>
+                    <div class='info-value'>{appointment.ContactPerson ?? "PMC Officer"}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Scheduled By:</div>
+                    <div class='info-value'>{officer?.Name ?? "PMC Officer"} (Junior Engineer)</div>
+                </div>
+            </div>
+
+            {(string.IsNullOrEmpty(appointment.Comments) ? "" : $@"
+            <div class='highlight-box'>
+                <strong style='color: #92400e;'>📌 Additional Instructions:</strong>
+                <p style='margin: 10px 0 0 0;'>{appointment.Comments}</p>
+            </div>")}
+
+            <div class='instructions-box'>
+                <h3>📄 What to Bring:</h3>
+                <ul>
+                    <li><strong>All original documents</strong> as per your application</li>
+                    <li><strong>Valid government-issued photo ID</strong> (Aadhar Card/Passport/Driving License)</li>
+                    <li><strong>A copy of your application form</strong></li>
+                    <li>Any <strong>additional documents</strong> requested by the officer</li>
+                </ul>
+            </div>
+
+            <div class='highlight-box'>
+                <strong style='color: #92400e;'>⏰ Important Note:</strong>
+                <p style='margin: 10px 0 0 0;'>Please arrive <strong>10 minutes before</strong> your scheduled time. If you need to reschedule, please contact us at least <strong>24 hours in advance</strong>.</p>
+            </div>
+
+            <p style='margin-top: 25px;'>For any queries, please contact the PMC office or reply to this email.</p>
+
+            <div class='footer'>
+                <p><strong>PMCRMS Team</strong></p>
+                <p>Pune Municipal Corporation</p>
+                <p style='margin-top: 10px; font-size: 11px;'>This is an automated email. Please do not reply directly to this message.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>";
+        }
+
+        private string BuildConfirmedEmailBody(PositionApplication application, Appointment appointment, Officer officer)
+        {
+            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            return $@"
+Dear {application.FirstName} {application.LastName},
+
+Your appointment has been confirmed.
+
+<strong>Confirmed Appointment Details:</strong>
+
+Application Number: {application.ApplicationNumber}
+Date & Time: {appointmentDate:dddd, MMMM dd, yyyy 'at' hh:mm tt}
+Location: {appointment.Place}
+Room Number: {appointment.RoomNumber}
+Contact Person: {appointment.ContactPerson}
+
+Please arrive on time with all required documents.
+
+Best regards,
+PMCRMS Team
+Pune Municipal Corporation";
+        }
+
+        private string BuildCancelledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
+        {
+            return $@"
+Dear {application.FirstName} {application.LastName},
+
+Your appointment scheduled for {appointment.ReviewDate.ToLocalTime():MMMM dd, yyyy 'at' hh:mm tt} has been cancelled.
+
+Application Number: {application.ApplicationNumber}
+{(string.IsNullOrEmpty(appointment.CancellationReason) ? "" : $"Reason: {appointment.CancellationReason}")}
+
+A new appointment will be scheduled shortly. You will receive a separate notification.
+
+Best regards,
+PMCRMS Team
+Pune Municipal Corporation";
+        }
+
+        private string BuildRescheduledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
+        {
+            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            return $@"
+Dear {application.FirstName} {application.LastName},
+
+Your appointment has been rescheduled to a new date and time.
+
+<strong>New Appointment Details:</strong>
+
+Application Number: {application.ApplicationNumber}
+Date & Time: {appointmentDate:dddd, MMMM dd, yyyy 'at' hh:mm tt}
+Location: {appointment.Place}
+Room Number: {appointment.RoomNumber}
+Contact Person: {appointment.ContactPerson}
+
+{(string.IsNullOrEmpty(appointment.Comments) ? "" : $"<strong>Additional Instructions:</strong>\n{appointment.Comments}\n")}
+
+Please arrive on time with all required documents.
+
+Best regards,
+PMCRMS Team
+Pune Municipal Corporation";
+        }
+
+        private string BuildReminderEmailBody(PositionApplication application, Appointment appointment, Officer officer)
+        {
+            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            var hoursUntil = (appointment.ReviewDate - DateTime.UtcNow).TotalHours;
+            return $@"
+Dear {application.FirstName} {application.LastName},
+
+This is a reminder that you have an upcoming appointment in approximately {(int)hoursUntil} hours.
+
+<strong>Appointment Details:</strong>
+
+Application Number: {application.ApplicationNumber}
+Date & Time: {appointmentDate:dddd, MMMM dd, yyyy 'at' hh:mm tt}
+Location: {appointment.Place}
+Room Number: {appointment.RoomNumber}
+Contact Person: {appointment.ContactPerson}
+
+Please ensure you arrive on time with all required original documents.
+
+Best regards,
+PMCRMS Team
+Pune Municipal Corporation";
+        }
     }
 }
+

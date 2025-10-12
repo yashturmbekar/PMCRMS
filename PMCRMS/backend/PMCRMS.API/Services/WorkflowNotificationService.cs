@@ -130,7 +130,7 @@ namespace PMCRMS.API.Services
 
                 ApplicationCurrentStatus.APPOINTMENT_SCHEDULED => 
                     ("Appointment Scheduled", 
-                     "An appointment has been scheduled for document verification and site inspection. Please check your email for appointment details including date, time, and location."),
+                     "An appointment has been scheduled for document verification and site inspection. You will receive a detailed email with the appointment information including date, time, location, and contact details."),
 
                 ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS => 
                     ("Verification In Progress", 

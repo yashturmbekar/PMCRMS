@@ -173,8 +173,8 @@ namespace PMCRMS.API.Services
 
                 // Update application
                 application.Status = ApplicationCurrentStatus.APPOINTMENT_SCHEDULED;
-                application.AppointmentScheduled = true;
-                application.AppointmentScheduledDate = DateTime.UtcNow;
+                application.JEAppointmentScheduled = true;
+                application.JEAppointmentScheduledDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 // Send email notification to applicant
@@ -379,8 +379,8 @@ namespace PMCRMS.API.Services
                         }
 
                         // Set digital signature flags on application
-                        application.DigitalSignatureApplied = true;
-                        application.DigitalSignatureDate = DateTime.UtcNow;
+                        application.JEDigitalSignatureApplied = true;
+                        application.JEDigitalSignatureDate = DateTime.UtcNow;
                     }
                     finally
                     {
@@ -405,8 +405,8 @@ namespace PMCRMS.API.Services
                 }
 
                 // Set AllDocumentsVerified to true
-                application.AllDocumentsVerified = true;
-                application.DocumentsVerifiedDate = DateTime.UtcNow;
+                application.JEAllDocumentsVerified = true;
+                application.JEDocumentVerificationDate = DateTime.UtcNow;
                 
                 // Mark JE approval
                 application.JEApprovalStatus = true;
@@ -420,7 +420,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // If OTP was provided and digital signature was applied, auto-forward to Assistant Engineer
-                if (!string.IsNullOrEmpty(request.Otp) && application.DigitalSignatureApplied)
+                if (!string.IsNullOrEmpty(request.Otp) && application.JEDigitalSignatureApplied)
                 {
                     // Forward to appropriate Assistant Engineer based on position type
                     var targetRole = MapPositionToAERole(application.PositionType);
@@ -458,7 +458,7 @@ namespace PMCRMS.API.Services
 
                         // Update status to AE pending
                         application.Status = ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING;
-                        application.JECompletedDate = DateTime.UtcNow;
+                        application.JEApprovalDate = DateTime.UtcNow;
 
                         // Send notification to AE
                         await _notificationService.NotifyOfficerAssignmentAsync(
@@ -483,7 +483,7 @@ namespace PMCRMS.API.Services
 
                 await _context.SaveChangesAsync();
 
-                var message = request.Otp != null && application.DigitalSignatureApplied
+                var message = request.Otp != null && application.JEDigitalSignatureApplied
                     ? application.Status == ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING
                         ? "Documents verified, recommendation form digitally signed, and application forwarded to Assistant Engineer successfully"
                         : "Documents verified and recommendation form digitally signed successfully"
@@ -517,8 +517,8 @@ namespace PMCRMS.API.Services
 
                 // Update application
                 application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED;
-                application.AllDocumentsVerified = true;
-                application.DocumentsVerifiedDate = DateTime.UtcNow;
+                application.JEAllDocumentsVerified = true;
+                application.JEDocumentVerificationDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 // Send email notification to applicant
@@ -733,9 +733,9 @@ namespace PMCRMS.API.Services
                     ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING
                 );
 
-                application.DigitalSignatureApplied = true;
-                application.DigitalSignatureDate = DateTime.UtcNow;
-                application.JECompletedDate = DateTime.UtcNow;
+                application.JEDigitalSignatureApplied = true;
+                application.JEDigitalSignatureDate = DateTime.UtcNow;
+                application.JEApprovalDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
 
                 return new WorkflowActionResultDto
@@ -788,16 +788,16 @@ namespace PMCRMS.API.Services
                     AssignedToOfficerId = application.AssignedJuniorEngineerId,
                     AssignedToOfficerName = application.AssignedJuniorEngineer?.Name,
                     AssignedDate = application.AssignedToJEDate,
-                    HasAppointment = application.AppointmentScheduled,
+                    HasAppointment = application.JEAppointmentScheduled,
                     AppointmentDate = latestAppointment?.ReviewDate,
                     AppointmentPlace = latestAppointment?.Place,
                     IsAppointmentCompleted = latestAppointment?.Status == AppointmentStatus.Completed,
-                    AllDocumentsVerified = application.AllDocumentsVerified,
+                    AllDocumentsVerified = application.JEAllDocumentsVerified,
                     TotalDocuments = totalDocs,
                     VerifiedDocuments = verifiedCount,
-                    DocumentsVerifiedDate = application.DocumentsVerifiedDate,
-                    DigitalSignatureApplied = application.DigitalSignatureApplied,
-                    DigitalSignatureDate = application.DigitalSignatureDate,
+                    DocumentsVerifiedDate = application.JEDocumentVerificationDate,
+                    DigitalSignatureApplied = application.JEDigitalSignatureApplied,
+                    DigitalSignatureDate = application.JEDigitalSignatureDate,
                     TotalSignatures = application.DigitalSignatures.Count,
                     CompletedSignatures = application.DigitalSignatures.Count(ds => ds.Status == SignatureStatus.Completed),
                     ProgressPercentage = CalculateProgressPercentage(application),
@@ -805,7 +805,7 @@ namespace PMCRMS.API.Services
                     NextAction = GetNextAction(application),
                     CanProceedToNextStage = CanProceedToNextStage(application),
                     CreatedDate = application.CreatedDate,
-                    CompletedDate = application.JECompletedDate
+                    CompletedDate = application.JEApprovalDate
                 };
             }
             catch (Exception ex)
@@ -852,8 +852,8 @@ namespace PMCRMS.API.Services
                     ApplicationId = applicationId,
                     ApplicationNumber = application.ApplicationNumber ?? "N/A",
                     Timeline = timeline.OrderBy(t => t.Timestamp).ToList(),
-                    TotalDurationDays = application.JECompletedDate.HasValue 
-                        ? (int)(application.JECompletedDate.Value - application.CreatedDate).TotalDays 
+                    TotalDurationDays = application.JEApprovalDate.HasValue 
+                        ? (int)(application.JEApprovalDate.Value - application.CreatedDate).TotalDays 
                         : (int)(DateTime.UtcNow - application.CreatedDate).TotalDays
                 };
             }
@@ -922,8 +922,8 @@ namespace PMCRMS.API.Services
                     IsValid = errors.Count == 0,
                     CanAssign = !application.AssignedJuniorEngineerId.HasValue,
                     CanScheduleAppointment = application.AssignedJuniorEngineerId.HasValue,
-                    CanVerifyDocuments = application.AppointmentScheduled,
-                    CanApplySignature = application.AllDocumentsVerified,
+                    CanVerifyDocuments = application.JEAppointmentScheduled,
+                    CanApplySignature = application.JEAllDocumentsVerified,
                     ValidationErrors = errors
                 };
             }
@@ -952,9 +952,9 @@ namespace PMCRMS.API.Services
                     AppointmentScheduled = applications.Count(a => a.Status == ApplicationCurrentStatus.APPOINTMENT_SCHEDULED),
                     UnderVerification = applications.Count(a => a.Status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS),
                     AwaitingSignature = applications.Count(a => a.Status == ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE),
-                    CompletedJEStage = applications.Count(a => a.JECompletedDate.HasValue),
-                    AverageProcessingDays = applications.Where(a => a.JECompletedDate.HasValue)
-                        .Average(a => (a.JECompletedDate!.Value - a.CreatedDate).TotalDays)
+                    CompletedJEStage = applications.Count(a => a.JEApprovalDate.HasValue),
+                    AverageProcessingDays = applications.Where(a => a.JEApprovalDate.HasValue)
+                        .Average(a => (a.JEApprovalDate!.Value - a.CreatedDate).TotalDays)
                 };
             }
             catch (Exception ex)
@@ -977,10 +977,10 @@ namespace PMCRMS.API.Services
                     FromDate = fromDate,
                     ToDate = toDate,
                     TotalApplicationsReceived = applications.Count,
-                    ApplicationsInProgress = applications.Count(a => !a.JECompletedDate.HasValue),
-                    ApplicationsCompleted = applications.Count(a => a.JECompletedDate.HasValue),
-                    TotalAverageProcessingDays = applications.Where(a => a.JECompletedDate.HasValue)
-                        .Average(a => (a.JECompletedDate!.Value - a.CreatedDate).TotalDays)
+                    ApplicationsInProgress = applications.Count(a => !a.JEApprovalDate.HasValue),
+                    ApplicationsCompleted = applications.Count(a => a.JEApprovalDate.HasValue),
+                    TotalAverageProcessingDays = applications.Where(a => a.JEApprovalDate.HasValue)
+                        .Average(a => (a.JEApprovalDate!.Value - a.CreatedDate).TotalDays)
                 };
             }
             catch (Exception ex)
@@ -1098,15 +1098,15 @@ namespace PMCRMS.API.Services
                 switch (stepName.ToUpper())
                 {
                     case "APPOINTMENT":
-                        application.AppointmentScheduled = false;
+                        application.JEAppointmentScheduled = false;
                         application.Status = ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING;
                         break;
                     case "VERIFICATION":
-                        application.AllDocumentsVerified = false;
+                        application.JEAllDocumentsVerified = false;
                         application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING;
                         break;
                     case "SIGNATURE":
-                        application.DigitalSignatureApplied = false;
+                        application.JEDigitalSignatureApplied = false;
                         application.Status = ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED;
                         break;
                     default:
@@ -1186,7 +1186,7 @@ namespace PMCRMS.API.Services
                 var delayedApps = await _context.PositionApplications
                     .Where(a => a.AssignedJuniorEngineerId.HasValue &&
                                a.AssignedToJEDate <= thresholdDate &&
-                               !a.JECompletedDate.HasValue)
+                               !a.JEApprovalDate.HasValue)
                     .ToListAsync();
 
                 foreach (var app in delayedApps)
@@ -1216,10 +1216,10 @@ namespace PMCRMS.API.Services
             var steps = new[]
             {
                 application.AssignedJuniorEngineerId.HasValue,
-                application.AppointmentScheduled,
-                application.AllDocumentsVerified,
-                application.DigitalSignatureApplied,
-                application.JECompletedDate.HasValue
+                application.JEAppointmentScheduled,
+                application.JEAllDocumentsVerified,
+                application.JEDigitalSignatureApplied,
+                application.JEApprovalDate.HasValue
             };
 
             var completedSteps = steps.Count(s => s);
@@ -1280,7 +1280,7 @@ namespace PMCRMS.API.Services
                 ApplicationCurrentStatus.APPOINTMENT_SCHEDULED => true,
                 ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING => true,
                 ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS => true,
-                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED => application.AllDocumentsVerified,
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED => application.JEAllDocumentsVerified,
                 ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => true,
                 _ => false
             };

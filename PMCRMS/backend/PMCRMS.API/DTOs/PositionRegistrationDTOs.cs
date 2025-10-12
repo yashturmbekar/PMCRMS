@@ -261,6 +261,9 @@ namespace PMCRMS.API.DTOs
         public bool HasAppointment { get; set; }
         public DateTime? AppointmentDate { get; set; }
         public string? AppointmentPlace { get; set; }
+        public string? AppointmentRoomNumber { get; set; }
+        public string? AppointmentContactPerson { get; set; }
+        public string? AppointmentComments { get; set; }
         public bool AllDocumentsVerified { get; set; }
         public int VerifiedDocumentsCount { get; set; }
         public int TotalDocumentsCount { get; set; }

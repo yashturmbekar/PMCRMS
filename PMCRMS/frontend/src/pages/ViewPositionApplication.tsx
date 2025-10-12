@@ -1046,6 +1046,102 @@ const ViewPositionApplication: React.FC = () => {
           </div>
         </div>
 
+        {/* Appointment Details Card */}
+        {application.workflowInfo?.hasAppointment && (
+          <div
+            className="pmc-card"
+            style={{
+              marginTop: "24px",
+              border: "2px solid #3b82f6",
+              boxShadow: "0 2px 8px rgba(59, 130, 246, 0.1)",
+            }}
+          >
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                color: "white",
+                padding: "12px 16px",
+                borderBottom: "2px solid #2563eb",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{
+                  color: "white",
+                  margin: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <Calendar size={20} />
+                Scheduled Appointment Details
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <div className="pmc-form-grid pmc-form-grid-2">
+                {application.workflowInfo.appointmentDate && (
+                  <div>
+                    <label className="pmc-label">Appointment Date & Time</label>
+                    <p
+                      className="pmc-value"
+                      style={{ fontWeight: 600, color: "#1e40af" }}
+                    >
+                      {new Date(
+                        application.workflowInfo.appointmentDate
+                      ).toLocaleString("en-IN", {
+                        dateStyle: "full",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  </div>
+                )}
+                {application.workflowInfo.appointmentPlace && (
+                  <div>
+                    <label className="pmc-label">Location</label>
+                    <p className="pmc-value">
+                      {application.workflowInfo.appointmentPlace}
+                    </p>
+                  </div>
+                )}
+                {application.workflowInfo.appointmentRoomNumber && (
+                  <div>
+                    <label className="pmc-label">Room Number</label>
+                    <p className="pmc-value">
+                      {application.workflowInfo.appointmentRoomNumber}
+                    </p>
+                  </div>
+                )}
+                {application.workflowInfo.appointmentContactPerson && (
+                  <div>
+                    <label className="pmc-label">Contact Person</label>
+                    <p className="pmc-value">
+                      {application.workflowInfo.appointmentContactPerson}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {application.workflowInfo.appointmentComments && (
+                <div style={{ marginTop: "16px" }}>
+                  <label className="pmc-label">Additional Instructions</label>
+                  <p
+                    className="pmc-value"
+                    style={{
+                      backgroundColor: "#f0f9ff",
+                      padding: "12px",
+                      borderRadius: "6px",
+                      border: "1px solid #bae6fd",
+                    }}
+                  >
+                    {application.workflowInfo.appointmentComments}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons for JE Officers */}
         {isJEOfficer && (
           <div

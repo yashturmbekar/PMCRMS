@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMCRMS.API.Data;
@@ -11,9 +12,11 @@ using PMCRMS.API.Data;
 namespace PMCRMS.API.Migrations
 {
     [DbContext(typeof(PMCRMSDbContext))]
-    partial class PMCRMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251012123136_RenameJEColumnsToMatchOfficerNaming")]
+    partial class RenameJEColumnsToMatchOfficerNaming
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -355,6 +358,7 @@ namespace PMCRMS.API.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ContactPerson")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -369,6 +373,7 @@ namespace PMCRMS.API.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("Place")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -388,10 +393,11 @@ namespace PMCRMS.API.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("RoomNumber")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<int?>("ScheduledByOfficerId")
+                    b.Property<int>("ScheduledByOfficerId")
                         .HasColumnType("integer");
 
                     b.Property<bool>("SmsNotificationSent")
@@ -2604,7 +2610,8 @@ namespace PMCRMS.API.Migrations
                     b.HasOne("PMCRMS.API.Models.Officer", "ScheduledByOfficer")
                         .WithMany()
                         .HasForeignKey("ScheduledByOfficerId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Application");
 

@@ -22,7 +22,7 @@ namespace PMCRMS.API.DTOs
 
         // JE Info
         public string? AssignedJEName { get; set; }
-        public DateTime? JECompletedDate { get; set; }
+        public DateTime? JEApprovalDate { get; set; }
 
         // AE Actions
         public bool? AEApprovalStatus { get; set; }

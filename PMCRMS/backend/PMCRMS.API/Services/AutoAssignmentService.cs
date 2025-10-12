@@ -437,6 +437,8 @@ namespace PMCRMS.API.Services
 
                 foreach (var rule in rulesWithEscalation)
                 {
+                    if (!rule.EscalationTimeHours.HasValue) continue;
+                    
                     var escalationThreshold = now.AddHours(-rule.EscalationTimeHours.Value);
 
                     var applications = await _context.PositionApplications
@@ -477,7 +479,7 @@ namespace PMCRMS.API.Services
                 var rules = await GetAssignmentRulesAsync(application.PositionType);
                 var ruleWithEscalation = rules.FirstOrDefault(r => r.EscalationRole.HasValue);
 
-                if (ruleWithEscalation == null)
+                if (ruleWithEscalation == null || !ruleWithEscalation.EscalationRole.HasValue)
                 {
                     _logger.LogWarning("No escalation rule found for position type {PositionType}", application.PositionType);
                     return null;

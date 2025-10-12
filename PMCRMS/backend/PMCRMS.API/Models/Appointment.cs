@@ -26,29 +26,25 @@ namespace PMCRMS.API.Models
         /// <summary>
         /// Scheduled date and time for the appointment
         /// </summary>
-        [Required]
         public DateTime ReviewDate { get; set; }
 
         /// <summary>
         /// Contact person for the appointment
         /// </summary>
-        [Required]
         [MaxLength(200)]
-        public string ContactPerson { get; set; } = string.Empty;
+        public string? ContactPerson { get; set; }
 
         /// <summary>
         /// Place/Location of the appointment
         /// </summary>
-        [Required]
         [MaxLength(500)]
-        public string Place { get; set; } = string.Empty;
+        public string? Place { get; set; }
 
         /// <summary>
         /// Room number for the appointment
         /// </summary>
-        [Required]
         [MaxLength(50)]
-        public string RoomNumber { get; set; } = string.Empty;
+        public string? RoomNumber { get; set; }
 
         /// <summary>
         /// Additional comments or instructions
@@ -64,8 +60,7 @@ namespace PMCRMS.API.Models
         /// <summary>
         /// Officer who scheduled the appointment (Junior Engineer)
         /// </summary>
-        [Required]
-        public int ScheduledByOfficerId { get; set; }
+        public int? ScheduledByOfficerId { get; set; }
 
         /// <summary>
         /// Confirmation date when applicant confirmed the appointment
@@ -120,10 +115,10 @@ namespace PMCRMS.API.Models
 
         // Navigation Properties
         [ForeignKey("ApplicationId")]
-        public virtual PositionApplication Application { get; set; } = null!;
+        public virtual PositionApplication? Application { get; set; }
 
         [ForeignKey("ScheduledByOfficerId")]
-        public virtual Officer ScheduledByOfficer { get; set; } = null!;
+        public virtual Officer? ScheduledByOfficer { get; set; }
 
         // Self-referencing relationships configured in DbContext via Fluent API
         // Do not use [ForeignKey] here to avoid conflicts with Fluent API configuration
