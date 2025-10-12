@@ -124,16 +124,29 @@ const JEDashboard: React.FC = () => {
 
         // Filter applications for Junior Engineer Pending tab
         // Show only if currentStage is "Appointment Scheduled"
+        // EXCLUDE applications that have been auto-forwarded to AE (AllDocumentsVerified=true AND Status=ASSISTANT_ENGINEER_PENDING)
         const pending = assignedApplications.filter(
           (app: JEWorkflowStatusDto) => {
             const isAppointmentScheduled =
               app.currentStage === "Appointment Scheduled" ||
               app.currentStage === "APPOINTMENT_SCHEDULED";
+
+            // Check if application has been auto-forwarded to Assistant Engineer
+            const isAutoForwarded =
+              app.verificationInfo?.allVerified === true &&
+              app.currentStatus === "ASSISTANT_ENGINEER_PENDING";
+
+            const shouldShow = isAppointmentScheduled && !isAutoForwarded;
+
             console.log(`🔍 App ${app.applicationId} in JE Pending:`, {
               currentStage: app.currentStage,
-              shouldShow: isAppointmentScheduled,
+              allVerified: app.verificationInfo?.allVerified,
+              currentStatus: app.currentStatus,
+              isAutoForwarded,
+              shouldShow,
             });
-            return isAppointmentScheduled;
+
+            return shouldShow;
           }
         );
 
@@ -566,6 +579,54 @@ const JEDashboard: React.FC = () => {
                 Applications under review by Junior Engineer
               </p>
             </div>
+
+            {/* Auto-Forward Information Banner */}
+            <div
+              style={{
+                margin: "16px 24px",
+                padding: "12px 16px",
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.1)",
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  background: "rgba(255, 255, 255, 0.2)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <CheckCircle
+                  style={{ width: "24px", height: "24px", color: "white" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p
+                  style={{
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    margin: 0,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  ℹ️ <strong>Auto-Forward:</strong> Applications automatically
+                  move to Assistant Engineer after you complete document
+                  verification and digital signature. They will no longer appear
+                  in this pending list.
+                </p>
+              </div>
+            </div>
+
             <div className="pmc-card-body">
               {pendingApplications.length === 0 ? (
                 <div

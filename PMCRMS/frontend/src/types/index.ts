@@ -16,21 +16,41 @@ export interface User {
 
 export type UserRole =
   | "Applicant"
-  | "JuniorEngineer"
-  | "AssistantEngineer"
+  | "Admin"
+  | "JuniorArchitect"
+  | "AssistantArchitect"
+  | "JuniorLicenceEngineer"
+  | "AssistantLicenceEngineer"
+  | "JuniorStructuralEngineer"
+  | "AssistantStructuralEngineer"
+  | "JuniorSupervisor1"
+  | "AssistantSupervisor1"
+  | "JuniorSupervisor2"
+  | "AssistantSupervisor2"
   | "ExecutiveEngineer"
   | "CityEngineer"
   | "Clerk"
-  | "Admin";
+  | "JuniorEngineer" // Backward compatibility
+  | "AssistantEngineer"; // Backward compatibility
 
 export const UserRoles = {
   Applicant: "Applicant" as const,
-  JuniorEngineer: "JuniorEngineer" as const,
-  AssistantEngineer: "AssistantEngineer" as const,
+  Admin: "Admin" as const,
+  JuniorArchitect: "JuniorArchitect" as const,
+  AssistantArchitect: "AssistantArchitect" as const,
+  JuniorLicenceEngineer: "JuniorLicenceEngineer" as const,
+  AssistantLicenceEngineer: "AssistantLicenceEngineer" as const,
+  JuniorStructuralEngineer: "JuniorStructuralEngineer" as const,
+  AssistantStructuralEngineer: "AssistantStructuralEngineer" as const,
+  JuniorSupervisor1: "JuniorSupervisor1" as const,
+  AssistantSupervisor1: "AssistantSupervisor1" as const,
+  JuniorSupervisor2: "JuniorSupervisor2" as const,
+  AssistantSupervisor2: "AssistantSupervisor2" as const,
   ExecutiveEngineer: "ExecutiveEngineer" as const,
   CityEngineer: "CityEngineer" as const,
   Clerk: "Clerk" as const,
-  Admin: "Admin" as const,
+  JuniorEngineer: "JuniorEngineer" as const,
+  AssistantEngineer: "AssistantEngineer" as const,
 };
 
 export interface Application {

@@ -8,6 +8,9 @@ import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
 import JEDashboard from "./pages/JEDashboard";
+import AEDashboard from "./pages/AEDashboard";
+import EEDashboard from "./pages/EEDashboard";
+import CEDashboard from "./pages/CEDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
@@ -47,6 +50,34 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
     window.location.pathname === "/dashboard"
   ) {
     return <Navigate to="/je-dashboard" replace />;
+  }
+
+  // Redirect Assistant Engineer roles to AE Dashboard
+  if (
+    (user.role === "AssistantArchitect" ||
+      user.role === "AssistantLicenceEngineer" ||
+      user.role === "AssistantStructuralEngineer" ||
+      user.role === "AssistantSupervisor1" ||
+      user.role === "AssistantSupervisor2") &&
+    window.location.pathname === "/dashboard"
+  ) {
+    return <Navigate to="/ae-dashboard" replace />;
+  }
+
+  // Redirect Executive Engineer to EE Dashboard
+  if (
+    user.role === "ExecutiveEngineer" &&
+    window.location.pathname === "/dashboard"
+  ) {
+    return <Navigate to="/ee-dashboard" replace />;
+  }
+
+  // Redirect City Engineer to CE Dashboard
+  if (
+    user.role === "CityEngineer" &&
+    window.location.pathname === "/dashboard"
+  ) {
+    return <Navigate to="/ce-dashboard" replace />;
   }
 
   return <>{children}</>;
@@ -122,6 +153,27 @@ const DefaultRedirect: React.FC = () => {
   // Redirect any Junior role to JE Dashboard
   if (user.role.includes("Junior")) {
     return <Navigate to="/je-dashboard" replace />;
+  }
+
+  // Redirect Assistant Engineer roles to AE Dashboard
+  if (
+    user.role === "AssistantArchitect" ||
+    user.role === "AssistantLicenceEngineer" ||
+    user.role === "AssistantStructuralEngineer" ||
+    user.role === "AssistantSupervisor1" ||
+    user.role === "AssistantSupervisor2"
+  ) {
+    return <Navigate to="/ae-dashboard" replace />;
+  }
+
+  // Redirect Executive Engineer to EE Dashboard
+  if (user.role === "ExecutiveEngineer") {
+    return <Navigate to="/ee-dashboard" replace />;
+  }
+
+  // Redirect City Engineer to CE Dashboard
+  if (user.role === "CityEngineer") {
+    return <Navigate to="/ce-dashboard" replace />;
   }
 
   return <Navigate to="/dashboard" replace />;
@@ -220,6 +272,50 @@ function App() {
                   >
                     <Layout>
                       <JEDashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* AE Dashboard - All Assistant-level Officers */}
+              <Route
+                path="/ae-dashboard"
+                element={
+                  <OfficerRoute
+                    allowedRoles={[
+                      "AssistantArchitect",
+                      "AssistantLicenceEngineer",
+                      "AssistantStructuralEngineer",
+                      "AssistantSupervisor1",
+                      "AssistantSupervisor2",
+                    ]}
+                  >
+                    <Layout>
+                      <AEDashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* EE Dashboard - Executive Engineer */}
+              <Route
+                path="/ee-dashboard"
+                element={
+                  <OfficerRoute allowedRoles={["ExecutiveEngineer"]}>
+                    <Layout>
+                      <EEDashboard />
+                    </Layout>
+                  </OfficerRoute>
+                }
+              />
+
+              {/* CE Dashboard - City Engineer */}
+              <Route
+                path="/ce-dashboard"
+                element={
+                  <OfficerRoute allowedRoles={["CityEngineer"]}>
+                    <Layout>
+                      <CEDashboard />
                     </Layout>
                   </OfficerRoute>
                 }

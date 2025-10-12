@@ -160,12 +160,141 @@ namespace PMCRMS.API.Models
         [MaxLength(2000)]
         public string? JEComments { get; set; }
 
+        // ==================== JUNIOR ENGINEER APPROVAL/REJECTION ====================
+        public bool? JEApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? JEApprovalComments { get; set; }
+        public DateTime? JEApprovalDate { get; set; }
+        public bool? JERejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? JERejectionComments { get; set; }
+        public DateTime? JERejectionDate { get; set; }
+
+        // ==================== ASSISTANT ENGINEER - ARCHITECT ====================
+        public int? AssignedAEArchitectId { get; set; }
+        public DateTime? AssignedToAEArchitectDate { get; set; }
+        public bool? AEArchitectApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AEArchitectApprovalComments { get; set; }
+        public DateTime? AEArchitectApprovalDate { get; set; }
+        public bool? AEArchitectRejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AEArchitectRejectionComments { get; set; }
+        public DateTime? AEArchitectRejectionDate { get; set; }
+        public bool AEArchitectDigitalSignatureApplied { get; set; } = false;
+        public DateTime? AEArchitectDigitalSignatureDate { get; set; }
+
+        // ==================== ASSISTANT ENGINEER - STRUCTURAL ====================
+        public int? AssignedAEStructuralId { get; set; }
+        public DateTime? AssignedToAEStructuralDate { get; set; }
+        public bool? AEStructuralApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AEStructuralApprovalComments { get; set; }
+        public DateTime? AEStructuralApprovalDate { get; set; }
+        public bool? AEStructuralRejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AEStructuralRejectionComments { get; set; }
+        public DateTime? AEStructuralRejectionDate { get; set; }
+        public bool AEStructuralDigitalSignatureApplied { get; set; } = false;
+        public DateTime? AEStructuralDigitalSignatureDate { get; set; }
+
+        // ==================== ASSISTANT ENGINEER - LICENCE ====================
+        public int? AssignedAELicenceId { get; set; }
+        public DateTime? AssignedToAELicenceDate { get; set; }
+        public bool? AELicenceApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AELicenceApprovalComments { get; set; }
+        public DateTime? AELicenceApprovalDate { get; set; }
+        public bool? AELicenceRejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AELicenceRejectionComments { get; set; }
+        public DateTime? AELicenceRejectionDate { get; set; }
+        public bool AELicenceDigitalSignatureApplied { get; set; } = false;
+        public DateTime? AELicenceDigitalSignatureDate { get; set; }
+
+        // ==================== ASSISTANT ENGINEER - SUPERVISOR 1 ====================
+        public int? AssignedAESupervisor1Id { get; set; }
+        public DateTime? AssignedToAESupervisor1Date { get; set; }
+        public bool? AESupervisor1ApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AESupervisor1ApprovalComments { get; set; }
+        public DateTime? AESupervisor1ApprovalDate { get; set; }
+        public bool? AESupervisor1RejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AESupervisor1RejectionComments { get; set; }
+        public DateTime? AESupervisor1RejectionDate { get; set; }
+        public bool AESupervisor1DigitalSignatureApplied { get; set; } = false;
+        public DateTime? AESupervisor1DigitalSignatureDate { get; set; }
+
+        // ==================== ASSISTANT ENGINEER - SUPERVISOR 2 ====================
+        public int? AssignedAESupervisor2Id { get; set; }
+        public DateTime? AssignedToAESupervisor2Date { get; set; }
+        public bool? AESupervisor2ApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AESupervisor2ApprovalComments { get; set; }
+        public DateTime? AESupervisor2ApprovalDate { get; set; }
+        public bool? AESupervisor2RejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? AESupervisor2RejectionComments { get; set; }
+        public DateTime? AESupervisor2RejectionDate { get; set; }
+        public bool AESupervisor2DigitalSignatureApplied { get; set; } = false;
+        public DateTime? AESupervisor2DigitalSignatureDate { get; set; }
+
+        // ==================== EXECUTIVE ENGINEER ====================
+        public int? AssignedExecutiveEngineerId { get; set; }
+        public DateTime? AssignedToExecutiveEngineerDate { get; set; }
+        public bool? ExecutiveEngineerApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? ExecutiveEngineerApprovalComments { get; set; }
+        public DateTime? ExecutiveEngineerApprovalDate { get; set; }
+        public bool? ExecutiveEngineerRejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? ExecutiveEngineerRejectionComments { get; set; }
+        public DateTime? ExecutiveEngineerRejectionDate { get; set; }
+        public bool ExecutiveEngineerDigitalSignatureApplied { get; set; } = false;
+        public DateTime? ExecutiveEngineerDigitalSignatureDate { get; set; }
+
+        // ==================== CITY ENGINEER ====================
+        public int? AssignedCityEngineerId { get; set; }
+        public DateTime? AssignedToCityEngineerDate { get; set; }
+        public bool? CityEngineerApprovalStatus { get; set; }
+        [MaxLength(2000)]
+        public string? CityEngineerApprovalComments { get; set; }
+        public DateTime? CityEngineerApprovalDate { get; set; }
+        public bool? CityEngineerRejectionStatus { get; set; }
+        [MaxLength(2000)]
+        public string? CityEngineerRejectionComments { get; set; }
+        public DateTime? CityEngineerRejectionDate { get; set; }
+        public bool CityEngineerDigitalSignatureApplied { get; set; } = false;
+        public DateTime? CityEngineerDigitalSignatureDate { get; set; }
+
         // Foreign Keys
         [ForeignKey("UserId")]
         public virtual User User { get; set; } = null!;
 
         [ForeignKey("AssignedJuniorEngineerId")]
         public virtual Officer? AssignedJuniorEngineer { get; set; }
+
+        [ForeignKey("AssignedAEArchitectId")]
+        public virtual Officer? AssignedAEArchitect { get; set; }
+
+        [ForeignKey("AssignedAEStructuralId")]
+        public virtual Officer? AssignedAEStructural { get; set; }
+
+        [ForeignKey("AssignedAELicenceId")]
+        public virtual Officer? AssignedAELicence { get; set; }
+
+        [ForeignKey("AssignedAESupervisor1Id")]
+        public virtual Officer? AssignedAESupervisor1 { get; set; }
+
+        [ForeignKey("AssignedAESupervisor2Id")]
+        public virtual Officer? AssignedAESupervisor2 { get; set; }
+
+        [ForeignKey("AssignedExecutiveEngineerId")]
+        public virtual Officer? AssignedExecutiveEngineer { get; set; }
+
+        [ForeignKey("AssignedCityEngineerId")]
+        public virtual Officer? AssignedCityEngineer { get; set; }
 
         // Navigation properties
         public virtual ICollection<SEAddress> Addresses { get; set; } = new List<SEAddress>();

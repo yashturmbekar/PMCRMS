@@ -381,18 +381,91 @@ namespace PMCRMS.API.Services
                 application.AllDocumentsVerified = true;
                 application.DocumentsVerifiedDate = DateTime.UtcNow;
                 
+                // Mark JE approval
+                application.JEApprovalStatus = true;
+                application.JEApprovalDate = DateTime.UtcNow;
+                
                 // Save JE comments if provided
                 if (!string.IsNullOrWhiteSpace(request.Comments))
                 {
                     application.JEComments = request.Comments;
+                    application.JEApprovalComments = request.Comments;
+                }
+
+                // If OTP was provided and digital signature was applied, auto-forward to Assistant Engineer
+                if (!string.IsNullOrEmpty(request.Otp) && application.DigitalSignatureApplied)
+                {
+                    // Forward to appropriate Assistant Engineer based on position type
+                    var targetRole = MapPositionToAERole(application.PositionType);
+                    var targetAE = await _context.Officers
+                        .Where(o => o.Role == targetRole && o.IsActive)
+                        .OrderBy(o => o.Id) // Simple assignment - can be enhanced with load balancing
+                        .FirstOrDefaultAsync();
+
+                    if (targetAE != null)
+                    {
+                        // Assign to appropriate AE based on position type
+                        switch (application.PositionType)
+                        {
+                            case PositionType.Architect:
+                                application.AssignedAEArchitectId = targetAE.Id;
+                                application.AssignedToAEArchitectDate = DateTime.UtcNow;
+                                break;
+                            case PositionType.StructuralEngineer:
+                                application.AssignedAEStructuralId = targetAE.Id;
+                                application.AssignedToAEStructuralDate = DateTime.UtcNow;
+                                break;
+                            case PositionType.LicenceEngineer:
+                                application.AssignedAELicenceId = targetAE.Id;
+                                application.AssignedToAELicenceDate = DateTime.UtcNow;
+                                break;
+                            case PositionType.Supervisor1:
+                                application.AssignedAESupervisor1Id = targetAE.Id;
+                                application.AssignedToAESupervisor1Date = DateTime.UtcNow;
+                                break;
+                            case PositionType.Supervisor2:
+                                application.AssignedAESupervisor2Id = targetAE.Id;
+                                application.AssignedToAESupervisor2Date = DateTime.UtcNow;
+                                break;
+                        }
+
+                        // Update status to AE pending
+                        application.Status = ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING;
+                        application.JECompletedDate = DateTime.UtcNow;
+
+                        // Send notification to AE
+                        await _notificationService.NotifyOfficerAssignmentAsync(
+                            targetAE.Id,
+                            application.ApplicationNumber ?? "N/A",
+                            application.Id,
+                            application.PositionType.ToString(),
+                            $"{application.FirstName} {application.LastName}",
+                            officerId.ToString());
+
+                        _logger.LogInformation(
+                            "Application {ApplicationId} automatically forwarded to Assistant Engineer {OfficerId} for position {PositionType}",
+                            application.Id, targetAE.Id, application.PositionType);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "No available Assistant Engineer found for role {Role}. Application {ApplicationId} will remain in current status.",
+                            targetRole, application.Id);
+                    }
                 }
 
                 await _context.SaveChangesAsync();
 
+                var message = request.Otp != null && application.DigitalSignatureApplied
+                    ? application.Status == ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING
+                        ? "Documents verified, recommendation form digitally signed, and application forwarded to Assistant Engineer successfully"
+                        : "Documents verified and recommendation form digitally signed successfully"
+                    : "Documents verified successfully";
+
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = request.Otp != null ? "Documents verified and recommendation form digitally signed successfully" : "Documents verified successfully",
+                    Message = message,
                     NewStatus = application.Status
                 };
             }
@@ -1098,6 +1171,22 @@ namespace PMCRMS.API.Services
 
             var completedSteps = steps.Count(s => s);
             return (completedSteps / (double)steps.Length) * 100;
+        }
+
+        /// <summary>
+        /// Maps position type to corresponding Assistant Engineer role
+        /// </summary>
+        private OfficerRole MapPositionToAERole(PositionType positionType)
+        {
+            return positionType switch
+            {
+                PositionType.Architect => OfficerRole.AssistantArchitect,
+                PositionType.StructuralEngineer => OfficerRole.AssistantStructuralEngineer,
+                PositionType.LicenceEngineer => OfficerRole.AssistantLicenceEngineer,
+                PositionType.Supervisor1 => OfficerRole.AssistantSupervisor1,
+                PositionType.Supervisor2 => OfficerRole.AssistantSupervisor2,
+                _ => throw new ArgumentException($"Unknown position type: {positionType}")
+            };
         }
 
         private string GetCurrentStage(ApplicationCurrentStatus status)

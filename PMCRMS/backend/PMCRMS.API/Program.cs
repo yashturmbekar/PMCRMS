@@ -236,6 +236,9 @@ builder.Services.AddScoped<IAppointmentService, AppointmentService>(); // Appoin
 builder.Services.AddScoped<IDocumentVerificationService, DocumentVerificationService>(); // Document verification for Junior Engineer workflow
 builder.Services.AddScoped<IDigitalSignatureService, DigitalSignatureService>(); // Digital signature with HSM integration for Junior Engineer workflow
 builder.Services.AddScoped<IJEWorkflowService, JEWorkflowService>(); // Workflow orchestration - Complete JE workflow coordination
+builder.Services.AddScoped<IAEWorkflowService, AEWorkflowService>(); // Assistant Engineer workflow service
+builder.Services.AddScoped<IEEWorkflowService, EEWorkflowService>(); // Executive Engineer workflow service
+builder.Services.AddScoped<ICEWorkflowService, CEWorkflowService>(); // City Engineer workflow service (Final Approval)
 // TODO: Add more service registrations here
 
 var app = builder.Build();
