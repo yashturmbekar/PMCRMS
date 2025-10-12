@@ -77,6 +77,18 @@ export const jeWorkflowService = {
   },
 
   /**
+   * Generate OTP for digital signature
+   * POST /api/JEWorkflow/generate-otp-for-signature
+   */
+  async generateOtpForSignature(
+    applicationId: number
+  ): Promise<ApiResponse<any>> {
+    return apiClient.post(`${workflowEndpoint}/generate-otp-for-signature`, {
+      applicationId,
+    });
+  },
+
+  /**
    * Complete all document verifications
    * POST /api/JEWorkflow/complete-verification/{applicationId}
    */

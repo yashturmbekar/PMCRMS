@@ -53,6 +53,12 @@ namespace PMCRMS.API.Models
         /// </summary>
         public int? ExperienceMonths { get; set; }
         
+        /// <summary>
+        /// HSM Key Label for digital signature (e.g., "CERT_EMP001")
+        /// </summary>
+        [MaxLength(200)]
+        public string? KeyLabel { get; set; }
+        
         [Required]
         [MaxLength(500)]
         public string PasswordHash { get; set; } = string.Empty;

@@ -65,6 +65,15 @@ namespace PMCRMS.API.DTOs
     {
         public int ApplicationId { get; set; }
         public string? Comments { get; set; }
+        public string Otp { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Request to generate OTP for digital signature
+    /// </summary>
+    public class GenerateOtpForSignatureDto
+    {
+        public int ApplicationId { get; set; }
     }
 
     /// <summary>

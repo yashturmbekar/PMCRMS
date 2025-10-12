@@ -125,9 +125,8 @@ export interface CompleteAppointmentRequestDto {
 
 export interface VerifyDocumentRequestDto {
   applicationId: number;
-  documentId: number;
-  isApproved: boolean;
-  remarks?: string;
+  comments?: string;
+  otp?: string;
 }
 
 export interface InitiateSignatureRequestDto {

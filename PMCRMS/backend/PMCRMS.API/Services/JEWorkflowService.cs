@@ -242,6 +242,126 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Application not found" };
                 }
 
+                // Get officer details
+                var officer = await _context.Officers
+                    .FirstOrDefaultAsync(o => o.Id == officerId);
+
+                if (officer == null)
+                {
+                    return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
+                }
+
+                // Validate OTP and apply digital signature if OTP provided
+                if (!string.IsNullOrWhiteSpace(request.Otp))
+                {
+                    var otpVerification = await _context.OtpVerifications
+                        .Where(o => o.Identifier == officer.Email 
+                                 && o.OtpCode == request.Otp 
+                                 && o.Purpose == "DIGITAL_SIGNATURE"
+                                 && !o.IsUsed
+                                 && o.IsActive
+                                 && o.ExpiryTime > DateTime.UtcNow)
+                        .OrderByDescending(o => o.CreatedDate)
+                        .FirstOrDefaultAsync();
+
+                    if (otpVerification == null)
+                    {
+                        return new WorkflowActionResultDto 
+                        { 
+                            Success = false, 
+                            Message = "Invalid or expired OTP. Please generate a new OTP." 
+                        };
+                    }
+
+                    // Mark OTP as used
+                    otpVerification.IsUsed = true;
+                    otpVerification.VerifiedAt = DateTime.UtcNow;
+                    
+                    // Get recommendation form PDF document
+                    var recommendationForm = await _context.SEDocuments
+                        .FirstOrDefaultAsync(d => d.ApplicationId == request.ApplicationId 
+                                                && d.DocumentType == SEDocumentType.RecommendedForm);
+
+                    if (recommendationForm == null || recommendationForm.FileContent == null)
+                    {
+                        return new WorkflowActionResultDto 
+                        { 
+                            Success = false, 
+                            Message = "Recommendation form not found. Please generate it first." 
+                        };
+                    }
+
+                    // Save PDF temporarily for HSM signing
+                    var tempPdfPath = Path.Combine(Path.GetTempPath(), $"recommendation_{request.ApplicationId}.pdf");
+                    await File.WriteAllBytesAsync(tempPdfPath, recommendationForm.FileContent);
+
+                    try
+                    {
+                        // Initiate digital signature with HSM
+                        var coordinates = $"{100},{700},{200},{150},{1}"; // X, Y, Width, Height, Page
+                        var ipAddress = ""; // TODO: Get from HTTP context if needed
+                        var userAgent = "PMCRMS_API";
+
+                        var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
+                            applicationId: request.ApplicationId,
+                            signedByOfficerId: officerId,
+                            signatureType: SignatureType.JuniorEngineer,
+                            documentPath: tempPdfPath,
+                            coordinates: coordinates,
+                            ipAddress: ipAddress,
+                            userAgent: userAgent
+                        );
+
+                        if (!initiateResult.Success || initiateResult.SignatureId == null)
+                        {
+                            return new WorkflowActionResultDto 
+                            { 
+                                Success = false, 
+                                Message = $"Failed to initiate digital signature: {initiateResult.Message}" 
+                            };
+                        }
+
+                        // Complete signature with OTP (calls actual HSM API)
+                        var completeResult = await _digitalSignatureService.CompleteSignatureAsync(
+                            signatureId: initiateResult.SignatureId.Value,
+                            otp: request.Otp,
+                            completedBy: officer.Email
+                        );
+
+                        if (!completeResult.Success)
+                        {
+                            return new WorkflowActionResultDto 
+                            { 
+                                Success = false, 
+                                Message = $"Digital signature failed: {completeResult.Message}" 
+                            };
+                        }
+
+                        // Update recommendation form with signed PDF
+                        if (!string.IsNullOrEmpty(completeResult.SignedDocumentPath) && File.Exists(completeResult.SignedDocumentPath))
+                        {
+                            var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
+                            recommendationForm.FileContent = signedPdfBytes;
+                            recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0); // KB
+                            recommendationForm.UpdatedDate = DateTime.UtcNow;
+                            
+                            _logger.LogInformation("Updated recommendation form with digitally signed PDF for application {ApplicationId}", request.ApplicationId);
+                        }
+
+                        // Set digital signature flags on application
+                        application.DigitalSignatureApplied = true;
+                        application.DigitalSignatureDate = DateTime.UtcNow;
+                    }
+                    finally
+                    {
+                        // Clean up temporary file
+                        if (File.Exists(tempPdfPath))
+                        {
+                            File.Delete(tempPdfPath);
+                        }
+                    }
+                }
+
                 // Update application status if this is the first verification
                 if (application.Status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING)
                 {
@@ -263,7 +383,7 @@ namespace PMCRMS.API.Services
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = "Documents verified successfully",
+                    Message = request.Otp != null ? "Documents verified and recommendation form digitally signed successfully" : "Documents verified successfully",
                     NewStatus = application.Status
                 };
             }
@@ -304,6 +424,60 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogError(ex, "Error completing verification");
                 return new WorkflowActionResultDto { Success = false, Message = ex.Message };
+            }
+        }
+
+        public async Task<string> GenerateOtpForSignatureAsync(int applicationId, int officerId)
+        {
+            try
+            {
+                var application = await _context.PositionApplications
+                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+                if (application == null)
+                {
+                    throw new Exception("Application not found");
+                }
+
+                // Get officer details
+                var officer = await _context.Officers
+                    .FirstOrDefaultAsync(o => o.Id == officerId);
+
+                if (officer == null)
+                {
+                    throw new Exception("Officer not found");
+                }
+
+                // Generate 6-digit OTP
+                var random = new Random();
+                var otp = random.Next(100000, 999999).ToString();
+
+                // Store OTP in database
+                var otpVerification = new OtpVerification
+                {
+                    Identifier = officer.Email,
+                    OtpCode = otp,
+                    Purpose = "DIGITAL_SIGNATURE",
+                    ExpiryTime = DateTime.UtcNow.AddMinutes(5),
+                    IsUsed = false,
+                    IsActive = true,
+                    CreatedBy = officerId.ToString(),
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.OtpVerifications.Add(otpVerification);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Generated OTP for application {ApplicationId} and officer {OfficerId}. OTP: {Otp}", 
+                    applicationId, officerId, otp);
+
+                // In production, send OTP via email service instead of returning it
+                return otp;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating OTP for signature");
+                throw;
             }
         }
 

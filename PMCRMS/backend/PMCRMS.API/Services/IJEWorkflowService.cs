@@ -40,6 +40,12 @@ namespace PMCRMS.API.Services
         Task<WorkflowActionResultDto> CompleteDocumentVerificationAsync(int applicationId, int officerId);
 
         /// <summary>
+        /// Generate OTP for digital signature on recommendation form
+        /// Sends OTP to officer's registered email
+        /// </summary>
+        Task<string> GenerateOtpForSignatureAsync(int applicationId, int officerId);
+
+        /// <summary>
         /// Initiate digital signature process
         /// Transitions application to AWAITING_JE_DIGITAL_SIGNATURE status
         /// </summary>

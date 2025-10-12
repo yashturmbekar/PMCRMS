@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, CheckCircle, FileText } from "lucide-react";
+import { X } from "lucide-react";
 import { jeWorkflowService } from "../../services/jeWorkflowService";
 import NotificationModal from "../common/NotificationModal";
 import type { NotificationType } from "../common/NotificationModal";
@@ -24,13 +24,12 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
   isOpen,
   onClose,
   applicationId,
-  documents,
   onApprovalComplete,
 }) => {
   const [comments, setComments] = useState("");
-  const [selectedDocuments, setSelectedDocuments] = useState<Set<number>>(
-    new Set()
-  );
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpGenerated, setOtpGenerated] = useState(false);
+  const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{
     isOpen: boolean;
@@ -47,30 +46,70 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleDocumentToggle = (documentId: number) => {
-    const newSelected = new Set(selectedDocuments);
-    if (newSelected.has(documentId)) {
-      newSelected.delete(documentId);
-    } else {
-      newSelected.add(documentId);
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return; // Only allow digits
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1); // Take only last digit
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
     }
-    setSelectedDocuments(newSelected);
   };
 
-  const handleApproveAll = () => {
-    const allDocIds = documents
-      .filter((doc) => doc.documentTypeName !== "RecommendedForm")
-      .map((doc) => doc.id);
-    setSelectedDocuments(new Set(allDocIds));
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
   };
 
-  const handleSubmit = async () => {
-    if (selectedDocuments.size === 0) {
+  const handleGenerateOtp = async () => {
+    try {
+      setIsGeneratingOtp(true);
+      const response = await jeWorkflowService.generateOtpForSignature(
+        applicationId
+      );
+
+      if (response.success) {
+        setOtpGenerated(true);
+        setNotification({
+          isOpen: true,
+          message: "OTP has been sent to your registered email address",
+          type: "success",
+          title: "OTP Sent Successfully",
+          autoClose: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error generating OTP:", error);
       setNotification({
         isOpen: true,
-        message: "Please select at least one document to approve",
+        message: "Failed to generate OTP. Please try again.",
+        type: "error",
+        title: "OTP Generation Failed",
+        autoClose: false,
+      });
+    } finally {
+      setIsGeneratingOtp(false);
+    }
+  };
+
+  const handleAddDigitalSignature = async () => {
+    const otpValue = otp.join("");
+
+    if (otpValue.length !== 6) {
+      setNotification({
+        isOpen: true,
+        message: "Please enter the complete 6-digit OTP",
         type: "warning",
-        title: "No Documents Selected",
+        title: "Incomplete OTP",
         autoClose: false,
       });
       return;
@@ -79,36 +118,37 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
     try {
       setIsSubmitting(true);
 
-      // Approve each selected document
-      for (const docId of Array.from(selectedDocuments)) {
-        await jeWorkflowService.verifyDocument({
-          applicationId,
-          documentId: docId,
-          isApproved: true,
-          remarks: comments,
-        });
-      }
-
-      setNotification({
-        isOpen: true,
-        message: "The selected documents have been approved successfully!",
-        type: "success",
-        title: "Documents Approved Successfully!",
-        autoClose: true,
+      // Call verify document API with OTP
+      const response = await jeWorkflowService.verifyDocument({
+        applicationId,
+        comments,
+        otp: otpValue,
       });
 
-      // Close modal and refresh after notification
-      setTimeout(() => {
-        onApprovalComplete?.();
-        onClose();
-      }, 2000);
+      if (response.success) {
+        setNotification({
+          isOpen: true,
+          message:
+            "Documents verified and recommendation form digitally signed successfully!",
+          type: "success",
+          title: "Digital Signature Applied",
+          autoClose: true,
+        });
+
+        // Close modal and refresh after notification
+        setTimeout(() => {
+          onApprovalComplete?.();
+          onClose();
+        }, 2000);
+      }
     } catch (error) {
-      console.error("Error approving documents:", error);
+      console.error("Error applying digital signature:", error);
       setNotification({
         isOpen: true,
-        message: "Failed to approve documents. Please try again.",
+        message:
+          "Failed to apply digital signature. Please check your OTP and try again.",
         type: "error",
-        title: "Approval Failed",
+        title: "Signature Failed",
         autoClose: false,
       });
     } finally {
@@ -181,7 +221,7 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                 fontWeight: "600",
               }}
             >
-              Document Approve
+              Document Verification
             </h3>
             <button
               onClick={onClose}
@@ -200,209 +240,150 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
           <div
             className="pmc-modal-body"
             style={{
-              padding: "16px 18px",
+              padding: "20px",
               overflowY: "auto",
               flexGrow: 1,
             }}
           >
             {/* Comments */}
-            <div style={{ marginBottom: "16px" }}>
+            <div style={{ marginBottom: "20px" }}>
               <label
                 className="pmc-label"
                 style={{
                   display: "block",
-                  marginBottom: "6px",
+                  marginBottom: "8px",
                   fontWeight: 600,
                   color: "#334155",
-                  fontSize: "13px",
+                  fontSize: "14px",
                 }}
               >
                 Comments
               </label>
               <textarea
-                placeholder="Enter comments"
+                placeholder="Enter your comments (optional)"
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 style={{
                   width: "100%",
-                  minHeight: "60px",
-                  padding: "8px 10px",
+                  minHeight: "80px",
+                  padding: "10px 12px",
                   border: "1px solid #d1d5db",
                   borderRadius: "6px",
-                  fontSize: "13px",
+                  fontSize: "14px",
                   fontFamily: "inherit",
                   resize: "vertical",
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#10b981";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#d1d5db";
                 }}
               />
             </div>
 
-            {/* Document List */}
-            <div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "8px",
-                }}
-              >
+            {/* OTP Section */}
+            {otpGenerated && (
+              <div style={{ marginBottom: "20px" }}>
                 <label
                   className="pmc-label"
                   style={{
+                    display: "block",
+                    marginBottom: "12px",
                     fontWeight: 600,
                     color: "#334155",
-                    margin: 0,
-                    fontSize: "13px",
+                    fontSize: "14px",
                   }}
                 >
-                  Select Documents to Approve
+                  Enter OTP
                 </label>
-                <button
-                  onClick={handleApproveAll}
-                  className="pmc-button pmc-button-sm pmc-button-outline"
-                  style={{
-                    fontSize: "11px",
-                    padding: "4px 8px",
-                  }}
-                >
-                  Select All
-                </button>
-              </div>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, 1fr)",
-                  gap: "6px",
-                  marginBottom: "10px",
-                }}
-              >
-                {documents
-                  .filter((doc) => doc.documentTypeName !== "RecommendedForm")
-                  .map((doc) => (
-                    <div
-                      key={doc.id}
-                      onClick={() => handleDocumentToggle(doc.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        padding: "8px 10px",
-                        background: selectedDocuments.has(doc.id)
-                          ? "#f0f9ff"
-                          : "#f8fafc",
-                        border: selectedDocuments.has(doc.id)
-                          ? "2px solid #3b82f6"
-                          : "1px solid #e2e8f0",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          border: "2px solid #cbd5e1",
-                          borderRadius: "3px",
-                          marginRight: "8px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          background: selectedDocuments.has(doc.id)
-                            ? "#3b82f6"
-                            : "white",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {selectedDocuments.has(doc.id) && (
-                          <CheckCircle
-                            style={{
-                              width: "12px",
-                              height: "12px",
-                              color: "white",
-                            }}
-                          />
-                        )}
-                      </div>
-
-                      <FileText
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          color: "#3b82f6",
-                          marginRight: "8px",
-                          flexShrink: 0,
-                        }}
-                      />
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p
-                          style={{
-                            fontWeight: 500,
-                            color: "#1e293b",
-                            marginBottom: "1px",
-                            fontSize: "13px",
-                          }}
-                        >
-                          {doc.documentTypeName}
-                        </p>
-                        <p
-                          style={{
-                            fontSize: "11px",
-                            color: "#64748b",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {doc.fileName}
-                        </p>
-                      </div>
-
-                      {doc.isVerified && (
-                        <span
-                          className="pmc-badge pmc-badge-success"
-                          style={{
-                            fontSize: "9px",
-                            padding: "2px 5px",
-                            flexShrink: 0,
-                          }}
-                        >
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                  ))}
-              </div>
-
-              {/* Selected Count */}
-              {selectedDocuments.size > 0 && (
                 <div
                   style={{
-                    padding: "8px 10px",
-                    background: "#eff6ff",
-                    border: "1px solid #bfdbfe",
-                    borderRadius: "6px",
+                    display: "flex",
+                    gap: "10px",
+                    justifyContent: "center",
+                    marginBottom: "8px",
                   }}
                 >
-                  <p style={{ fontSize: "12px", color: "#1e40af", margin: 0 }}>
-                    <strong>{selectedDocuments.size}</strong> document
-                    {selectedDocuments.size !== 1 ? "s" : ""} selected for
-                    approval
-                  </p>
+                  {otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      id={`otp-${index}`}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      style={{
+                        width: "50px",
+                        height: "55px",
+                        textAlign: "center",
+                        fontSize: "22px",
+                        fontWeight: "bold",
+                        border: "2px solid #d1d5db",
+                        borderRadius: "8px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                        backgroundColor: digit ? "#f0fdf4" : "white",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                        e.target.select();
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  ))}
                 </div>
-              )}
-            </div>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "#64748b",
+                    textAlign: "center",
+                    margin: 0,
+                  }}
+                >
+                  OTP sent to your registered email address (valid for 5
+                  minutes)
+                </p>
+              </div>
+            )}
+
+            {/* Info Message */}
+            {!otpGenerated && (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#fef3c7",
+                  border: "1px solid #fbbf24",
+                  borderRadius: "6px",
+                  marginBottom: "16px",
+                }}
+              >
+                <p style={{ fontSize: "13px", color: "#92400e", margin: 0 }}>
+                  <strong>Note:</strong> Click "GET OTP" to receive a
+                  verification code on your email. You'll need to enter this OTP
+                  to digitally sign the recommendation form.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Footer */}
           <div
             className="pmc-modal-footer"
             style={{
-              padding: "12px 18px",
+              padding: "14px 20px",
               borderTop: "1px solid #e5e7eb",
               display: "flex",
-              gap: "8px",
+              gap: "10px",
               justifyContent: "flex-end",
               background: "#f9fafb",
               flexShrink: 0,
@@ -411,27 +392,52 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
             <button
               className="pmc-button pmc-button-outline"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isGeneratingOtp}
               style={{
-                minWidth: "80px",
-                padding: "7px 14px",
-                fontSize: "13px",
+                minWidth: "90px",
+                padding: "8px 16px",
+                fontSize: "14px",
+                fontWeight: 500,
               }}
             >
               Cancel
             </button>
-            <button
-              className="pmc-button pmc-button-success"
-              onClick={handleSubmit}
-              disabled={isSubmitting || selectedDocuments.size === 0}
-              style={{
-                minWidth: "100px",
-                padding: "7px 14px",
-                fontSize: "13px",
-              }}
-            >
-              {isSubmitting ? "Submitting..." : "SUBMIT"}
-            </button>
+
+            {!otpGenerated ? (
+              <button
+                className="pmc-button pmc-button-primary"
+                onClick={handleGenerateOtp}
+                disabled={isGeneratingOtp}
+                style={{
+                  minWidth: "130px",
+                  padding: "8px 16px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  background:
+                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  border: "none",
+                }}
+              >
+                {isGeneratingOtp ? "Generating..." : "GET OTP"}
+              </button>
+            ) : (
+              <button
+                className="pmc-button pmc-button-success"
+                onClick={handleAddDigitalSignature}
+                disabled={isSubmitting || otp.join("").length !== 6}
+                style={{
+                  minWidth: "200px",
+                  padding: "8px 16px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  border: "none",
+                }}
+              >
+                {isSubmitting ? "Processing..." : "ADD DIGITAL SIGNATURE"}
+              </button>
+            )}
           </div>
         </div>
       </div>

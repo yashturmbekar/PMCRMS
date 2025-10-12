@@ -215,18 +215,16 @@ builder.Services.AddHttpClient(); // For Brevo API
 // Configure HSM HTTP clients for digital signature
 builder.Services.AddHttpClient("HSM_OTP", client =>
 {
-    var hsmUrl = builder.Configuration["HSM:ServiceUrl"] ?? "https://hsm-provider.gov.in";
-    client.BaseAddress = new Uri(hsmUrl);
-    client.Timeout = TimeSpan.FromSeconds(
-        int.Parse(builder.Configuration["HSM:TimeoutSeconds"] ?? "30"));
+    var hsmOtpUrl = builder.Configuration["HSM:OtpBaseUrl"] ?? "http://210.212.188.44:8001/jrequest/";
+    client.BaseAddress = new Uri(hsmOtpUrl);
+    client.Timeout = TimeSpan.Parse(builder.Configuration["HSM:Timeout"] ?? "00:00:30");
 });
 
 builder.Services.AddHttpClient("HSM_SIGN", client =>
 {
-    var hsmUrl = builder.Configuration["HSM:ServiceUrl"] ?? "https://hsm-provider.gov.in";
-    client.BaseAddress = new Uri(hsmUrl);
-    client.Timeout = TimeSpan.FromSeconds(
-        int.Parse(builder.Configuration["HSM:TimeoutSeconds"] ?? "30"));
+    var hsmSignUrl = builder.Configuration["HSM:SignBaseUrl"] ?? "http://210.212.188.35:8080/emSigner/";
+    client.BaseAddress = new Uri(hsmSignUrl);
+    client.Timeout = TimeSpan.Parse(builder.Configuration["HSM:Timeout"] ?? "00:00:30");
 });
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IDataSeeder, DataSeeder>();

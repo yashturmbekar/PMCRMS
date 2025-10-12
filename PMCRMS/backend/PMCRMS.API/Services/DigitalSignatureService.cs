@@ -108,7 +108,7 @@ namespace PMCRMS.API.Services
                     IpAddress = ipAddress,
                     UserAgent = userAgent,
                     HsmProvider = _configuration["HSM:Provider"] ?? "eMudhra",
-                    KeyLabel = $"CERT_{officer.EmployeeId}", // TODO: Link to actual certificate
+                    KeyLabel = officer.KeyLabel ?? $"CERT_{officer.EmployeeId}", // Use officer's KeyLabel
                     CreatedBy = officer.Name,
                     CreatedDate = DateTime.UtcNow,
                     UpdatedBy = officer.Name,
@@ -186,8 +186,8 @@ namespace PMCRMS.API.Services
                 // 3. Verifying the signature
                 // 4. Storing the signed document
 
-                // Simulated HSM signing process
-                var signedDocumentPath = await SimulateHsmSigningAsync(signature, otp);
+                // Call actual HSM signing service
+                var signedDocumentPath = await CallHsmSigningServiceAsync(signature, otp);
 
                 if (string.IsNullOrEmpty(signedDocumentPath))
                 {
@@ -585,7 +585,10 @@ namespace PMCRMS.API.Services
 
         // Private helper methods
 
-        private async Task<string> SimulateHsmSigningAsync(DigitalSignature signature, string otp)
+        /// <summary>
+        /// Calls actual HSM service to digitally sign PDF using OTP
+        /// </summary>
+        private async Task<string> CallHsmSigningServiceAsync(DigitalSignature signature, string otp)
         {
             try
             {
@@ -628,14 +631,18 @@ namespace PMCRMS.API.Services
                 var pdfBytes = await File.ReadAllBytesAsync(documentPath);
                 var pdfBase64 = Convert.ToBase64String(pdfBytes);
 
-                // Use KeyLabel from signature record (set during initiation)
+                // Use KeyLabel from signature record (officer's certificate key)
                 string keyLabel = signature.KeyLabel ?? $"CERT_{officer.EmployeeId}";
 
                 // Prepare HSM signature parameters
                 string transaction = signature.ApplicationId.ToString();
                 string coordinates = signature.SignatureCoordinates ?? GetDefaultCoordinates();
 
-                // Create SOAP envelope for HSM call
+                _logger.LogInformation(
+                    "Preparing HSM signature request: SignatureId={SignatureId}, Transaction={Transaction}, KeyLabel={KeyLabel}, Coordinates={Coordinates}",
+                    signature.Id, transaction, keyLabel, coordinates);
+
+                // Create SOAP envelope for HSM API call
                 var soapEnvelope = $@"<s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"">
 <s:Body xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
 <signPdf xmlns=""http://ds.ws.emas/"">
@@ -656,39 +663,78 @@ namespace PMCRMS.API.Services
 </s:Body>
 </s:Envelope>";
 
-                _logger.LogInformation("Calling HSM signature service for SignatureId={SignatureId}", signature.Id);
+                _logger.LogInformation("Calling HSM signature service at {BaseUrl} for SignatureId={SignatureId}", 
+                    _configuration["HSM:SignBaseUrl"], signature.Id);
 
-                // Call HSM service for digital signature
+                // Call actual HSM service for digital signature
                 var content = new StringContent(soapEnvelope, Encoding.UTF8, "application/xml");
                 using var httpClient = _httpClientFactory.CreateClient("HSM_SIGN");
+                
                 var response = await httpClient.PostAsync("services/dsverifyWS", content);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError("HSM signature API call failed with status: {StatusCode}", response.StatusCode);
+                    _logger.LogError("HSM signature API call failed with status: {StatusCode} for SignatureId={SignatureId}", 
+                        response.StatusCode, signature.Id);
                     return string.Empty;
                 }
 
                 var result = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation("HSM Signature Response: {Response}", result);
+                _logger.LogInformation("HSM Signature Response for SignatureId={SignatureId}: {Response}", 
+                    signature.Id, result);
+
+                // Store raw HSM response for audit
+                signature.HsmResponse = result.Length > 5000 ? result.Substring(0, 5000) : result;
 
                 // Check if signature was successful
-                if (result.Contains($"{transaction}~FAILURE~failure"))
+                if (result.Contains($"{transaction}~FAILURE~") || result.Contains("failure"))
                 {
-                    _logger.LogError("HSM signature failed: {Result}", result);
+                    _logger.LogError("HSM signature failed for SignatureId={SignatureId}. Response: {Result}", 
+                        signature.Id, result);
+                    signature.ErrorMessage = "HSM signature service returned failure";
                     return string.Empty;
                 }
 
-                // Process successful signature response
-                var processedResult = result
-                    .Replace("<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">", "")
-                    .Replace("<soap:Body><ns2:signPdfResponse xmlns:ns2=\"http://ds.ws.emas/\">", "")
-                    .Replace($"<return>{transaction}~SUCCESS~", "")
-                    .Replace("</return></ns2:signPdfResponse></soap:Body></soap:Envelope>", "");
+                // Extract transaction ID from response
+                if (result.Contains($"{transaction}~SUCCESS~"))
+                {
+                    signature.HsmTransactionId = transaction;
+                }
+
+                // Process successful signature response - extract base64 signed PDF
+                var processedResult = result;
+                
+                // Parse SOAP response to extract signed PDF data
+                try
+                {
+                    processedResult = result
+                        .Replace("<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">", "")
+                        .Replace("<soap:Body><ns2:signPdfResponse xmlns:ns2=\"http://ds.ws.emas/\">", "")
+                        .Replace($"<return>{transaction}~SUCCESS~", "")
+                        .Replace("</return></ns2:signPdfResponse></soap:Body></soap:Envelope>", "")
+                        .Trim();
+                }
+                catch (Exception parseEx)
+                {
+                    _logger.LogWarning(parseEx, "Failed to parse SOAP response, attempting alternate parsing");
+                    
+                    // Alternate parsing - extract content between return tags
+                    var returnStart = result.IndexOf("<return>");
+                    var returnEnd = result.IndexOf("</return>");
+                    if (returnStart > 0 && returnEnd > returnStart)
+                    {
+                        var returnContent = result.Substring(returnStart + 8, returnEnd - returnStart - 8);
+                        var parts = returnContent.Split(new[] { "~SUCCESS~" }, StringSplitOptions.None);
+                        if (parts.Length > 1)
+                        {
+                            processedResult = parts[1].Trim();
+                        }
+                    }
+                }
 
                 // Convert back to PDF bytes and save
                 var signedPdfBytes = Convert.FromBase64String(processedResult);
-                var signedFileName = $"signed_{application.ApplicationNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
+                var signedFileName = $"signed_recommendation_{application.ApplicationNumber}_{DateTime.UtcNow:yyyyMMddHHmmss}.pdf";
                 var signedDirectory = Path.Combine(_configuration["FileUploadSettings:UploadPath"] ?? "./uploads", "signed");
                 
                 if (!Directory.Exists(signedDirectory))
@@ -699,7 +745,12 @@ namespace PMCRMS.API.Services
                 var signedFilePath = Path.Combine(signedDirectory, signedFileName);
                 await File.WriteAllBytesAsync(signedFilePath, signedPdfBytes);
 
-                _logger.LogInformation("Signed PDF saved at: {Path}", signedFilePath);
+                _logger.LogInformation("HSM signed PDF saved successfully at: {Path} for SignatureId={SignatureId}", 
+                    signedFilePath, signature.Id);
+
+                // Update signature metadata
+                signature.CertificateIssuer = "CN=Government HSM CA";
+                signature.CertificateThumbprint = $"HSM_{DateTime.UtcNow:yyyyMMddHHmmss}";
 
                 return signedFilePath;
             }

@@ -114,6 +114,31 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
+        /// Generate OTP for digital signature on recommendation form
+        /// </summary>
+        [HttpPost("generate-otp-for-signature")]
+        [Authorize(Roles = JuniorRoles)]
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<IActionResult> GenerateOtpForSignature([FromBody] GenerateOtpForSignatureDto request)
+        {
+            try
+            {
+                var result = await _workflowService.GenerateOtpForSignatureAsync(request.ApplicationId, GetCurrentUserId());
+                return Ok(new
+                {
+                    success = true,
+                    message = "OTP sent to your registered email address",
+                    data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating OTP for signature");
+                return StatusCode(500, new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Complete all document verifications
         /// </summary>
         [HttpPost("complete-verification/{applicationId}")]

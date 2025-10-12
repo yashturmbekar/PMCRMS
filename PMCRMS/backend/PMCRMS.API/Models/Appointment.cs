@@ -125,10 +125,9 @@ namespace PMCRMS.API.Models
         [ForeignKey("ScheduledByOfficerId")]
         public virtual Officer ScheduledByOfficer { get; set; } = null!;
 
-        [ForeignKey("RescheduledToAppointmentId")]
+        // Self-referencing relationships configured in DbContext via Fluent API
+        // Do not use [ForeignKey] here to avoid conflicts with Fluent API configuration
         public virtual Appointment? RescheduledToAppointment { get; set; }
-
-        [ForeignKey("RescheduledFromAppointmentId")]
         public virtual Appointment? RescheduledFromAppointment { get; set; }
     }
 }
