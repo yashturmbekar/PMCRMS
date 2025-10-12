@@ -7,13 +7,7 @@ import {
 import LoginPage from "./pages/LoginPage";
 import OfficerLoginPage from "./pages/OfficerLoginPage";
 import Dashboard from "./pages/Dashboard";
-import JEDashboard from "./pages/JEDashboard";
-import AEDashboard from "./pages/AEDashboard";
-import EEDashboard from "./pages/EEDashboard";
-import CEDashboard from "./pages/CEDashboard";
-import ClerkDashboard from "./pages/ClerkDashboard";
-import EEStage2Dashboard from "./pages/EEStage2Dashboard";
-import CEStage2Dashboard from "./pages/CEStage2Dashboard";
+import OfficerDashboard from "./pages/OfficerDashboard";
 import CertificateDownloadPortal from "./pages/CertificateDownloadPortal";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
@@ -275,7 +269,7 @@ function App() {
                 }
               />
 
-              {/* JE Dashboard - All Junior-level Officers */}
+              {/* Unified Officer Dashboard - All Officers */}
               <Route
                 path="/je-dashboard"
                 element={
@@ -289,7 +283,7 @@ function App() {
                     ]}
                   >
                     <Layout>
-                      <JEDashboard />
+                      <OfficerDashboard />
                     </Layout>
                   </OfficerRoute>
                 }
@@ -309,7 +303,7 @@ function App() {
                     ]}
                   >
                     <Layout>
-                      <AEDashboard />
+                      <OfficerDashboard />
                     </Layout>
                   </OfficerRoute>
                 }
@@ -321,7 +315,7 @@ function App() {
                 element={
                   <OfficerRoute allowedRoles={["ExecutiveEngineer"]}>
                     <Layout>
-                      <EEDashboard />
+                      <OfficerDashboard />
                     </Layout>
                   </OfficerRoute>
                 }
@@ -333,7 +327,7 @@ function App() {
                 element={
                   <OfficerRoute allowedRoles={["CityEngineer"]}>
                     <Layout>
-                      <CEDashboard />
+                      <OfficerDashboard />
                     </Layout>
                   </OfficerRoute>
                 }
@@ -345,34 +339,20 @@ function App() {
                 element={
                   <OfficerRoute allowedRoles={["Clerk"]}>
                     <Layout>
-                      <ClerkDashboard />
+                      <OfficerDashboard />
                     </Layout>
                   </OfficerRoute>
                 }
               />
 
-              {/* EE Stage 2 Dashboard - Certificate Digital Signature */}
+              {/* Legacy routes - redirect to main dashboard (tabs handle stage switching) */}
               <Route
                 path="/ee-stage2-dashboard"
-                element={
-                  <OfficerRoute allowedRoles={["ExecutiveEngineer"]}>
-                    <Layout>
-                      <EEStage2Dashboard />
-                    </Layout>
-                  </OfficerRoute>
-                }
+                element={<Navigate to="/ee-dashboard" replace />}
               />
-
-              {/* CE Stage 2 Dashboard - Final Certificate Signature */}
               <Route
                 path="/ce-stage2-dashboard"
-                element={
-                  <OfficerRoute allowedRoles={["CityEngineer"]}>
-                    <Layout>
-                      <CEStage2Dashboard />
-                    </Layout>
-                  </OfficerRoute>
-                }
+                element={<Navigate to="/ce-dashboard" replace />}
               />
 
               {/* JE Officer - View Application */}
