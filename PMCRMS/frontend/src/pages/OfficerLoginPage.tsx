@@ -72,6 +72,8 @@ const OfficerLoginPage: React.FC = () => {
       }
       setError(errorMessage);
       console.error("Login error:", errorMessage);
+
+      // Stay on officer login page on failed attempt - don't navigate away
     } finally {
       setLoading(false);
     }

@@ -92,8 +92,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
 
   const handleLogout = () => {
+    // Determine if user is an officer or regular user (Applicant)
+    // Regular users/applicants have role "Applicant", all other roles are officers
+    const isOfficer = user && user.role !== "Applicant";
     logout();
-    navigate("/login");
+    // Navigate to appropriate login page
+    navigate(isOfficer ? "/officer-login" : "/login");
   };
 
   const navigation = getNavigation(user?.role);

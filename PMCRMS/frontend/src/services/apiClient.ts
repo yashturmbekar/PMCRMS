@@ -62,10 +62,32 @@ instance.interceptors.response.use(
   (response: any) => Promise.resolve(response),
   (error) => {
     if (error?.response?.status === 401 || error?.response?.status === 403) {
+      // Don't redirect on login/auth endpoints - let the login page handle the error
+      const url = error?.config?.url ?? "";
+      const isAuthEndpoint =
+        url.includes("/auth/login") ||
+        url.includes("/auth/officer-login") ||
+        url.includes("/auth/admin-login") ||
+        url.includes("/auth/send-otp") ||
+        url.includes("/auth/verify-otp");
+
+      if (isAuthEndpoint) {
+        // Let the login page handle the error display
+        return Promise.reject(error);
+      }
+
+      // Get user info before clearing
+      const userStr = localStorage.getItem("pmcrms_user");
+      const user = userStr ? JSON.parse(userStr) : null;
+      // Regular users/applicants have role "Applicant", all other roles are officers
+      const isOfficer = user && user.role !== "Applicant";
+
       removeToken();
       controllers.forEach((controller) => controller.abort());
       controllers.length = 0;
-      window.location.href = "/login";
+
+      // Redirect to appropriate login page based on user role
+      window.location.href = isOfficer ? "/officer-login" : "/login";
     }
     return Promise.reject(error);
   }

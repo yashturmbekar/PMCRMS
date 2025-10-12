@@ -508,6 +508,9 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Officer EmployeeId: {EmployeeId}, LoginAttempts: {LoginAttempts}", 
                     officer.EmployeeId, officer.LoginAttempts);
 
+                // TEMPORARILY DISABLED: Account locking functionality
+                // TODO: Re-enable when needed for production security
+                /*
                 // Check if account is locked
                 if (officer.LockedUntil.HasValue && officer.LockedUntil > DateTime.UtcNow)
                 {
@@ -520,6 +523,7 @@ namespace PMCRMS.API.Controllers
                         Errors = new List<string> { "Account locked due to multiple failed login attempts" }
                     });
                 }
+                */
 
                 // Check if account is active
                 if (!officer.IsActive)
@@ -566,6 +570,9 @@ namespace PMCRMS.API.Controllers
                 
                 if (!passwordVerificationResult)
                 {
+                    // TEMPORARILY DISABLED: Login attempt tracking and account locking
+                    // TODO: Re-enable when needed for production security
+                    /*
                     // Increment login attempts
                     officer.LoginAttempts++;
                     
@@ -593,6 +600,15 @@ namespace PMCRMS.API.Controllers
                     {
                         Success = false,
                         Message = $"Invalid email or password. {attemptsLeft} attempts remaining.",
+                        Errors = new List<string> { "Authentication failed" }
+                    });
+                    */
+                    
+                    _logger.LogWarning("Failed login attempt for {Email}", request.Email);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid email or password.",
                         Errors = new List<string> { "Authentication failed" }
                     });
                 }
@@ -684,6 +700,9 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Admin PasswordHash exists: {HasPassword}", 
                     !string.IsNullOrEmpty(admin.PasswordHash));
 
+                // TEMPORARILY DISABLED: Account locking functionality for admin
+                // TODO: Re-enable when needed for production security
+                /*
                 // Check if account is locked
                 if (admin.LockedUntil.HasValue && admin.LockedUntil > DateTime.UtcNow)
                 {
@@ -696,6 +715,7 @@ namespace PMCRMS.API.Controllers
                         Errors = new List<string> { "Account locked due to multiple failed login attempts" }
                     });
                 }
+                */
 
                 // Check if account is active
                 if (!admin.IsActive)
@@ -729,6 +749,9 @@ namespace PMCRMS.API.Controllers
                 
                 if (!passwordVerificationResult)
                 {
+                    // TEMPORARILY DISABLED: Login attempt tracking and account locking for admin
+                    // TODO: Re-enable when needed for production security
+                    /*
                     // Increment login attempts
                     admin.LoginAttempts++;
                     
@@ -756,6 +779,15 @@ namespace PMCRMS.API.Controllers
                     {
                         Success = false,
                         Message = $"Invalid email or password. {attemptsLeft} attempts remaining.",
+                        Errors = new List<string> { "Authentication failed" }
+                    });
+                    */
+                    
+                    _logger.LogWarning("Failed login attempt for admin {Email}", request.Email);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid email or password.",
                         Errors = new List<string> { "Authentication failed" }
                     });
                 }
@@ -1083,6 +1115,77 @@ namespace PMCRMS.API.Controllers
             }
         }
 
+        /// <summary>
+        /// DEVELOPMENT ONLY: Generate password hash
+        /// This endpoint should be REMOVED or DISABLED in production
+        /// </summary>
+        [HttpPost("generate-hash")]
+        public ActionResult<ApiResponse<object>> GeneratePasswordHash([FromBody] GenerateHashRequest request)
+        {
+            #if DEBUG
+            try
+            {
+                if (string.IsNullOrEmpty(request.Password))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Password is required"
+                    });
+                }
+
+                var hash = _passwordHasher.HashPassword(request.Password);
+                
+                var sqlScript = $@"
+-- Update Officers with test@123 password and yopmail emails
+UPDATE ""Officers""
+SET 
+    ""Email"" = LOWER(""EmployeeId"") || '@yopmail.com',
+    ""PasswordHash"" = '{hash}',
+    ""UpdatedDate"" = NOW()
+WHERE ""Email"" NOT LIKE '%yopmail.com';
+
+-- Verify the update
+SELECT ""Id"", ""EmployeeId"", ""Email"", ""Name"", ""Role""
+FROM ""Officers""
+ORDER BY ""EmployeeId"";
+";
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Password hash generated successfully",
+                    Data = new 
+                    {
+                        Password = request.Password,
+                        Hash = hash,
+                        SqlScript = sqlScript
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating password hash");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error generating hash"
+                });
+            }
+            #else
+            return NotFound(new ApiResponse
+            {
+                Success = false,
+                Message = "This endpoint is only available in development mode"
+            });
+            #endif
+        }
+
         #endregion
     }
+}
+
+public class GenerateHashRequest
+{
+    public string Password { get; set; } = string.Empty;
 }
