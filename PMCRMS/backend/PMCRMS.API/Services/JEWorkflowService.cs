@@ -19,6 +19,9 @@ namespace PMCRMS.API.Services
         private readonly IDigitalSignatureService _digitalSignatureService;
         private readonly INotificationService _notificationService;
         private readonly PdfService _pdfService;
+        private readonly IEmailService _emailService;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _configuration;
 
         public JEWorkflowService(
             PMCRMSDbContext context,
@@ -28,7 +31,10 @@ namespace PMCRMS.API.Services
             IDocumentVerificationService documentVerificationService,
             IDigitalSignatureService digitalSignatureService,
             INotificationService notificationService,
-            PdfService pdfService)
+            PdfService pdfService,
+            IEmailService emailService,
+            IHttpClientFactory httpClientFactory,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
@@ -38,6 +44,9 @@ namespace PMCRMS.API.Services
             _digitalSignatureService = digitalSignatureService;
             _notificationService = notificationService;
             _pdfService = pdfService;
+            _emailService = emailService;
+            _httpClientFactory = httpClientFactory;
+            _configuration = configuration;
         }
 
         public async Task<WorkflowActionResultDto> StartWorkflowAsync(StartJEWorkflowRequestDto request, int initiatedByUserId)
@@ -448,11 +457,14 @@ namespace PMCRMS.API.Services
                     throw new Exception("Officer not found");
                 }
 
-                // Generate 6-digit OTP
-                var random = new Random();
-                var otp = random.Next(100000, 999999).ToString();
+                _logger.LogInformation("Generating OTP from HSM for application {ApplicationId} and officer {OfficerId}", 
+                    applicationId, officerId);
 
-                // Store OTP in database
+                // Call HSM OTP service - NO FALLBACK
+                var otp = await CallHsmOtpServiceAsync(officer.Email, officer.PhoneNumber);
+                _logger.LogInformation("OTP generated successfully from HSM for officer {OfficerId}", officerId);
+
+                // Store OTP in database for validation
                 var otpVerification = new OtpVerification
                 {
                     Identifier = officer.Email,
@@ -468,15 +480,91 @@ namespace PMCRMS.API.Services
                 _context.OtpVerifications.Add(otpVerification);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Generated OTP for application {ApplicationId} and officer {OfficerId}. OTP: {Otp}", 
-                    applicationId, officerId, otp);
+                _logger.LogInformation("OTP stored in database for application {ApplicationId}", applicationId);
 
-                // In production, send OTP via email service instead of returning it
+                // Return OTP for development/testing purposes
+                // TODO: Remove this in production
                 return otp;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating OTP for signature");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Call HSM OTP service to generate and send OTP
+        /// </summary>
+        private async Task<string> CallHsmOtpServiceAsync(string email, string? phoneNumber)
+        {
+            var httpClient = _httpClientFactory.CreateClient("HSM_OTP");
+            var otpBaseUrl = _configuration["HSM:OtpBaseUrl"];
+
+            _logger.LogInformation("Calling HSM OTP service at {OtpBaseUrl} for email: {Email}", otpBaseUrl, email);
+
+            try
+            {
+                // Build the request payload for HSM OTP service
+                // Note: The exact format depends on eMudhra's API specification
+                // This is a common format - adjust based on actual API documentation
+                var requestData = new
+                {
+                    email = email,
+                    mobile = phoneNumber ?? "",
+                    purpose = "DIGITAL_SIGNATURE",
+                    otpLength = 6,
+                    validity = 5 // minutes
+                };
+
+                var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestData);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                _logger.LogInformation("HSM OTP Request: {Request}", jsonContent);
+
+                var response = await httpClient.PostAsync("", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+
+                _logger.LogInformation("HSM OTP Response Status: {StatusCode}, Content: {Content}", 
+                    response.StatusCode, responseContent);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"HSM OTP service failed with status {response.StatusCode}: {responseContent}");
+                }
+
+                // Parse the response to extract OTP
+                // Note: Adjust parsing based on actual HSM response format
+                using var jsonDoc = System.Text.Json.JsonDocument.Parse(responseContent);
+                var root = jsonDoc.RootElement;
+
+                // Try to extract OTP from response (common field names)
+                string otp;
+                if (root.TryGetProperty("otp", out var otpElement))
+                {
+                    otp = otpElement.GetString() ?? throw new Exception("OTP is null in response");
+                }
+                else if (root.TryGetProperty("code", out var codeElement))
+                {
+                    otp = codeElement.GetString() ?? throw new Exception("Code is null in response");
+                }
+                else if (root.TryGetProperty("otpCode", out var otpCodeElement))
+                {
+                    otp = otpCodeElement.GetString() ?? throw new Exception("OtpCode is null in response");
+                }
+                else
+                {
+                    // If response format is different, log it and throw
+                    _logger.LogError("Unexpected HSM OTP response format: {Response}", responseContent);
+                    throw new Exception("Could not extract OTP from HSM response");
+                }
+
+                _logger.LogInformation("Successfully extracted OTP from HSM response");
+                return otp;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling HSM OTP service");
                 throw;
             }
         }
