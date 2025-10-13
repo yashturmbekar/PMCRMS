@@ -1,0 +1,569 @@
+using Microsoft.EntityFrameworkCore;
+using PMCRMS.API.Data;
+using PMCRMS.API.Models;
+using System.Text;
+
+namespace PMCRMS.API.Services
+{
+    /// <summary>
+    /// Service for managing sequential digital signature workflow
+    /// Handles JE → AE → EE → CE signature progression on recommendation forms
+    /// </summary>
+    public interface ISignatureWorkflowService
+    {
+        /// <summary>
+        /// Get signature coordinates based on officer role and current signature count
+        /// </summary>
+        string GetSignatureCoordinates(OfficerRole role, int signatureOrder);
+
+        /// <summary>
+        /// Sign recommendation form as Junior Engineer (First signature)
+        /// </summary>
+        Task<SignatureWorkflowResult> SignAsJuniorEngineerAsync(int applicationId, int officerId, string otp);
+
+        /// <summary>
+        /// Sign recommendation form as Assistant Engineer (Second signature)
+        /// </summary>
+        Task<SignatureWorkflowResult> SignAsAssistantEngineerAsync(int applicationId, int officerId, string otp);
+
+        /// <summary>
+        /// Sign recommendation form as Executive Engineer (Third signature)
+        /// </summary>
+        Task<SignatureWorkflowResult> SignAsExecutiveEngineerAsync(int applicationId, int officerId, string otp);
+
+        /// <summary>
+        /// Sign recommendation form as City Engineer (Fourth and final signature)
+        /// </summary>
+        Task<SignatureWorkflowResult> SignAsCityEngineerAsync(int applicationId, int officerId, string otp);
+
+        /// <summary>
+        /// Get current signature status for an application
+        /// </summary>
+        Task<SignatureStatusResult> GetSignatureStatusAsync(int applicationId);
+    }
+
+    public class SignatureWorkflowService : ISignatureWorkflowService
+    {
+        private readonly PMCRMSDbContext _context;
+        private readonly IHsmService _hsmService;
+        private readonly ILogger<SignatureWorkflowService> _logger;
+        private readonly IWebHostEnvironment _environment;
+
+        // Signature coordinates for each officer on recommendation form
+        private static class SignatureCoordinates
+        {
+            public const string JuniorEngineer = "117,383,236,324";      // Bottom-left
+            public const string AssistantEngineer = "250,383,369,324";   // Bottom-center-left
+            public const string ExecutiveEngineer = "383,383,502,324";   // Bottom-center-right
+            public const string CityEngineer = "516,383,635,324";        // Bottom-right
+        }
+
+        public SignatureWorkflowService(
+            PMCRMSDbContext context,
+            IHsmService hsmService,
+            ILogger<SignatureWorkflowService> logger,
+            IWebHostEnvironment environment)
+        {
+            _context = context;
+            _hsmService = hsmService;
+            _logger = logger;
+            _environment = environment;
+        }
+
+        /// <summary>
+        /// Get signature coordinates based on officer role
+        /// </summary>
+        public string GetSignatureCoordinates(OfficerRole role, int signatureOrder)
+        {
+            // Junior roles get first signature position
+            if (role == OfficerRole.JuniorArchitect || role == OfficerRole.JuniorLicenceEngineer ||
+                role == OfficerRole.JuniorStructuralEngineer || role == OfficerRole.JuniorSupervisor1 ||
+                role == OfficerRole.JuniorSupervisor2)
+            {
+                return SignatureCoordinates.JuniorEngineer;
+            }
+
+            // Assistant roles get second signature position
+            if (role == OfficerRole.AssistantArchitect || role == OfficerRole.AssistantLicenceEngineer ||
+                role == OfficerRole.AssistantStructuralEngineer || role == OfficerRole.AssistantSupervisor1 ||
+                role == OfficerRole.AssistantSupervisor2)
+            {
+                return SignatureCoordinates.AssistantEngineer;
+            }
+
+            // Executive Engineer gets third position
+            if (role == OfficerRole.ExecutiveEngineer)
+            {
+                return SignatureCoordinates.ExecutiveEngineer;
+            }
+
+            // City Engineer gets fourth position
+            if (role == OfficerRole.CityEngineer)
+            {
+                return SignatureCoordinates.CityEngineer;
+            }
+
+            return SignatureCoordinates.JuniorEngineer; // Default
+        }
+
+        /// <summary>
+        /// Sign recommendation form as Junior Engineer
+        /// </summary>
+        public async Task<SignatureWorkflowResult> SignAsJuniorEngineerAsync(int applicationId, int officerId, string otp)
+        {
+            return await SignRecommendationFormAsync(
+                applicationId,
+                officerId,
+                otp,
+                new[] { OfficerRole.JuniorArchitect, OfficerRole.JuniorLicenceEngineer, 
+                        OfficerRole.JuniorStructuralEngineer, OfficerRole.JuniorSupervisor1, 
+                        OfficerRole.JuniorSupervisor2 },
+                ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING,
+                "Junior Engineer signature completed. Forwarded to Assistant Engineer."
+            );
+        }
+
+        /// <summary>
+        /// Sign recommendation form as Assistant Engineer
+        /// </summary>
+        public async Task<SignatureWorkflowResult> SignAsAssistantEngineerAsync(int applicationId, int officerId, string otp)
+        {
+            return await SignRecommendationFormAsync(
+                applicationId,
+                officerId,
+                otp,
+                new[] { OfficerRole.AssistantArchitect, OfficerRole.AssistantLicenceEngineer, 
+                        OfficerRole.AssistantStructuralEngineer, OfficerRole.AssistantSupervisor1, 
+                        OfficerRole.AssistantSupervisor2 },
+                ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING,
+                "Assistant Engineer signature completed. Forwarded to Executive Engineer."
+            );
+        }
+
+        /// <summary>
+        /// Sign recommendation form as Executive Engineer
+        /// </summary>
+        public async Task<SignatureWorkflowResult> SignAsExecutiveEngineerAsync(int applicationId, int officerId, string otp)
+        {
+            return await SignRecommendationFormAsync(
+                applicationId,
+                officerId,
+                otp,
+                new[] { OfficerRole.ExecutiveEngineer },
+                ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING,
+                "Executive Engineer signature completed. Forwarded to City Engineer."
+            );
+        }
+
+        /// <summary>
+        /// Sign recommendation form as City Engineer (Final signature)
+        /// </summary>
+        public async Task<SignatureWorkflowResult> SignAsCityEngineerAsync(int applicationId, int officerId, string otp)
+        {
+            return await SignRecommendationFormAsync(
+                applicationId,
+                officerId,
+                otp,
+                new[] { OfficerRole.CityEngineer },
+                ApplicationCurrentStatus.CLERK_PENDING,
+                "All signatures completed. Forwarded to Clerk for certificate generation."
+            );
+        }
+
+        /// <summary>
+        /// Core signing logic for recommendation form
+        /// </summary>
+        private async Task<SignatureWorkflowResult> SignRecommendationFormAsync(
+            int applicationId,
+            int officerId,
+            string otp,
+            OfficerRole[] expectedRoles,
+            ApplicationCurrentStatus nextStatus,
+            string successMessage)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            
+            try
+            {
+                // 1. Get application with documents
+                var application = await _context.Applications
+                    .Include(a => a.Documents)
+                    .Include(a => a.Applicant)
+                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+                if (application == null)
+                {
+                    return new SignatureWorkflowResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Application not found"
+                    };
+                }
+
+                // 2. Validate officer exists and has correct role
+                var officer = await _context.Officers.FindAsync(officerId);
+                if (officer == null)
+                {
+                    return new SignatureWorkflowResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Officer not found"
+                    };
+                }
+
+                if (!expectedRoles.Contains(officer.Role))
+                {
+                    return new SignatureWorkflowResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Invalid officer role. Expected one of: {string.Join(", ", expectedRoles)}, got {officer.Role}"
+                    };
+                }
+
+                // 3. Get recommendation form document from SEDocuments table
+                var recommendationDoc = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && 
+                                            d.DocumentType == SEDocumentType.RecommendedForm);
+
+                if (recommendationDoc == null)
+                {
+                    return new SignatureWorkflowResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Recommendation form not found in database"
+                    };
+                }
+
+                // 4. Read PDF content from database
+                byte[] pdfContent;
+                if (recommendationDoc.FileContent != null && recommendationDoc.FileContent.Length > 0)
+                {
+                    // PDF is stored in database
+                    pdfContent = recommendationDoc.FileContent;
+                    _logger.LogInformation("Reading PDF from database (FileContent), size: {Size} bytes", pdfContent.Length);
+                }
+                else if (!string.IsNullOrEmpty(recommendationDoc.FilePath) && File.Exists(recommendationDoc.FilePath))
+                {
+                    // Fallback: PDF is stored as file
+                    try
+                    {
+                        pdfContent = await File.ReadAllBytesAsync(recommendationDoc.FilePath);
+                        _logger.LogInformation("Reading PDF from file: {FilePath}", recommendationDoc.FilePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to read PDF from file path");
+                        return new SignatureWorkflowResult
+                        {
+                            Success = false,
+                            ErrorMessage = "Failed to read recommendation form from file"
+                        };
+                    }
+                }
+                else
+                {
+                    return new SignatureWorkflowResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Recommendation form has no content (neither FileContent nor FilePath)"
+                    };
+                }
+
+                // 5. Sign PDF using HSM with test KeyLabel
+                var signResult = await SignPdfWithTestKeyLabelAsync(
+                    applicationId,
+                    officerId,
+                    pdfContent,
+                    otp,
+                    officer.Role
+                );
+
+                if (!signResult.Success)
+                {
+                    _logger.LogError("HSM signature failed for {Role}: {Error}", 
+                        officer.Role, signResult.ErrorMessage);
+                    
+                    return new SignatureWorkflowResult
+                    {
+                        Success = false,
+                        ErrorMessage = signResult.ErrorMessage,
+                        RawHsmResponse = signResult.RawResponse
+                    };
+                }
+
+                // 6. Save signed PDF back to database (update FileContent)
+                recommendationDoc.FileContent = signResult.SignedPdfContent;
+                recommendationDoc.FileSize = (decimal)(signResult.SignedPdfContent!.Length / 1024.0); // Size in KB
+                recommendationDoc.FileName = $"RecommendedForm_Signed_{applicationId}_{officer.Role}.pdf";
+                recommendationDoc.IsVerified = true;
+                recommendationDoc.VerifiedBy = officerId;
+                recommendationDoc.VerifiedDate = DateTime.UtcNow;
+                recommendationDoc.VerificationRemarks = $"Digitally signed by {officer.Role}";
+                recommendationDoc.UpdatedDate = DateTime.UtcNow;
+
+                _logger.LogInformation(
+                    "Updated signed PDF in database for application {ApplicationId}, size: {Size} KB",
+                    applicationId, recommendationDoc.FileSize);
+
+                // 7. Update application status
+                application.CurrentStatus = nextStatus;
+                application.UpdatedDate = DateTime.UtcNow;
+
+                // 9. Add status history
+                var statusHistory = new ApplicationStatus
+                {
+                    ApplicationId = applicationId,
+                    Status = nextStatus,
+                    UpdatedByOfficerId = officerId,
+                    Remarks = $"{officer.Role} signed recommendation form digitally",
+                    StatusDate = DateTime.UtcNow,
+                    IsActive = true
+                };
+                _context.ApplicationStatuses.Add(statusHistory);
+
+                // 10. Assign to next officer if not final signature
+                if (nextStatus != ApplicationCurrentStatus.CLERK_PENDING)
+                {
+                    await AssignToNextOfficerAsync(application, nextStatus);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation(
+                    "✅ {Role} signature completed for application {ApplicationId}. New status: {Status}",
+                    officer.Role, applicationId, nextStatus);
+
+                return new SignatureWorkflowResult
+                {
+                    Success = true,
+                    Message = successMessage,
+                    SignedDocumentId = recommendationDoc.Id,
+                    NextStatus = nextStatus
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error during signature workflow");
+                
+                return new SignatureWorkflowResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Exception: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Sign PDF using HSM with Test2025Sign KeyLabel (Testing mode)
+        /// </summary>
+        private async Task<HsmWorkflowSignResult> SignPdfWithTestKeyLabelAsync(
+            int applicationId,
+            int officerId,
+            byte[] pdfContent,
+            string otp,
+            OfficerRole role)
+        {
+            try
+            {
+                // 🧪 TESTING: Use hardcoded Test2025Sign KeyLabel
+                var testKeyLabel = "Test2025Sign";
+                
+                _logger.LogInformation(
+                    "🧪 TESTING MODE: Signing PDF for officer {OfficerId} ({Role}) using TEST KeyLabel '{TestKeyLabel}'",
+                    officerId, role, testKeyLabel);
+
+                // Get signature coordinates for this role
+                var coordinates = GetSignatureCoordinates(role, 0);
+
+                // Convert PDF to Base64
+                var base64Pdf = Convert.ToBase64String(pdfContent);
+
+                // Sign PDF using HSM
+                var signRequest = new HsmSignRequest
+                {
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = testKeyLabel, // 🧪 Using test KeyLabel
+                    Base64Pdf = base64Pdf,
+                    Otp = otp,
+                    Coordinates = coordinates,
+                    PageLocation = "last",
+                    OtpType = "single"
+                };
+
+                var hsmResult = await _hsmService.SignPdfAsync(signRequest);
+
+                if (!hsmResult.Success)
+                {
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = hsmResult.ErrorMessage,
+                        RawResponse = hsmResult.RawResponse
+                    };
+                }
+
+                if (string.IsNullOrEmpty(hsmResult.SignedPdfBase64))
+                {
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Signed PDF not returned by HSM",
+                        RawResponse = hsmResult.RawResponse
+                    };
+                }
+
+                // Convert Base64 back to bytes
+                var signedPdfBytes = Convert.FromBase64String(hsmResult.SignedPdfBase64);
+
+                return new HsmWorkflowSignResult
+                {
+                    Success = true,
+                    Message = "PDF signed successfully",
+                    SignedPdfContent = signedPdfBytes,
+                    RawResponse = hsmResult.RawResponse
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error signing PDF with test KeyLabel");
+                return new HsmWorkflowSignResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Exception: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Assign application to next officer in workflow
+        /// </summary>
+        private async Task AssignToNextOfficerAsync(Application application, ApplicationCurrentStatus status)
+        {
+            OfficerRole[]? nextRoles = status switch
+            {
+                ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING => new[] 
+                { 
+                    OfficerRole.AssistantArchitect, OfficerRole.AssistantLicenceEngineer,
+                    OfficerRole.AssistantStructuralEngineer, OfficerRole.AssistantSupervisor1,
+                    OfficerRole.AssistantSupervisor2
+                },
+                ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING => new[] { OfficerRole.ExecutiveEngineer },
+                ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING => new[] { OfficerRole.CityEngineer },
+                _ => null
+            };
+
+            if (nextRoles == null) return;
+
+            // Find available officer with next role
+            var nextOfficer = await _context.Officers
+                .Where(o => nextRoles.Contains(o.Role) && o.IsActive)
+                .OrderBy(o => Guid.NewGuid()) // Random assignment for load balancing
+                .FirstOrDefaultAsync();
+
+            if (nextOfficer != null)
+            {
+                application.AssignedOfficerId = nextOfficer.Id;
+                application.AssignedOfficerName = nextOfficer.Name;
+                application.AssignedOfficerDesignation = nextOfficer.Role.ToString();
+                application.AssignedDate = DateTime.UtcNow;
+
+                _logger.LogInformation(
+                    "Application {ApplicationId} assigned to {Role}: {OfficerName}",
+                    application.Id, nextOfficer.Role, nextOfficer.Name);
+            }
+        }
+
+        /// <summary>
+        /// Get signature status for application
+        /// </summary>
+        public async Task<SignatureStatusResult> GetSignatureStatusAsync(int applicationId)
+        {
+            var application = await _context.Applications
+                .Include(a => a.StatusHistory)
+                .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+            if (application == null)
+            {
+                return new SignatureStatusResult
+                {
+                    Success = false,
+                    ErrorMessage = "Application not found"
+                };
+            }
+
+            // Check which signatures have been completed
+            var statusHistory = application.StatusHistory.OrderBy(s => s.StatusDate).ToList();
+
+            var jeSignature = statusHistory.Any(s => 
+                s.Status == ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING);
+            
+            var aeSignature = statusHistory.Any(s => 
+                s.Status == ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING);
+            
+            var eeSignature = statusHistory.Any(s => 
+                s.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING);
+            
+            var ceSignature = statusHistory.Any(s => 
+                s.Status == ApplicationCurrentStatus.CLERK_PENDING);
+
+            return new SignatureStatusResult
+            {
+                Success = true,
+                ApplicationId = applicationId,
+                CurrentStatus = application.CurrentStatus,
+                JuniorEngineerSigned = jeSignature,
+                AssistantEngineerSigned = aeSignature,
+                ExecutiveEngineerSigned = eeSignature,
+                CityEngineerSigned = ceSignature,
+                AllSignaturesComplete = ceSignature,
+                NextSigner = GetNextSignerRole(application.CurrentStatus)
+            };
+        }
+
+        /// <summary>
+        /// Determine next signer based on current status
+        /// </summary>
+        private string? GetNextSignerRole(ApplicationCurrentStatus status)
+        {
+            return status switch
+            {
+                ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => "Junior Engineer",
+                ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING => "Assistant Engineer",
+                ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING => "Executive Engineer",
+                ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING => "City Engineer",
+                ApplicationCurrentStatus.CLERK_PENDING => null, // All signatures complete
+                _ => null
+            };
+        }
+    }
+
+    #region DTOs
+
+    public class SignatureWorkflowResult
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? ErrorMessage { get; set; }
+        public int? SignedDocumentId { get; set; } // SEDocument ID in database
+        public ApplicationCurrentStatus? NextStatus { get; set; }
+        public string? RawHsmResponse { get; set; }
+    }
+
+    public class SignatureStatusResult
+    {
+        public bool Success { get; set; }
+        public string? ErrorMessage { get; set; }
+        public int ApplicationId { get; set; }
+        public ApplicationCurrentStatus CurrentStatus { get; set; }
+        public bool JuniorEngineerSigned { get; set; }
+        public bool AssistantEngineerSigned { get; set; }
+        public bool ExecutiveEngineerSigned { get; set; }
+        public bool CityEngineerSigned { get; set; }
+        public bool AllSignaturesComplete { get; set; }
+        public string? NextSigner { get; set; }
+    }
+
+    #endregion
+}

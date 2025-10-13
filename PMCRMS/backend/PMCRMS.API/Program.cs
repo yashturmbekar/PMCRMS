@@ -287,6 +287,7 @@ builder.Services.AddScoped<EEStage2WorkflowService>(); // EE Stage 2 workflow se
 builder.Services.AddScoped<CEStage2WorkflowService>(); // CE Stage 2 workflow service (Final Certificate Signature)
 builder.Services.AddScoped<DocumentDownloadService>(); // Document download service with OTP authentication (Public Access)
 builder.Services.AddScoped<IChallanService, ChallanService>(); // Challan generation service with bilingual PDF support
+builder.Services.AddScoped<ISignatureWorkflowService, SignatureWorkflowService>(); // Sequential digital signature workflow (JE → AE → EE → CE)
 
 // BillDesk Payment Gateway Services
 builder.Services.AddSingleton<IBillDeskConfigService, BillDeskConfigService>(); // BillDesk configuration (singleton)

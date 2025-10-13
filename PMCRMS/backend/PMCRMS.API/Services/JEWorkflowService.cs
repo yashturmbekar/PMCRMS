@@ -16,7 +16,7 @@ namespace PMCRMS.API.Services
         private readonly IAutoAssignmentService _autoAssignmentService;
         private readonly IAppointmentService _appointmentService;
         private readonly IDocumentVerificationService _documentVerificationService;
-        private readonly IDigitalSignatureService _digitalSignatureService;
+        private readonly ISignatureWorkflowService _signatureWorkflowService;
         private readonly INotificationService _notificationService;
         private readonly PdfService _pdfService;
         private readonly IEmailService _emailService;
@@ -31,7 +31,7 @@ namespace PMCRMS.API.Services
             IAutoAssignmentService autoAssignmentService,
             IAppointmentService appointmentService,
             IDocumentVerificationService documentVerificationService,
-            IDigitalSignatureService digitalSignatureService,
+            ISignatureWorkflowService signatureWorkflowService,
             INotificationService notificationService,
             PdfService pdfService,
             IEmailService emailService,
@@ -45,7 +45,7 @@ namespace PMCRMS.API.Services
             _autoAssignmentService = autoAssignmentService;
             _appointmentService = appointmentService;
             _documentVerificationService = documentVerificationService;
-            _digitalSignatureService = digitalSignatureService;
+            _signatureWorkflowService = signatureWorkflowService;
             _notificationService = notificationService;
             _pdfService = pdfService;
             _emailService = emailService;
@@ -373,89 +373,34 @@ namespace PMCRMS.API.Services
                     otpVerification.IsUsed = true;
                     otpVerification.VerifiedAt = DateTime.UtcNow;
                     
-                    // Get recommendation form PDF document
-                    var recommendationForm = await _context.SEDocuments
-                        .FirstOrDefaultAsync(d => d.ApplicationId == request.ApplicationId 
-                                                && d.DocumentType == SEDocumentType.RecommendedForm);
+                    // ✅ Use SignatureWorkflowService for consistent database-only signature workflow
+                    _logger.LogInformation(
+                        "Initiating JE digital signature for application {ApplicationId} by officer {OfficerId}",
+                        request.ApplicationId, officerId);
 
-                    if (recommendationForm == null || recommendationForm.FileContent == null)
+                    var signatureResult = await _signatureWorkflowService.SignAsJuniorEngineerAsync(
+                        request.ApplicationId,
+                        officerId,
+                        request.Otp
+                    );
+
+                    if (!signatureResult.Success)
                     {
-                        return new WorkflowActionResultDto 
-                        { 
-                            Success = false, 
-                            Message = "Recommendation form not found. Please generate it first." 
+                        return new WorkflowActionResultDto
+                        {
+                            Success = false,
+                            Message = $"Digital signature failed: {signatureResult.ErrorMessage}",
+                            Errors = new List<string> { signatureResult.ErrorMessage ?? "Unknown error" }
                         };
                     }
 
-                    // Save PDF temporarily for HSM signing
-                    var tempPdfPath = Path.Combine(Path.GetTempPath(), $"recommendation_{request.ApplicationId}.pdf");
-                    await File.WriteAllBytesAsync(tempPdfPath, recommendationForm.FileContent);
+                    // Set digital signature flags on application
+                    application.JEDigitalSignatureApplied = true;
+                    application.JEDigitalSignatureDate = DateTime.UtcNow;
 
-                    try
-                    {
-                        // Initiate digital signature with HSM
-                        var coordinates = $"{100},{700},{200},{150},{1}"; // X, Y, Width, Height, Page
-                        var ipAddress = ""; // TODO: Get from HTTP context if needed
-                        var userAgent = "PMCRMS_API";
-
-                        var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
-                            applicationId: request.ApplicationId,
-                            signedByOfficerId: officerId,
-                            signatureType: SignatureType.JuniorEngineer,
-                            documentPath: tempPdfPath,
-                            coordinates: coordinates,
-                            ipAddress: ipAddress,
-                            userAgent: userAgent
-                        );
-
-                        if (!initiateResult.Success || initiateResult.SignatureId == null)
-                        {
-                            return new WorkflowActionResultDto 
-                            { 
-                                Success = false, 
-                                Message = $"Failed to initiate digital signature: {initiateResult.Message}" 
-                            };
-                        }
-
-                        // Complete signature with OTP (calls actual HSM API)
-                        var completeResult = await _digitalSignatureService.CompleteSignatureAsync(
-                            signatureId: initiateResult.SignatureId.Value,
-                            otp: request.Otp,
-                            completedBy: officer.Email
-                        );
-
-                        if (!completeResult.Success)
-                        {
-                            return new WorkflowActionResultDto 
-                            { 
-                                Success = false, 
-                                Message = $"Digital signature failed: {completeResult.Message}" 
-                            };
-                        }
-
-                        // Update recommendation form with signed PDF
-                        if (!string.IsNullOrEmpty(completeResult.SignedDocumentPath) && File.Exists(completeResult.SignedDocumentPath))
-                        {
-                            var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
-                            recommendationForm.FileContent = signedPdfBytes;
-                            recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0); // KB
-                            recommendationForm.UpdatedDate = DateTime.UtcNow;
-                            
-                            _logger.LogInformation("Updated recommendation form with digitally signed PDF for application {ApplicationId}", request.ApplicationId);
-                        }
-
-                        // Set digital signature flags on application
-                        application.JEDigitalSignatureApplied = true;
-                        application.JEDigitalSignatureDate = DateTime.UtcNow;
-                    }
-                    finally
-                    {
-                        // Clean up temporary file
-                        if (File.Exists(tempPdfPath))
-                        {
-                            File.Delete(tempPdfPath);
-                        }
-                    }
+                    _logger.LogInformation(
+                        "JE digital signature completed for application {ApplicationId}",
+                        request.ApplicationId);
                 }
 
                 // Update application status if this is the first verification
@@ -644,7 +589,7 @@ namespace PMCRMS.API.Services
                 // Call HSM OTP service with officer's KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: officer.KeyLabel,
+                    keyLabel: "Test2025Sign",
                     otpType: "single"
                 );
 

@@ -168,24 +168,19 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Signing PDF for transaction {TransactionId} with key {KeyLabel}",
                     request.TransactionId, request.KeyLabel);
 
-                // Build SOAP envelope for eMudhra signature service
+                // Build SOAP envelope for eMudhra signature service - matches HSM specification exactly
                 var soapEnvelope = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"">
   <s:Body xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
     <signPdf xmlns=""http://ds.ws.emas/"">
-      <arg0>{request.TransactionId}</arg0>
-      <arg1>{request.KeyLabel}</arg1>
-      <arg2>{request.Base64Pdf}</arg2>
-      <arg3></arg3>
-      <arg4>{request.Coordinates}</arg4>
-      <arg5>{request.PageLocation ?? "last"}</arg5>
-      <arg6></arg6>
-      <arg7></arg7>
-      <arg8>True</arg8>
-      <arg9>{request.Otp}</arg9>
-      <arg10>{request.OtpType ?? "single"}</arg10>
-      <arg11></arg11>
-      <arg12></arg12>
+      <arg0 xmlns="""">{request.TransactionId}</arg0>
+      <arg1 xmlns="""">{request.KeyLabel}</arg1>
+      <arg2 xmlns="""">{request.Base64Pdf}</arg2>
+      <arg4 xmlns="""">{request.Coordinates}</arg4>
+      <arg5 xmlns="""">{request.PageLocation ?? "last"}</arg5>
+      <arg8 xmlns="""">True</arg8>
+      <arg9 xmlns="""">{request.Otp}</arg9>
+      <arg10 xmlns="""">{request.OtpType ?? "single"}</arg10>
     </signPdf>
   </s:Body>
 </s:Envelope>";
