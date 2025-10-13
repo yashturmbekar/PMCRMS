@@ -6,7 +6,7 @@ import positionRegistrationService, {
   type Experience as ApiExperience,
   type Address as ApiAddress,
 } from "../services/positionRegistrationService";
-import { PageLoader } from "../components";
+import { PageLoader, SectionLoader } from "../components";
 
 // Enums matching backend
 const PositionType = {
@@ -4286,6 +4286,9 @@ export const PositionRegistrationPage = () => {
                     ? "none"
                     : "0 4px 12px rgba(16, 185, 129, 0.3)",
                   transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
                 onMouseEnter={(e) =>
                   !isSubmitting &&
@@ -4295,7 +4298,10 @@ export const PositionRegistrationPage = () => {
                   (e.currentTarget.style.transform = "translateY(0)")
                 }
               >
-                {isSubmitting ? "⏳ Submitting..." : "✅ Confirm & Submit"}
+                {isSubmitting && (
+                  <SectionLoader variant="minimal" size="small" inline />
+                )}
+                {isSubmitting ? "Submitting..." : "✅ Confirm & Submit"}
               </button>
             </div>
           </div>

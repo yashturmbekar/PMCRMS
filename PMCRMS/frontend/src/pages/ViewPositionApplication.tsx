@@ -14,7 +14,7 @@ import {
 import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
-import { PageLoader } from "../components";
+import { PageLoader, SectionLoader } from "../components";
 import { DocumentApprovalModal } from "../components/workflow";
 import AuthContext from "../contexts/AuthContext";
 import { jeWorkflowService } from "../services/jeWorkflowService";
@@ -40,6 +40,8 @@ const ViewPositionApplication: React.FC = () => {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
   const [rescheduleError, setRescheduleError] = useState("");
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const [scheduleForm, setScheduleForm] = useState({
     comments: "",
     reviewDate: "",
@@ -213,6 +215,7 @@ const ViewPositionApplication: React.FC = () => {
     }
 
     try {
+      setIsScheduling(true);
       console.log("📅 Scheduling appointment:", {
         applicationId: application.id,
         ...scheduleForm,
@@ -238,6 +241,8 @@ const ViewPositionApplication: React.FC = () => {
     } catch (error) {
       console.error("❌ Error scheduling appointment:", error);
       setScheduleError("Failed to schedule appointment. Please try again.");
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -254,6 +259,7 @@ const ViewPositionApplication: React.FC = () => {
 
     try {
       setRescheduleError("");
+      setIsRescheduling(true);
       await jeWorkflowService.rescheduleAppointment({
         appointmentId: application.workflowInfo.appointmentId,
         newReviewDate: rescheduleForm.newReviewDate,
@@ -282,6 +288,8 @@ const ViewPositionApplication: React.FC = () => {
     } catch (error) {
       console.error("❌ Error rescheduling appointment:", error);
       setRescheduleError("Failed to reschedule appointment. Please try again.");
+    } finally {
+      setIsRescheduling(false);
     }
   };
 
@@ -1642,12 +1650,19 @@ const ViewPositionApplication: React.FC = () => {
                 <button
                   className="pmc-button pmc-button-success"
                   onClick={handleSubmitSchedule}
+                  disabled={isScheduling}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
                   }}
                 >
-                  Schedule Appointment
+                  {isScheduling && (
+                    <SectionLoader variant="minimal" size="small" inline />
+                  )}
+                  {isScheduling ? "Scheduling..." : "Schedule Appointment"}
                 </button>
               </div>
             </div>
@@ -1695,7 +1710,7 @@ const ViewPositionApplication: React.FC = () => {
                   padding: "16px 20px",
                   borderBottom: "1px solid #e5e7eb",
                   background:
-                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                   flexShrink: 0,
                 }}
               >
@@ -1705,12 +1720,8 @@ const ViewPositionApplication: React.FC = () => {
                     marginBottom: "2px",
                     fontSize: "18px",
                     fontWeight: "600",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
                   }}
                 >
-                  <Calendar size={20} />
                   Reschedule Appointment
                 </h3>
                 <p
@@ -1755,45 +1766,6 @@ const ViewPositionApplication: React.FC = () => {
                   flexGrow: 1,
                 }}
               >
-                {/* Current Appointment Info */}
-                {application.workflowInfo?.appointmentDate && (
-                  <div
-                    style={{
-                      marginBottom: "20px",
-                      padding: "12px",
-                      background: "#f0f9ff",
-                      borderRadius: "6px",
-                      border: "1px solid #bae6fd",
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "#0369a1",
-                        fontWeight: "600",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      Current Appointment
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "14px",
-                        color: "#1e40af",
-                        fontWeight: "500",
-                        margin: 0,
-                      }}
-                    >
-                      {new Date(
-                        application.workflowInfo.appointmentDate
-                      ).toLocaleString("en-IN", {
-                        dateStyle: "full",
-                        timeStyle: "short",
-                      })}
-                    </p>
-                  </div>
-                )}
-
                 <div style={{ marginBottom: "16px" }}>
                   <label
                     className="pmc-label"
@@ -1805,7 +1777,7 @@ const ViewPositionApplication: React.FC = () => {
                       color: "#374151",
                     }}
                   >
-                    New Date & Time <span style={{ color: "#dc2626" }}>*</span>
+                    Review Date <span style={{ color: "#dc2626" }}>*</span>
                   </label>
                   <input
                     type="datetime-local"
@@ -1829,9 +1801,9 @@ const ViewPositionApplication: React.FC = () => {
                       backgroundColor: "white",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.borderColor = "#10b981";
                       e.target.style.boxShadow =
-                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";
@@ -1839,19 +1811,106 @@ const ViewPositionApplication: React.FC = () => {
                     }}
                     required
                   />
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "#6b7280",
-                      marginTop: "4px",
-                      marginBottom: 0,
-                    }}
-                  >
-                    Select a date and time after the current date
-                  </p>
                 </div>
 
-                <div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "12px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <div>
+                    <label
+                      className="pmc-label"
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "#374151",
+                      }}
+                    >
+                      Contact Person <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contact Person"
+                      value={rescheduleForm.contactPerson}
+                      onChange={(e) =>
+                        setRescheduleForm({
+                          ...rescheduleForm,
+                          contactPerson: e.target.value,
+                        })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="pmc-label"
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "#374151",
+                      }}
+                    >
+                      Room Number <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Room Number"
+                      value={rescheduleForm.roomNumber}
+                      onChange={(e) =>
+                        setRescheduleForm({
+                          ...rescheduleForm,
+                          roomNumber: e.target.value,
+                        })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
                   <label
                     className="pmc-label"
                     style={{
@@ -1862,60 +1921,11 @@ const ViewPositionApplication: React.FC = () => {
                       color: "#374151",
                     }}
                   >
-                    Reason for Rescheduling{" "}
-                    <span style={{ color: "#dc2626" }}>*</span>
-                  </label>
-                  <textarea
-                    placeholder="Please provide a reason for rescheduling this appointment..."
-                    value={rescheduleForm.rescheduleReason}
-                    onChange={(e) =>
-                      setRescheduleForm({
-                        ...rescheduleForm,
-                        rescheduleReason: e.target.value,
-                      })
-                    }
-                    rows={4}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      resize: "vertical",
-                      outline: "none",
-                      transition: "all 0.2s",
-                      fontFamily: "inherit",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#3b82f6";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                    required
-                  />
-                </div>
-
-                {/* Place Field */}
-                <div style={{ marginTop: "16px" }}>
-                  <label
-                    className="pmc-label"
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "#374151",
-                    }}
-                  >
-                    Place
+                    Place <span style={{ color: "#dc2626" }}>*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g., PMC Main Office, Kharadi Office"
+                    placeholder="Place"
                     value={rescheduleForm.place}
                     onChange={(e) =>
                       setRescheduleForm({
@@ -1933,29 +1943,18 @@ const ViewPositionApplication: React.FC = () => {
                       transition: "all 0.2s",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.borderColor = "#10b981";
                       e.target.style.boxShadow =
-                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";
                       e.target.style.boxShadow = "none";
                     }}
                   />
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: "#6b7280",
-                      marginTop: "4px",
-                      marginBottom: 0,
-                    }}
-                  >
-                    Leave empty to keep current location
-                  </p>
                 </div>
 
-                {/* Contact Person Field */}
-                <div style={{ marginTop: "16px" }}>
+                <div>
                   <label
                     className="pmc-label"
                     style={{
@@ -1966,129 +1965,39 @@ const ViewPositionApplication: React.FC = () => {
                       color: "#374151",
                     }}
                   >
-                    Contact Person
+                    Reschedule Reason
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Junior Engineer Name"
-                    value={rescheduleForm.contactPerson}
+                  <textarea
+                    placeholder="Reason for rescheduling"
+                    value={rescheduleForm.rescheduleReason}
                     onChange={(e) =>
                       setRescheduleForm({
                         ...rescheduleForm,
-                        contactPerson: e.target.value,
+                        rescheduleReason: e.target.value,
                       })
                     }
+                    rows={3}
                     style={{
                       width: "100%",
                       padding: "10px 12px",
                       border: "1.5px solid #d1d5db",
                       borderRadius: "6px",
                       fontSize: "14px",
+                      resize: "vertical",
                       outline: "none",
                       transition: "all 0.2s",
+                      fontFamily: "inherit",
                     }}
                     onFocus={(e) => {
-                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.borderColor = "#10b981";
                       e.target.style.boxShadow =
-                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";
                       e.target.style.boxShadow = "none";
                     }}
                   />
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: "#6b7280",
-                      marginTop: "4px",
-                      marginBottom: 0,
-                    }}
-                  >
-                    Leave empty to keep current contact person
-                  </p>
-                </div>
-
-                {/* Room Number Field */}
-                <div style={{ marginTop: "16px" }}>
-                  <label
-                    className="pmc-label"
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "#374151",
-                    }}
-                  >
-                    Room Number
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Room 301, 2nd Floor"
-                    value={rescheduleForm.roomNumber}
-                    onChange={(e) =>
-                      setRescheduleForm({
-                        ...rescheduleForm,
-                        roomNumber: e.target.value,
-                      })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#3b82f6";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                  />
-                  <p
-                    style={{
-                      fontSize: "11px",
-                      color: "#6b7280",
-                      marginTop: "4px",
-                      marginBottom: 0,
-                    }}
-                  >
-                    Leave empty to keep current room number
-                  </p>
-                </div>
-
-                {/* Info Notice */}
-                <div
-                  style={{
-                    marginTop: "16px",
-                    padding: "10px 12px",
-                    background: "#fef3c7",
-                    border: "1px solid #fbbf24",
-                    borderRadius: "6px",
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "8px",
-                  }}
-                >
-                  <span style={{ fontSize: "16px" }}>ℹ️</span>
-                  <p
-                    style={{
-                      fontSize: "12px",
-                      color: "#92400e",
-                      margin: 0,
-                      lineHeight: "1.5",
-                    }}
-                  >
-                    The applicant will receive an email notification with the
-                    new appointment date and time.
-                  </p>
                 </div>
               </div>
 
@@ -2106,10 +2015,7 @@ const ViewPositionApplication: React.FC = () => {
               >
                 <button
                   className="pmc-button pmc-button-secondary"
-                  onClick={() => {
-                    setShowRescheduleModal(false);
-                    setRescheduleError("");
-                  }}
+                  onClick={() => setShowRescheduleModal(false)}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
@@ -2118,8 +2024,9 @@ const ViewPositionApplication: React.FC = () => {
                   Cancel
                 </button>
                 <button
-                  className="pmc-button pmc-button-primary"
+                  className="pmc-button pmc-button-success"
                   onClick={handleRescheduleSubmit}
+                  disabled={isRescheduling}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
@@ -2128,8 +2035,381 @@ const ViewPositionApplication: React.FC = () => {
                     gap: "6px",
                   }}
                 >
-                  <Calendar size={16} />
-                  Reschedule Appointment
+                  {isRescheduling && (
+                    <SectionLoader variant="minimal" size="small" inline />
+                  )}
+                  {isRescheduling
+                    ? "Rescheduling..."
+                    : "Reschedule Appointment"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Popup */}
+        {showSuccessPopup && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              zIndex: 10000,
+              padding: "20px",
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                borderRadius: "16px",
+                maxWidth: "500px",
+                width: "100%",
+                padding: "40px",
+                textAlign: "center",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  borderRadius: "50%",
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  flexShrink: 0,
+                }}
+              >
+                <h3
+                  style={{
+                    color: "white",
+                    marginBottom: "2px",
+                    fontSize: "18px",
+                    fontWeight: "600",
+                  }}
+                >
+                  Schedule Appointment
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "13px",
+                    margin: 0,
+                  }}
+                >
+                  Application: {application.applicationNumber}
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {scheduleError && (
+                <div
+                  style={{
+                    margin: "16px 20px 0",
+                    padding: "12px 16px",
+                    background:
+                      "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                    border: "1.5px solid #ef4444",
+                    borderRadius: "6px",
+                    color: "#991b1b",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  {scheduleError}
+                </div>
+              )}
+
+              <div
+                className="pmc-modal-body"
+                style={{
+                  padding: "20px",
+                  overflowY: "auto",
+                  flexGrow: 1,
+                }}
+              >
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Review Date <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={scheduleForm.reviewDate}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        reviewDate: e.target.value,
+                      })
+                    }
+                    min={new Date().toISOString().slice(0, 16)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      cursor: "pointer",
+                      backgroundColor: "white",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "12px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <div>
+                    <label
+                      className="pmc-label"
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "#374151",
+                      }}
+                    >
+                      Contact Person <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contact Person"
+                      value={scheduleForm.contactPerson}
+                      onChange={(e) =>
+                        setScheduleForm({
+                          ...scheduleForm,
+                          contactPerson: e.target.value,
+                        })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="pmc-label"
+                      style={{
+                        display: "block",
+                        marginBottom: "6px",
+                        fontWeight: 500,
+                        fontSize: "13px",
+                        color: "#374151",
+                      }}
+                    >
+                      Room Number <span style={{ color: "#dc2626" }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Room Number"
+                      value={scheduleForm.roomNumber}
+                      onChange={(e) =>
+                        setScheduleForm({
+                          ...scheduleForm,
+                          roomNumber: e.target.value,
+                        })
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "14px",
+                        outline: "none",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#10b981";
+                        e.target.style.boxShadow =
+                          "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#d1d5db";
+                        e.target.style.boxShadow = "none";
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Place <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Place"
+                    value={scheduleForm.place}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        place: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Comments
+                  </label>
+                  <textarea
+                    placeholder="Additional comments or instructions"
+                    value={scheduleForm.comments}
+                    onChange={(e) =>
+                      setScheduleForm({
+                        ...scheduleForm,
+                        comments: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                className="pmc-modal-footer"
+                style={{
+                  padding: "12px 20px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "flex-end",
+                  background: "#f9fafb",
+                  flexShrink: 0,
+                }}
+              >
+                <button
+                  className="pmc-button pmc-button-secondary"
+                  onClick={() => setShowScheduleModal(false)}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="pmc-button pmc-button-success"
+                  onClick={handleSubmitSchedule}
+                  disabled={isScheduling}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {isScheduling && (
+                    <SectionLoader variant="minimal" size="small" inline />
+                  )}
+                  {isScheduling ? "Scheduling..." : "Schedule Appointment"}
                 </button>
               </div>
             </div>

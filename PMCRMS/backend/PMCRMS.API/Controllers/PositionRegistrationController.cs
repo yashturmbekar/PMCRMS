@@ -1015,8 +1015,9 @@ namespace PMCRMS.API.Controllers
             // Calculate progress percentage
             workflowInfo.ProgressPercentage = CalculateJEWorkflowProgress(application.Status);
 
-            // Get appointment information
+            // Get appointment information - get the latest scheduled appointment
             var appointment = application.Appointments
+                .Where(a => a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed)
                 .OrderByDescending(a => a.ReviewDate)
                 .FirstOrDefault();
             
