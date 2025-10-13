@@ -402,14 +402,17 @@ namespace PMCRMS.API.Services
                     };
                 }
 
+                // 🧪 TESTING: Hardcoded KeyLabel for HSM OTP testing
+                var testKeyLabel = "Test2025Sign";
+                
                 _logger.LogInformation(
-                    "Generating OTP for officer {OfficerId} ({OfficerName}, {Role}) with KeyLabel {KeyLabel} for application {ApplicationId}",
-                    officerId, officer.Name, officer.Role, officer.KeyLabel, applicationId);
+                    "🧪 TESTING MODE: Generating OTP for officer {OfficerId} ({OfficerName}, {Role}) using TEST KeyLabel '{TestKeyLabel}' (Original: {KeyLabel}) for application {ApplicationId}",
+                    officerId, officer.Name, officer.Role, testKeyLabel, officer.KeyLabel, applicationId);
 
-                // Call HSM OTP service
+                // Call HSM OTP service with hardcoded test KeyLabel
                 var hsmResult = await GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: officer.KeyLabel,
+                    keyLabel: testKeyLabel, // 🧪 Using hardcoded test KeyLabel
                     otpType: "single"
                 );
 
