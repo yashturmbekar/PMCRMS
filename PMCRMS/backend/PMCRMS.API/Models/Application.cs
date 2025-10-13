@@ -134,7 +134,11 @@ namespace PMCRMS.API.Models
         public virtual ICollection<ApplicationDocument> Documents { get; set; } = new List<ApplicationDocument>();
         public virtual ICollection<ApplicationStatus> StatusHistory { get; set; } = new List<ApplicationStatus>();
         public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
-        public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
         public virtual ICollection<ApplicationComment> Comments { get; set; } = new List<ApplicationComment>();
+        
+        // NOTE: Transactions are now primarily used with PositionApplications
+        // This property is kept for backward compatibility with legacy Application workflow
+        // but is NOT configured in EF Core to avoid FK conflicts
+        public virtual ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
     }
 }

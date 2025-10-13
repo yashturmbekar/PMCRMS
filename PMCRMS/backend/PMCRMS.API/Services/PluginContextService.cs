@@ -35,7 +35,7 @@ namespace PMCRMS.API.Services
                 throw new ArgumentException("Invalid entity ID format");
             }
 
-            var application = await _context.Applications
+            var application = await _context.PositionApplications
                 .FirstOrDefaultAsync(a => a.Id == applicationId);
 
             if (application == null)
@@ -46,14 +46,14 @@ namespace PMCRMS.API.Services
             // Fixed price for license certificate - can be made configurable
             const string CERTIFICATE_PRICE = "3000";
 
-            var applicant = await _context.Users.FindAsync(application.ApplicantId);
+            var applicant = await _context.Users.FindAsync(application.UserId);
 
             return new
             {
-                FirstName = applicant?.Name ?? "",
-                LastName = "", // User model doesn't have LastName
-                EmailAddress = applicant?.Email ?? "",
-                MobileNumber = applicant?.PhoneNumber ?? "",
+                FirstName = application.FirstName ?? "",
+                LastName = application.LastName ?? "",
+                EmailAddress = application.EmailAddress ?? "",
+                MobileNumber = application.MobileNumber ?? "",
                 Price = CERTIFICATE_PRICE
             };
         }

@@ -108,16 +108,15 @@ namespace PMCRMS.API.Controllers
         /// <summary>
         /// Verify documents, apply digital signature, and forward to Executive Engineer
         /// </summary>
-        [HttpPost("application/{id}/verify-and-sign")]
+        [HttpPost("verify-and-sign")]
         public async Task<ActionResult<WorkflowActionResultDto>> VerifyAndSign(
-            int id, 
             [FromBody] VerifyAndSignRequestDto request)
         {
             try
             {
                 var officerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var result = await _workflowService.VerifyAndSignDocumentsAsync(
-                    id, 
+                    request.ApplicationId, 
                     officerId, 
                     request.PositionType, 
                     request.Otp, 
@@ -132,7 +131,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying and signing application {ApplicationId}", id);
+                _logger.LogError(ex, "Error verifying and signing application {ApplicationId}", request.ApplicationId);
                 return StatusCode(500, new { message = "Error processing verification", error = ex.Message });
             }
         }
@@ -140,9 +139,8 @@ namespace PMCRMS.API.Controllers
         /// <summary>
         /// Reject application with mandatory comments
         /// </summary>
-        [HttpPost("application/{id}/reject")]
+        [HttpPost("reject")]
         public async Task<ActionResult<WorkflowActionResultDto>> RejectApplication(
-            int id, 
             [FromBody] RejectApplicationRequestDto request)
         {
             try
@@ -154,7 +152,7 @@ namespace PMCRMS.API.Controllers
 
                 var officerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
                 var result = await _workflowService.RejectApplicationAsync(
-                    id, 
+                    request.ApplicationId, 
                     officerId, 
                     request.PositionType, 
                     request.RejectionComments);
@@ -168,7 +166,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error rejecting application {ApplicationId}", id);
+                _logger.LogError(ex, "Error rejecting application {ApplicationId}", request.ApplicationId);
                 return StatusCode(500, new { message = "Error processing rejection", error = ex.Message });
             }
         }
@@ -179,6 +177,7 @@ namespace PMCRMS.API.Controllers
     /// </summary>
     public class VerifyAndSignRequestDto
     {
+        public int ApplicationId { get; set; }
         public PositionType PositionType { get; set; }
         public string Otp { get; set; } = string.Empty;
         public string? Comments { get; set; }
@@ -189,6 +188,7 @@ namespace PMCRMS.API.Controllers
     /// </summary>
     public class RejectApplicationRequestDto
     {
+        public int ApplicationId { get; set; }
         public PositionType PositionType { get; set; }
         public string RejectionComments { get; set; } = string.Empty;
     }

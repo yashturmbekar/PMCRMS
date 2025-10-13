@@ -69,11 +69,13 @@ export interface CEWorkflowStatusDto {
 }
 
 export interface VerifyAndSignRequest {
+  applicationId: number;
   otp: string;
   comments?: string;
 }
 
 export interface RejectApplicationRequest {
+  applicationId: number;
   rejectionComments: string;
 }
 

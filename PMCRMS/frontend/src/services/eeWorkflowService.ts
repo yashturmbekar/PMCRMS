@@ -39,12 +39,14 @@ export const eeWorkflowService = {
 
   /**
    * Generate OTP for digital signature
+   * POST /api/ExecutiveEngineer/generate-otp-for-signature
    */
   async generateOtpForSignature(
     applicationId: number
   ): Promise<{ success: boolean; message?: string; otp?: string }> {
     const response = await apiClient.post(
-      `${BASE_URL}/application/${applicationId}/generate-otp`
+      `${BASE_URL}/generate-otp-for-signature`,
+      { applicationId }
     );
     return {
       success: true,
@@ -55,13 +57,13 @@ export const eeWorkflowService = {
 
   /**
    * Verify documents, apply digital signature, and forward to City Engineer
+   * POST /api/ExecutiveEngineer/verify-and-sign
    */
   async verifyAndSignDocuments(
-    applicationId: number,
     request: VerifyAndSignRequest
   ): Promise<WorkflowActionResult> {
     const response = await apiClient.post(
-      `${BASE_URL}/application/${applicationId}/verify-and-sign`,
+      `${BASE_URL}/verify-and-sign`,
       request
     );
     return response;
@@ -69,15 +71,12 @@ export const eeWorkflowService = {
 
   /**
    * Reject application with mandatory comments
+   * POST /api/ExecutiveEngineer/reject
    */
   async rejectApplication(
-    applicationId: number,
     request: RejectApplicationRequest
   ): Promise<WorkflowActionResult> {
-    const response = await apiClient.post(
-      `${BASE_URL}/application/${applicationId}/reject`,
-      request
-    );
+    const response = await apiClient.post(`${BASE_URL}/reject`, request);
     return response;
   },
 };

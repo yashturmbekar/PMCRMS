@@ -16,7 +16,7 @@ import {
 import NotificationModal from "../components/common/NotificationModal";
 import type { NotificationType } from "../components/common/NotificationModal";
 import type { JEWorkflowStatusDto } from "../types/jeWorkflow";
-import type { AEWorkflowStatusDto } from "../types/aeWorkflow";
+import type { AEWorkflowStatusDto, PositionType } from "../types/aeWorkflow";
 
 interface Application {
   applicationId: number;
@@ -44,13 +44,6 @@ interface Application {
   eeApprovalStatus?: boolean;
   ceApprovalStatus?: boolean;
 }
-
-type PositionType =
-  | "Architect"
-  | "StructuralEngineer"
-  | "LicenceEngineer"
-  | "Supervisor1"
-  | "Supervisor2";
 
 const OfficerDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -244,20 +237,20 @@ const OfficerDashboard: React.FC = () => {
             })
           );
         } else if (officerConfig.type === "AE") {
-          const getDefaultPositionType = (role: string): PositionType => {
-            const roleToPositionType: Record<string, PositionType> = {
+          const getPositionTypeString = (role: string): string => {
+            const roleToPositionString: Record<string, string> = {
               AssistantArchitect: "Architect",
               AssistantStructuralEngineer: "StructuralEngineer",
               AssistantLicenceEngineer: "LicenceEngineer",
               AssistantSupervisor1: "Supervisor1",
               AssistantSupervisor2: "Supervisor2",
             };
-            return roleToPositionType[role] || "Architect";
+            return roleToPositionString[role] || "Architect";
           };
 
-          const positionType = getDefaultPositionType(user.role);
+          const positionTypeString = getPositionTypeString(user.role);
           const pending = await aeWorkflowService.getPendingApplications(
-            positionType
+            positionTypeString
           );
 
           fetchedApplications = pending.map((app: AEWorkflowStatusDto) => ({
@@ -473,27 +466,30 @@ const OfficerDashboard: React.FC = () => {
       if (officerConfig.type === "AE") {
         const getDefaultPositionType = (role: string): PositionType => {
           const roleToPositionType: Record<string, PositionType> = {
-            AssistantArchitect: "Architect",
-            AssistantStructuralEngineer: "StructuralEngineer",
-            AssistantLicenceEngineer: "LicenceEngineer",
-            AssistantSupervisor1: "Supervisor1",
-            AssistantSupervisor2: "Supervisor2",
+            AssistantArchitect: 0 as PositionType,
+            AssistantStructuralEngineer: 2 as PositionType,
+            AssistantLicenceEngineer: 1 as PositionType,
+            AssistantSupervisor1: 3 as PositionType,
+            AssistantSupervisor2: 4 as PositionType,
           };
-          return roleToPositionType[role] || "Architect";
+          return roleToPositionType[role] ?? (0 as PositionType);
         };
         const positionType = getDefaultPositionType(user!.role);
-        return await aeWorkflowService.verifyAndSignDocuments(applicationId, {
+        return await aeWorkflowService.verifyAndSignDocuments({
+          applicationId,
           positionType,
           otp,
           comments,
         });
       } else if (officerConfig.type === "EE") {
-        return await eeWorkflowService.verifyAndSignDocuments(applicationId, {
+        return await eeWorkflowService.verifyAndSignDocuments({
+          applicationId,
           otp,
           comments,
         });
       } else if (officerConfig.type === "CE") {
-        return await ceWorkflowService.verifyAndSignDocuments(applicationId, {
+        return await ceWorkflowService.verifyAndSignDocuments({
+          applicationId,
           otp,
           comments,
         });
@@ -524,20 +520,32 @@ const OfficerDashboard: React.FC = () => {
       let result;
 
       if (officerConfig.type === "AE") {
-        result = await aeWorkflowService.rejectApplication(
-          selectedApplication.applicationId,
-          { rejectionComments }
-        );
+        const getDefaultPositionType = (role: string): PositionType => {
+          const roleToPositionType: Record<string, PositionType> = {
+            AssistantArchitect: 0 as PositionType,
+            AssistantStructuralEngineer: 2 as PositionType,
+            AssistantLicenceEngineer: 1 as PositionType,
+            AssistantSupervisor1: 3 as PositionType,
+            AssistantSupervisor2: 4 as PositionType,
+          };
+          return roleToPositionType[role] ?? (0 as PositionType);
+        };
+        const positionType = getDefaultPositionType(user!.role);
+        result = await aeWorkflowService.rejectApplication({
+          applicationId: selectedApplication.applicationId,
+          positionType,
+          rejectionComments,
+        });
       } else if (officerConfig.type === "EE") {
-        result = await eeWorkflowService.rejectApplication(
-          selectedApplication.applicationId,
-          { rejectionComments }
-        );
+        result = await eeWorkflowService.rejectApplication({
+          applicationId: selectedApplication.applicationId,
+          rejectionComments,
+        });
       } else if (officerConfig.type === "CE") {
-        result = await ceWorkflowService.rejectApplication(
-          selectedApplication.applicationId,
-          { rejectionComments }
-        );
+        result = await ceWorkflowService.rejectApplication({
+          applicationId: selectedApplication.applicationId,
+          rejectionComments,
+        });
       }
 
       if (result?.success) {

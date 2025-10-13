@@ -26,6 +26,11 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
   applicationId,
   onApprovalComplete,
 }) => {
+  // ========== TESTING MODE: HSM OTP BYPASSED ==========
+  // TODO: REMOVE THIS FOR PRODUCTION
+  const TESTING_MODE = true; // Set to false to enable OTP verification
+  // ========== END TESTING MODE ==========
+
   const [comments, setComments] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpGenerated, setOtpGenerated] = useState(false);
@@ -104,25 +109,35 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
   const handleAddDigitalSignature = async () => {
     const otpValue = otp.join("");
 
-    if (otpValue.length !== 6) {
-      setNotification({
-        isOpen: true,
-        message: "Please enter the complete 6-digit OTP",
-        type: "warning",
-        title: "Incomplete OTP",
-        autoClose: false,
-      });
-      return;
+    // ========== TESTING MODE: Skip OTP validation ==========
+    if (TESTING_MODE) {
+      console.log("[TESTING MODE] Bypassing OTP validation for JE");
+    } else {
+      // ========== END TESTING MODE ==========
+      if (otpValue.length !== 6) {
+        setNotification({
+          isOpen: true,
+          message: "Please enter the complete 6-digit OTP",
+          type: "warning",
+          title: "Incomplete OTP",
+          autoClose: false,
+        });
+        return;
+      }
     }
 
     try {
       setIsSubmitting(true);
 
+      // ========== TESTING MODE: Use dummy OTP ==========
+      const otpToSend = TESTING_MODE ? "000000" : otpValue;
+      // ========== END TESTING MODE ==========
+
       // Call verify document API with OTP
       const response = await jeWorkflowService.verifyDocument({
         applicationId,
         comments,
-        otp: otpValue,
+        otp: otpToSend,
       });
 
       if (response.success) {
@@ -285,7 +300,8 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
             </div>
 
             {/* OTP Section */}
-            {otpGenerated && (
+            {/* ========== TESTING MODE: Hide OTP section ========== */}
+            {!TESTING_MODE && otpGenerated && (
               <div style={{ marginBottom: "20px" }}>
                 <label
                   className="pmc-label"
@@ -355,25 +371,46 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                 </p>
               </div>
             )}
+            {/* ========== END TESTING MODE ========== */}
 
             {/* Info Message */}
-            {!otpGenerated && (
+            {/* ========== TESTING MODE: Show testing mode message ========== */}
+            {TESTING_MODE ? (
               <div
                 style={{
                   padding: "12px 14px",
-                  background: "#fef3c7",
-                  border: "1px solid #fbbf24",
+                  background: "#dcfce7",
+                  border: "1px solid #86efac",
                   borderRadius: "6px",
                   marginBottom: "16px",
                 }}
               >
-                <p style={{ fontSize: "13px", color: "#92400e", margin: 0 }}>
-                  <strong>Note:</strong> Click "GET OTP" to receive a
-                  verification code on your email. You'll need to enter this OTP
-                  to digitally sign the recommendation form.
+                <p style={{ fontSize: "13px", color: "#14532d", margin: 0 }}>
+                  <strong>🧪 TESTING MODE:</strong> HSM OTP verification is
+                  bypassed. Click "VERIFY DOCUMENT (TESTING)" to directly
+                  approve without OTP.
                 </p>
               </div>
+            ) : (
+              !otpGenerated && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: "#fef3c7",
+                    border: "1px solid #fbbf24",
+                    borderRadius: "6px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <p style={{ fontSize: "13px", color: "#92400e", margin: 0 }}>
+                    <strong>Note:</strong> Click "GET OTP" to receive a
+                    verification code on your email. You'll need to enter this
+                    OTP to digitally sign the recommendation form.
+                  </p>
+                </div>
+              )
             )}
+            {/* ========== END TESTING MODE ========== */}
           </div>
 
           {/* Footer */}
@@ -403,7 +440,25 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
               Cancel
             </button>
 
-            {!otpGenerated ? (
+            {/* ========== TESTING MODE: Direct verify button ========== */}
+            {TESTING_MODE ? (
+              <button
+                className="pmc-button pmc-button-success"
+                onClick={handleAddDigitalSignature}
+                disabled={isSubmitting}
+                style={{
+                  minWidth: "240px",
+                  padding: "8px 16px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  border: "none",
+                }}
+              >
+                {isSubmitting ? "Processing..." : "VERIFY DOCUMENT (TESTING)"}
+              </button>
+            ) : !otpGenerated ? (
               <button
                 className="pmc-button pmc-button-primary"
                 onClick={handleGenerateOtp}
@@ -438,6 +493,7 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                 {isSubmitting ? "Processing..." : "ADD DIGITAL SIGNATURE"}
               </button>
             )}
+            {/* ========== END TESTING MODE ========== */}
           </div>
         </div>
       </div>

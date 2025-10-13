@@ -10,6 +10,8 @@ import {
   Ban,
   X,
   Eye,
+  CreditCard,
+  Info,
 } from "lucide-react";
 import positionRegistrationService, {
   type PositionRegistrationResponse,
@@ -931,16 +933,31 @@ const ViewPositionApplication: React.FC = () => {
           </div>
         )}
 
-        {/* Payment Section - Shows when CE approved (status 13) */}
-        {application.status === 13 && (
-          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+        {/* Payment Section - Shows when CE approved (status 15 - PaymentPending or 16 - PaymentCompleted) */}
+        {(application.status === 15 || application.status === 16) && (
+          <div
+            className="pmc-card"
+            style={{
+              marginBottom: "16px",
+              border: application.isPaymentComplete
+                ? "2px solid #10b981"
+                : "2px solid #f59e0b",
+              boxShadow: application.isPaymentComplete
+                ? "0 2px 8px rgba(16, 185, 129, 0.15)"
+                : "0 2px 8px rgba(245, 158, 11, 0.15)",
+            }}
+          >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                background: application.isPaymentComplete
+                  ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                  : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                 color: "white",
                 padding: "12px 16px",
-                borderBottom: "2px solid #1d4ed8",
+                borderBottom: application.isPaymentComplete
+                  ? "2px solid #059669"
+                  : "2px solid #d97706",
               }}
             >
               <div
@@ -952,22 +969,38 @@ const ViewPositionApplication: React.FC = () => {
               >
                 <h2
                   className="pmc-card-title"
-                  style={{ color: "white", margin: 0 }}
+                  style={{
+                    color: "white",
+                    margin: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
                 >
-                  Payment Required
+                  {application.isPaymentComplete ? (
+                    <CheckCircle size={20} />
+                  ) : (
+                    <CreditCard size={20} />
+                  )}
+                  {application.isPaymentComplete
+                    ? "Payment Completed"
+                    : "Payment Required"}
                 </h2>
                 {application.isPaymentComplete && (
                   <span
                     style={{
                       padding: "4px 12px",
-                      background: "#10b981",
+                      background: "rgba(255, 255, 255, 0.25)",
                       color: "white",
                       fontSize: "12px",
                       fontWeight: "600",
                       borderRadius: "9999px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
                     }}
                   >
-                    ✓ Payment Completed
+                    ✓ Verified
                   </span>
                 )}
               </div>
@@ -975,33 +1008,188 @@ const ViewPositionApplication: React.FC = () => {
             <div className="pmc-card-body">
               {!application.isPaymentComplete ? (
                 <>
-                  <div style={{ marginBottom: "16px" }}>
-                    <p
-                      style={{
-                        fontSize: "14px",
-                        color: "#64748b",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      Your application has been approved by the City Engineer.
-                      Please complete the payment of <strong>₹3,000</strong> to
-                      proceed to the next stage.
-                    </p>
-                    <div
-                      style={{
-                        padding: "12px",
-                        background: "#eff6ff",
-                        borderLeft: "4px solid #3b82f6",
-                        borderRadius: "4px",
-                        fontSize: "13px",
-                        color: "#1e40af",
-                      }}
-                    >
-                      <strong>Note:</strong> After successful payment, your
-                      application will be forwarded to the Clerk for further
-                      processing.
+                  {/* Success Message */}
+                  <div
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      border: "1px solid #bbf7d0",
+                      marginBottom: "20px",
+                      display: "flex",
+                      gap: "12px",
+                    }}
+                  >
+                    <CheckCircle
+                      size={24}
+                      color="#10b981"
+                      style={{ flexShrink: 0 }}
+                    />
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontWeight: 600,
+                          color: "#065f46",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        Application Approved by City Engineer (Stage 1)
+                      </p>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "14px",
+                          color: "#047857",
+                        }}
+                      >
+                        Congratulations! Your application has been successfully
+                        reviewed and approved.
+                      </p>
                     </div>
                   </div>
+
+                  {/* Payment Info Card */}
+                  <div
+                    style={{
+                      background: "#fffbeb",
+                      padding: "20px",
+                      borderRadius: "8px",
+                      border: "2px solid #fcd34d",
+                      marginBottom: "20px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        marginBottom: "16px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "48px",
+                          height: "48px",
+                          borderRadius: "50%",
+                          background:
+                            "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "white",
+                        }}
+                      >
+                        <CreditCard size={24} />
+                      </div>
+                      <div>
+                        <h3
+                          style={{
+                            margin: 0,
+                            fontSize: "18px",
+                            color: "#78350f",
+                            marginBottom: "4px",
+                          }}
+                        >
+                          Payment Details
+                        </h3>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "14px",
+                            color: "#92400e",
+                          }}
+                        >
+                          Complete payment to proceed with application
+                          processing
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className="pmc-form-grid pmc-form-grid-2"
+                      style={{ marginBottom: "16px" }}
+                    >
+                      <div
+                        style={{
+                          background: "white",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          border: "1px solid #fde68a",
+                        }}
+                      >
+                        <label
+                          className="pmc-label"
+                          style={{ color: "#92400e", marginBottom: "4px" }}
+                        >
+                          Payment Amount
+                        </label>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "24px",
+                            fontWeight: 700,
+                            color: "#78350f",
+                          }}
+                        >
+                          ₹3,000
+                        </p>
+                      </div>
+                      <div
+                        style={{
+                          background: "white",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          border: "1px solid #fde68a",
+                        }}
+                      >
+                        <label
+                          className="pmc-label"
+                          style={{ color: "#92400e", marginBottom: "4px" }}
+                        >
+                          Payment Gateway
+                        </label>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "16px",
+                            fontWeight: 600,
+                            color: "#78350f",
+                          }}
+                        >
+                          BillDesk (Secure)
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        background: "white",
+                        padding: "12px",
+                        borderRadius: "6px",
+                        border: "1px solid #fde68a",
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "13px",
+                          color: "#92400e",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <Info size={16} />
+                        <strong>Next Step:</strong> After successful payment,
+                        your application will be automatically forwarded to the
+                        Clerk for verification and further processing.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Payment Button */}
                   <PaymentButton
                     applicationId={application.id}
                     applicationStatus={application.status}
@@ -1016,37 +1204,157 @@ const ViewPositionApplication: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <div style={{ marginBottom: "16px" }}>
-                    <p
+                  {/* Payment Success */}
+                  <div className="pmc-form-grid pmc-form-grid-2">
+                    <div
                       style={{
-                        fontSize: "14px",
-                        color: "#64748b",
-                        marginBottom: "8px",
+                        background:
+                          "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                        padding: "20px",
+                        borderRadius: "8px",
+                        border: "1px solid #bbf7d0",
                       }}
                     >
-                      Your payment has been successfully completed. Your
-                      application will now proceed to the Clerk for further
-                      processing.
-                    </p>
-                    {application.paymentCompletedDate && (
-                      <p style={{ fontSize: "13px", color: "#94a3b8" }}>
-                        Payment completed on:{" "}
-                        {new Date(
-                          application.paymentCompletedDate
-                        ).toLocaleString()}
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "40px",
+                            height: "40px",
+                            borderRadius: "50%",
+                            background: "#10b981",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                          }}
+                        >
+                          <CheckCircle size={24} />
+                        </div>
+                        <div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "16px",
+                              fontWeight: 600,
+                              color: "#065f46",
+                            }}
+                          >
+                            Payment Successful
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "13px",
+                              color: "#059669",
+                            }}
+                          >
+                            Transaction completed
+                          </p>
+                        </div>
+                      </div>
+                      {application.paymentCompletedDate && (
+                        <div
+                          style={{
+                            background: "white",
+                            padding: "10px",
+                            borderRadius: "6px",
+                            border: "1px solid #bbf7d0",
+                          }}
+                        >
+                          <label
+                            className="pmc-label"
+                            style={{ marginBottom: "4px" }}
+                          >
+                            Completed On
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontWeight: 600,
+                              color: "#065f46",
+                            }}
+                          >
+                            {new Date(
+                              application.paymentCompletedDate
+                            ).toLocaleString("en-IN", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        background: "#f0f9ff",
+                        padding: "20px",
+                        borderRadius: "8px",
+                        border: "1px solid #bae6fd",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        <Info size={24} color="#0284c7" />
+                        <div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "16px",
+                              fontWeight: 600,
+                              color: "#0c4a6e",
+                            }}
+                          >
+                            Next Steps
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "13px",
+                              color: "#0369a1",
+                            }}
+                          >
+                            Application forwarded to Clerk
+                          </p>
+                        </div>
+                      </div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "13px",
+                          color: "#075985",
+                        }}
+                      >
+                        Your application is now being reviewed by the Clerk. You
+                        will receive updates via email.
                       </p>
-                    )}
+                    </div>
                   </div>
+
                   <button
                     className="pmc-button pmc-button-primary"
                     onClick={() => setShowPaymentModal(true)}
                     style={{
+                      marginTop: "16px",
                       display: "flex",
                       alignItems: "center",
                       gap: "8px",
                     }}
                   >
-                    <FileText size={18} />
+                    <Eye size={16} />
                     View Payment Details
                   </button>
                 </>

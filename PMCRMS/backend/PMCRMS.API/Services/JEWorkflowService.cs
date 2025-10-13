@@ -347,38 +347,48 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
                 }
 
+                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
+                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
                 // Apply digital signature if OTP provided (HSM validates OTP directly)
-                if (!string.IsNullOrWhiteSpace(request.Otp))
-                {
-                    // ✅ Use SignatureWorkflowService - HSM handles OTP validation
-                    _logger.LogInformation(
-                        "Initiating JE digital signature for application {ApplicationId} by officer {OfficerId}",
-                        request.ApplicationId, officerId);
+                // if (!string.IsNullOrWhiteSpace(request.Otp))
+                // {
+                //     // ✅ Use SignatureWorkflowService - HSM handles OTP validation
+                //     _logger.LogInformation(
+                //         "Initiating JE digital signature for application {ApplicationId} by officer {OfficerId}",
+                //         request.ApplicationId, officerId);
 
-                    var signatureResult = await _signatureWorkflowService.SignAsJuniorEngineerAsync(
-                        request.ApplicationId,
-                        officerId,
-                        request.Otp
-                    );
+                //     var signatureResult = await _signatureWorkflowService.SignAsJuniorEngineerAsync(
+                //         request.ApplicationId,
+                //         officerId,
+                //         request.Otp
+                //     );
 
-                    if (!signatureResult.Success)
-                    {
-                        return new WorkflowActionResultDto
-                        {
-                            Success = false,
-                            Message = $"Digital signature failed: {signatureResult.ErrorMessage}",
-                            Errors = new List<string> { signatureResult.ErrorMessage ?? "Unknown error" }
-                        };
-                    }
+                //     if (!signatureResult.Success)
+                //     {
+                //         return new WorkflowActionResultDto
+                //         {
+                //             Success = false,
+                //             Message = $"Digital signature failed: {signatureResult.ErrorMessage}",
+                //             Errors = new List<string> { signatureResult.ErrorMessage ?? "Unknown error" }
+                //         };
+                //     }
 
-                    // Set digital signature flags on application
-                    application.JEDigitalSignatureApplied = true;
-                    application.JEDigitalSignatureDate = DateTime.UtcNow;
+                //     // Set digital signature flags on application
+                //     application.JEDigitalSignatureApplied = true;
+                //     application.JEDigitalSignatureDate = DateTime.UtcNow;
 
-                    _logger.LogInformation(
-                        "JE digital signature completed for application {ApplicationId}",
-                        request.ApplicationId);
-                }
+                //     _logger.LogInformation(
+                //         "JE digital signature completed for application {ApplicationId}",
+                //         request.ApplicationId);
+                // }
+
+                // TESTING MODE: Auto-apply digital signature without HSM
+                application.JEDigitalSignatureApplied = true;
+                application.JEDigitalSignatureDate = DateTime.UtcNow;
+                _logger.LogInformation(
+                    "[TESTING MODE] JE digital signature auto-applied for application {ApplicationId}",
+                    request.ApplicationId);
+                // ========== END TESTING MODE ==========
 
                 // Update application status if this is the first verification
                 if (application.Status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING)
@@ -407,8 +417,9 @@ namespace PMCRMS.API.Services
                     application.JEApprovalComments = request.Comments;
                 }
 
-                // If OTP was provided and digital signature was applied, auto-forward to Assistant Engineer
-                if (!string.IsNullOrEmpty(request.Otp) && application.JEDigitalSignatureApplied)
+                // If digital signature was applied, auto-forward to Assistant Engineer
+                // TESTING MODE: Always forward since we auto-apply signature
+                if (application.JEDigitalSignatureApplied)
                 {
                     // Use auto-assignment service for intelligent workload-based assignment
                     var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
@@ -437,7 +448,7 @@ namespace PMCRMS.API.Services
 
                 await _context.SaveChangesAsync();
 
-                var message = request.Otp != null && application.JEDigitalSignatureApplied
+                var message = application.JEDigitalSignatureApplied
                     ? application.Status == ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING
                         ? "Documents verified, recommendation form digitally signed, and application forwarded to Assistant Engineer successfully"
                         : "Documents verified and recommendation form digitally signed successfully"

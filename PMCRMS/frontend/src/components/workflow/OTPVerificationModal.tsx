@@ -32,6 +32,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   onVerifyAndSign,
   onSuccess,
 }) => {
+  // ========== TESTING MODE: HSM OTP BYPASSED ==========
+  // TODO: REMOVE THIS FOR PRODUCTION
+  const TESTING_MODE = true; // Set to false to enable OTP verification
+  // ========== END TESTING MODE ==========
+
   const [comments, setComments] = useState("");
   const [otpValue, setOtpValue] = useState("");
   const [otpGenerated, setOtpGenerated] = useState(false);
@@ -107,21 +112,35 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   };
 
   const handleVerifyAndSign = async () => {
-    if (otpValue.length !== 6) {
-      setNotification({
-        isOpen: true,
-        message: "Please enter the complete 6-digit OTP",
-        type: "warning",
-        title: "Incomplete OTP",
-        autoClose: false,
-      });
-      return;
+    // ========== TESTING MODE: Skip OTP validation ==========
+    if (TESTING_MODE) {
+      console.log("[TESTING MODE] Bypassing OTP validation");
+    } else {
+      // ========== END TESTING MODE ==========
+      if (otpValue.length !== 6) {
+        setNotification({
+          isOpen: true,
+          message: "Please enter the complete 6-digit OTP",
+          type: "warning",
+          title: "Incomplete OTP",
+          autoClose: false,
+        });
+        return;
+      }
     }
 
     try {
       setIsSubmitting(true);
 
-      const response = await onVerifyAndSign(applicationId, otpValue, comments);
+      // ========== TESTING MODE: Use dummy OTP ==========
+      const otpToSend = TESTING_MODE ? "000000" : otpValue;
+      // ========== END TESTING MODE ==========
+
+      const response = await onVerifyAndSign(
+        applicationId,
+        otpToSend,
+        comments
+      );
 
       if (response.success) {
         setNotification({
@@ -309,7 +328,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             </div>
 
             {/* OTP Section */}
-            {otpGenerated && (
+            {/* ========== TESTING MODE: Hide OTP section ========== */}
+            {!TESTING_MODE && otpGenerated && (
               <div style={{ marginBottom: "20px" }}>
                 <label
                   className="pmc-label"
@@ -342,16 +362,16 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 </p>
               </div>
             )}
+            {/* ========== END TESTING MODE ========== */}
 
             {/* Info Message */}
-            {!otpGenerated && (
+            {/* ========== TESTING MODE: Show testing mode message ========== */}
+            {TESTING_MODE ? (
               <div
                 style={{
                   padding: "12px 14px",
-                  background: officerType === "CE" ? "#fef2f2" : "#fef3c7",
-                  border: `1px solid ${
-                    officerType === "CE" ? "#fca5a5" : "#fbbf24"
-                  }`,
+                  background: "#dcfce7",
+                  border: "1px solid #86efac",
                   borderRadius: "6px",
                   marginBottom: "16px",
                 }}
@@ -359,13 +379,13 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 <p
                   style={{
                     fontSize: "13px",
-                    color: officerType === "CE" ? "#7f1d1d" : "#92400e",
+                    color: "#14532d",
                     margin: 0,
                   }}
                 >
-                  <strong>Note:</strong> Click "GET OTP" to receive a
-                  verification code on your email. You'll need to enter this OTP
-                  to digitally sign the recommendation form.
+                  <strong>🧪 TESTING MODE:</strong> HSM OTP verification is
+                  bypassed. Click "VERIFY & SIGN (TESTING)" to directly approve
+                  without OTP.
                   {officerType === "CE" && (
                     <>
                       {" "}
@@ -376,7 +396,42 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   )}
                 </p>
               </div>
+            ) : (
+              !otpGenerated && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: officerType === "CE" ? "#fef2f2" : "#fef3c7",
+                    border: `1px solid ${
+                      officerType === "CE" ? "#fca5a5" : "#fbbf24"
+                    }`,
+                    borderRadius: "6px",
+                    marginBottom: "16px",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "13px",
+                      color: officerType === "CE" ? "#7f1d1d" : "#92400e",
+                      margin: 0,
+                    }}
+                  >
+                    <strong>Note:</strong> Click "GET OTP" to receive a
+                    verification code on your email. You'll need to enter this
+                    OTP to digitally sign the recommendation form.
+                    {officerType === "CE" && (
+                      <>
+                        {" "}
+                        <strong style={{ color: "#dc2626" }}>
+                          This is the FINAL APPROVAL step.
+                        </strong>
+                      </>
+                    )}
+                  </p>
+                </div>
+              )
             )}
+            {/* ========== END TESTING MODE ========== */}
           </div>
 
           {/* Footer */}
@@ -406,7 +461,31 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               Cancel
             </button>
 
-            {!otpGenerated ? (
+            {/* ========== TESTING MODE: Direct verify button ========== */}
+            {TESTING_MODE ? (
+              <button
+                className="pmc-button pmc-button-success"
+                onClick={handleVerifyAndSign}
+                disabled={isSubmitting}
+                style={{
+                  minWidth: "240px",
+                  padding: "8px 16px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  background:
+                    officerType === "CE"
+                      ? "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)"
+                      : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  border: "none",
+                }}
+              >
+                {isSubmitting
+                  ? "Processing..."
+                  : officerType === "CE"
+                  ? "FINAL APPROVAL & SIGN (TESTING)"
+                  : "VERIFY & SIGN (TESTING)"}
+              </button>
+            ) : !otpGenerated ? (
               <button
                 className="pmc-button pmc-button-primary"
                 onClick={handleGenerateOtp}
@@ -451,6 +530,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   : "VERIFY & SIGN"}
               </button>
             )}
+            {/* ========== END TESTING MODE ========== */}
           </div>
         </div>
       </div>

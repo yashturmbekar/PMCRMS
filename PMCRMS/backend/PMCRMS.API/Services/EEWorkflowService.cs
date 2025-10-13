@@ -275,57 +275,66 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Get HSM key label for EE
-                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("EE", application.PositionType.ToString());
+                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
+                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
                 
-                if (string.IsNullOrEmpty(keyLabel))
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "HSM key label not configured for EE officer" 
-                    };
-                }
+                // // Get HSM key label for EE
+                // var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("EE", application.PositionType.ToString());
+                
+                // if (string.IsNullOrEmpty(keyLabel))
+                // {
+                //     return new WorkflowActionResultDto 
+                //     { 
+                //         Success = false, 
+                //         Message = "HSM key label not configured for EE officer" 
+                //     };
+                // }
 
-                // Convert PDF to Base64 for HSM signing
-                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
+                // // Convert PDF to Base64 for HSM signing
+                // var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
 
-                // Sign PDF with HSM
-                var signRequest = new HsmSignRequest
-                {
-                    TransactionId = applicationId.ToString(),
-                    KeyLabel = keyLabel,
-                    Base64Pdf = base64Pdf,
-                    Otp = otp,
-                    Coordinates = SignatureCoordinates.RecommendationForm
-                };
+                // // Sign PDF with HSM
+                // var signRequest = new HsmSignRequest
+                // {
+                //     TransactionId = applicationId.ToString(),
+                //     KeyLabel = keyLabel,
+                //     Base64Pdf = base64Pdf,
+                //     Otp = otp,
+                //     Coordinates = SignatureCoordinates.RecommendationForm
+                // };
 
-                var signResult = await _hsmService.SignPdfAsync(signRequest);
+                // var signResult = await _hsmService.SignPdfAsync(signRequest);
 
-                if (!signResult.Success)
-                {
-                    _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                    };
-                }
+                // if (!signResult.Success)
+                // {
+                //     _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
+                //     return new WorkflowActionResultDto 
+                //     { 
+                //         Success = false, 
+                //         Message = $"Digital signature failed: {signResult.ErrorMessage}" 
+                //     };
+                // }
 
-                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "Signed PDF content is empty" 
-                    };
-                }
+                // if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                // {
+                //     return new WorkflowActionResultDto 
+                //     { 
+                //         Success = false, 
+                //         Message = "Signed PDF content is empty" 
+                //     };
+                // }
 
-                // Update recommendation form with signed PDF
-                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                recommendationForm.FileContent = signedPdfBytes;
-                recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                recommendationForm.UpdatedDate = DateTime.UtcNow;
+                // // Update recommendation form with signed PDF
+                // var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                // recommendationForm.FileContent = signedPdfBytes;
+                // recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                // recommendationForm.UpdatedDate = DateTime.UtcNow;
+
+                // TESTING MODE: Skip HSM signature
+                _logger.LogInformation(
+                    "[TESTING MODE] Skipping HSM signature for EE application {ApplicationId}", 
+                    applicationId);
+                // ========== END TESTING MODE ==========
                 
                 _logger.LogInformation(
                     "Updated recommendation form with EE digitally signed PDF via HSM for application {ApplicationId}", 

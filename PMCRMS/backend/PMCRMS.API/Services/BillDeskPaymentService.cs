@@ -189,7 +189,7 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation($"[PAYMENT] Legacy payment initiation for application: {applicationId}");
 
-                var application = await _context.Applications.FindAsync(applicationId);
+                var application = await _context.PositionApplications.FindAsync(applicationId);
                 if (application == null)
                 {
                     _logger.LogError($"[PAYMENT] Application not found: {applicationId}");
@@ -281,7 +281,7 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation($"[PAYMENT] Processing callback for application: {request.ApplicationId}");
                 _logger.LogInformation($"[PAYMENT] Callback data - Status: {request.Status}, Amount: {request.Amount}, BdOrderId: {request.BdOrderId}");
 
-                var application = await _context.Applications.FindAsync(request.ApplicationId);
+                var application = await _context.PositionApplications.FindAsync(request.ApplicationId);
                 if (application == null)
                 {
                     _logger.LogError($"[PAYMENT] Application not found: {request.ApplicationId}");
@@ -316,9 +316,7 @@ namespace PMCRMS.API.Services
                 // Update application status based on payment result
                 if (request.Status?.ToUpper() == "SUCCESS")
                 {
-                    application.CurrentStatus = ApplicationCurrentStatus.PaymentCompleted;
-                    application.IsPaymentComplete = true;
-                    application.PaymentCompletedDate = DateTime.UtcNow;
+                    application.Status = ApplicationCurrentStatus.PaymentCompleted;
                     application.UpdatedDate = DateTime.UtcNow;
 
                     _logger.LogInformation($"[PAYMENT] Payment successful - Application {request.ApplicationId} moved to PaymentCompleted status");
@@ -328,7 +326,7 @@ namespace PMCRMS.API.Services
                 }
                 else
                 {
-                    application.CurrentStatus = ApplicationCurrentStatus.PaymentPending;
+                    application.Status = ApplicationCurrentStatus.PaymentPending;
                     application.UpdatedDate = DateTime.UtcNow;
 
                     _logger.LogWarning($"[PAYMENT] Payment failed for application {request.ApplicationId}");
@@ -345,7 +343,7 @@ namespace PMCRMS.API.Services
                     Success = true,
                     Message = "Payment callback processed successfully",
                     RedirectUrl = redirectUrl,
-                    ApplicationStatus = application.CurrentStatus.ToString()
+                    ApplicationStatus = application.Status.ToString()
                 };
             }
             catch (Exception ex)

@@ -375,6 +375,26 @@ const UnifiedOfficerDashboard: React.FC<UnifiedOfficerDashboardProps> = ({
         bg: "#ecfeff",
         label: "CE Pending",
       },
+      PAYMENT_PENDING: {
+        color: "#f59e0b",
+        bg: "#fffbeb",
+        label: "Payment Pending",
+      },
+      PaymentPending: {
+        color: "#f59e0b",
+        bg: "#fffbeb",
+        label: "Payment Pending",
+      },
+      PAYMENT_COMPLETED: {
+        color: "#10b981",
+        bg: "#f0fdf4",
+        label: "Payment Completed",
+      },
+      PaymentCompleted: {
+        color: "#10b981",
+        bg: "#f0fdf4",
+        label: "Payment Completed",
+      },
       REJECTED: { color: "#dc2626", bg: "#fef2f2", label: "Rejected" },
       APPROVED: { color: "#16a34a", bg: "#f0fdf4", label: "Approved" },
     };

@@ -102,7 +102,9 @@ namespace PMCRMS.API.Services
 
                 ApplicationCurrentStatus.PaymentPending => 
                     ("Payment Required", 
-                     "Your application has been approved for payment. Please complete the payment to proceed with the certificate issuance process. Payment details have been sent to your registered email."),
+                     $"Congratulations! Your application has been approved by the City Engineer (Stage 1). " +
+                     $"To proceed with the certificate issuance process, please log in to the portal and complete the payment. " +
+                     $"Once payment is confirmed, your application will be forwarded to our administrative clerk for final processing."),
 
                 ApplicationCurrentStatus.CLERK_PENDING => 
                     ("Clerk Processing", 

@@ -123,9 +123,9 @@ namespace PMCRMS.API.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>
-        /// Navigation property to Application
+        /// Navigation property to PositionApplication
         /// </summary>
         [ForeignKey(nameof(ApplicationId))]
-        public virtual Application? Application { get; set; }
+        public virtual PositionApplication? Application { get; set; }
     }
 }

@@ -4,8 +4,12 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://pmcrms.ezbricks-dev.codetools.in/api";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5086";
+
+// Ensure API_BASE_URL includes /api path
+const API_URL = API_BASE_URL.endsWith("/api")
+  ? API_BASE_URL
+  : `${API_BASE_URL}/api`;
 
 // ==================== INTERFACES ====================
 
@@ -16,7 +20,12 @@ export interface InitiatePaymentRequest {
 export interface PaymentResponse {
   success: boolean;
   message: string;
-  gatewayUrl?: string;
+  data?: {
+    bdOrderId?: string;
+    rData?: string;
+    paymentGatewayUrl?: string;
+  };
+  gatewayUrl?: string; // For backward compatibility
   transactionId?: string;
   bdOrderId?: string;
 }
@@ -60,11 +69,24 @@ export interface VerifyPaymentRequest {
   bdOrderId: string;
 }
 
+// Backend API Response Structure
+interface PaymentInitiateApiResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    bdOrderId: string;
+    rData: string;
+    paymentGatewayUrl: string;
+  };
+  error?: string;
+}
+
 // ==================== PAYMENT SERVICE CLASS ====================
 
 class BillDeskPaymentService {
   private getAuthHeader() {
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("pmcrms_token") || localStorage.getItem("token");
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
@@ -75,12 +97,26 @@ class BillDeskPaymentService {
    */
   async initiatePayment(applicationId: number): Promise<PaymentResponse> {
     try {
-      const response = await axios.post<PaymentResponse>(
-        `${API_BASE_URL}/Payment/Initiate`,
+      const response = await axios.post<PaymentInitiateApiResponse>(
+        `${API_URL}/Payment/Initiate`,
         { applicationId },
         { headers: this.getAuthHeader() }
       );
-      return response.data;
+
+      const responseData = response.data;
+
+      // Handle nested response structure
+      if (responseData.success && responseData.data) {
+        return {
+          success: true,
+          message: responseData.message || "Payment initiated successfully",
+          data: responseData.data,
+          gatewayUrl: responseData.data.paymentGatewayUrl,
+          bdOrderId: responseData.data.bdOrderId,
+        };
+      }
+
+      return responseData;
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         throw new Error(
@@ -101,7 +137,7 @@ class BillDeskPaymentService {
   ): Promise<PaymentStatusResponse> {
     try {
       const response = await axios.get<PaymentStatusResponse>(
-        `${API_BASE_URL}/Payment/Status/${applicationId}`,
+        `${API_URL}/Payment/Status/${applicationId}`,
         { headers: this.getAuthHeader() }
       );
       return response.data;
@@ -125,7 +161,7 @@ class BillDeskPaymentService {
   ): Promise<PaymentHistoryResponse> {
     try {
       const response = await axios.get<PaymentHistoryResponse>(
-        `${API_BASE_URL}/Payment/History/${applicationId}`,
+        `${API_URL}/Payment/History/${applicationId}`,
         { headers: this.getAuthHeader() }
       );
       return response.data;
@@ -147,7 +183,7 @@ class BillDeskPaymentService {
   async verifyPayment(request: VerifyPaymentRequest): Promise<PaymentResponse> {
     try {
       const response = await axios.post<PaymentResponse>(
-        `${API_BASE_URL}/Payment/Verify`,
+        `${API_URL}/Payment/Verify`,
         request,
         { headers: this.getAuthHeader() }
       );

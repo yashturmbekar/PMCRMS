@@ -91,6 +91,10 @@ namespace PMCRMS.API.Data
                     .WithMany(e => e.Applications)
                     .HasForeignKey(e => e.ApplicantId)
                     .OnDelete(DeleteBehavior.Restrict);
+                    
+                // IGNORE Transactions navigation property to avoid FK conflict
+                // Transactions now primarily belong to PositionApplication
+                entity.Ignore(e => e.Transactions);
             });
 
             // Configure ApplicationDocument entity
@@ -167,6 +171,19 @@ namespace PMCRMS.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.ProcessedBy)
                     .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Configure Transaction entity (BillDesk payments)
+            modelBuilder.Entity<Transaction>(entity =>
+            {
+                entity.HasIndex(e => e.TransactionId).IsUnique();
+                entity.HasIndex(e => e.ApplicationId);
+                
+                // Explicitly configure the FK relationship to PositionApplication
+                entity.HasOne(e => e.Application)
+                    .WithMany()
+                    .HasForeignKey(e => e.ApplicationId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // Configure OtpVerification entity

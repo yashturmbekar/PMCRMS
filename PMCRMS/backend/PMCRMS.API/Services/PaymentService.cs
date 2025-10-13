@@ -17,19 +17,22 @@ namespace PMCRMS.API.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IBillDeskPaymentService _billDeskPaymentService;
         private readonly IWorkflowNotificationService _workflowNotificationService;
+        private readonly IWorkflowProgressionService _workflowProgressionService;
 
         public PaymentService(
             PMCRMSDbContext context,
             ILogger<PaymentService> logger,
             IHttpClientFactory httpClientFactory,
             IBillDeskPaymentService billDeskPaymentService,
-            IWorkflowNotificationService workflowNotificationService)
+            IWorkflowNotificationService workflowNotificationService,
+            IWorkflowProgressionService workflowProgressionService)
         {
             _context = context;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
             _billDeskPaymentService = billDeskPaymentService;
             _workflowNotificationService = workflowNotificationService;
+            _workflowProgressionService = workflowProgressionService;
         }
 
         /// <summary>
@@ -45,7 +48,7 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation($"[PaymentService] Initializing payment for application: {applicationId}");
 
                 // Validate application exists and is in correct stage
-                var application = await _context.Applications.FindAsync(applicationId);
+                var application = await _context.PositionApplications.FindAsync(applicationId);
                 if (application == null)
                 {
                     _logger.LogError($"[PaymentService] Application not found: {applicationId}");
@@ -57,20 +60,20 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Validate application is in CE_APPROVED stage (ApprovedByCE1)
-                if (application.CurrentStatus != ApplicationCurrentStatus.ApprovedByCE1)
+                // Validate application is in PaymentPending stage
+                if (application.Status != ApplicationCurrentStatus.PaymentPending)
                 {
-                    _logger.LogWarning($"[PaymentService] Application {applicationId} not in CE approved stage. Current status: {application.CurrentStatus}");
+                    _logger.LogWarning($"[PaymentService] Application {applicationId} not in payment pending stage. Current status: {application.Status}");
                     return new PaymentInitializationResponse
                     {
                         Success = false,
-                        Message = "Application must be CE approved before payment",
-                        ErrorDetails = $"Current status: {application.CurrentStatus}"
+                        Message = "Application must be in payment pending status",
+                        ErrorDetails = $"Current status: {application.Status}"
                     };
                 }
 
                 // Check if payment already completed
-                if (application.IsPaymentComplete)
+                if (application.Status == ApplicationCurrentStatus.PaymentCompleted)
                 {
                     _logger.LogWarning($"[PaymentService] Payment already completed for application: {applicationId}");
                     return new PaymentInitializationResponse
@@ -126,7 +129,7 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation($"[PaymentService] Processing payment success for application: {request.ApplicationId}");
 
-                var application = await _context.Applications.FindAsync(request.ApplicationId);
+                var application = await _context.PositionApplications.FindAsync(request.ApplicationId);
                 if (application == null)
                 {
                     _logger.LogError($"[PaymentService] Application not found: {request.ApplicationId}");
@@ -160,9 +163,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // Update application status
-                application.CurrentStatus = ApplicationCurrentStatus.PaymentCompleted;
-                application.IsPaymentComplete = true;
-                application.PaymentCompletedDate = DateTime.UtcNow;
+                application.Status = ApplicationCurrentStatus.PaymentCompleted;
                 application.UpdatedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -176,8 +177,18 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation($"[PaymentService] Payment processed successfully for application: {request.ApplicationId}");
                 _logger.LogInformation($"[PaymentService] Application moved to PaymentCompleted status");
 
-                // TODO: Trigger certificate and challan generation
-                // await GenerateCertificateAndChallan(application);
+                // Auto-assign to Clerk after successful payment
+                _logger.LogInformation($"[PaymentService] Initiating auto-assignment to Clerk for application: {request.ApplicationId}");
+                var clerkAssigned = await _workflowProgressionService.ProgressToClerkAsync(application.Id);
+                
+                if (clerkAssigned)
+                {
+                    _logger.LogInformation($"[PaymentService] Application {request.ApplicationId} successfully assigned to Clerk");
+                }
+                else
+                {
+                    _logger.LogWarning($"[PaymentService] Application {request.ApplicationId} payment complete but Clerk assignment failed - may need manual assignment");
+                }
 
                 return new PaymentSuccessResponse
                 {
@@ -207,7 +218,7 @@ namespace PMCRMS.API.Services
                 _logger.LogWarning($"[PaymentService] Processing payment failure for application: {request.ApplicationId}");
                 _logger.LogWarning($"[PaymentService] Failure reason: {request.ErrorMessage}");
 
-                var application = await _context.Applications.FindAsync(request.ApplicationId);
+                var application = await _context.PositionApplications.FindAsync(request.ApplicationId);
                 if (application == null)
                 {
                     return new PaymentSuccessResponse
@@ -233,7 +244,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // Update application status
-                application.CurrentStatus = ApplicationCurrentStatus.PaymentPending;
+                application.Status = ApplicationCurrentStatus.PaymentPending;
                 application.UpdatedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -267,8 +278,7 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                var application = await _context.Applications
-                    .Include(a => a.Transactions)
+                var application = await _context.PositionApplications
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
 
                 if (application == null)
@@ -280,16 +290,18 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                var latestTransaction = application.Transactions
-                    ?.OrderByDescending(t => t.CreatedAt)
-                    .FirstOrDefault();
+                // Get latest transaction for this application
+                var latestTransaction = await _context.Transactions
+                    .Where(t => t.ApplicationId == applicationId)
+                    .OrderByDescending(t => t.CreatedAt)
+                    .FirstOrDefaultAsync();
 
                 return new PaymentStatusResponse
                 {
                     Success = true,
                     Message = "Payment status retrieved",
                     ApplicationId = application.Id,
-                    IsPaymentComplete = application.IsPaymentComplete,
+                    IsPaymentComplete = application.Status == ApplicationCurrentStatus.PaymentCompleted,
                     PaymentStatus = latestTransaction?.Status ?? "NOT_INITIATED",
                     Amount = latestTransaction?.Price,
                     AmountPaid = latestTransaction?.AmountPaid,

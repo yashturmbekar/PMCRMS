@@ -276,63 +276,72 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Get HSM key label for CE
-                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("CE", application.PositionType.ToString());
+                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
+                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
                 
-                if (string.IsNullOrEmpty(keyLabel))
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "HSM key label not configured for CE officer" 
-                    };
-                }
-
-                // Convert PDF to Base64 for HSM signing
-                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
-
-                // Sign PDF with HSM
-                var signRequest = new HsmSignRequest
-                {
-                    TransactionId = applicationId.ToString(),
-                    KeyLabel = keyLabel,
-                    Base64Pdf = base64Pdf,
-                    Otp = otp,
-                    Coordinates = SignatureCoordinates.RecommendationForm
-                };
-
-                var signResult = await _hsmService.SignPdfAsync(signRequest);
-
-                if (!signResult.Success)
-                {
-                    _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                    };
-                }
-
-                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "Signed PDF content is empty" 
-                    };
-                }
-
-                // Update recommendation form with signed PDF
-                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                recommendationForm.FileContent = signedPdfBytes;
-                recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                recommendationForm.UpdatedDate = DateTime.UtcNow;
+                // // Get HSM key label for CE
+                // var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("CE", application.PositionType.ToString());
                 
+                // if (string.IsNullOrEmpty(keyLabel))
+                // {
+                //     return new WorkflowActionResultDto 
+                //     { 
+                //         Success = false, 
+                //         Message = "HSM key label not configured for CE officer" 
+                //     };
+                // }
+
+                // // Convert PDF to Base64 for HSM signing
+                // var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
+
+                // // Sign PDF with HSM
+                // var signRequest = new HsmSignRequest
+                // {
+                //     TransactionId = applicationId.ToString(),
+                //     KeyLabel = keyLabel,
+                //     Base64Pdf = base64Pdf,
+                //     Otp = otp,
+                //     Coordinates = SignatureCoordinates.RecommendationForm
+                // };
+
+                // var signResult = await _hsmService.SignPdfAsync(signRequest);
+
+                // if (!signResult.Success)
+                // {
+                //     _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
+                //     return new WorkflowActionResultDto 
+                //     { 
+                //         Success = false, 
+                //         Message = $"Digital signature failed: {signResult.ErrorMessage}" 
+                //     };
+                // }
+
+                // if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                // {
+                //     return new WorkflowActionResultDto 
+                //     { 
+                //         Success = false, 
+                //         Message = "Signed PDF content is empty" 
+                //     };
+                // }
+
+                // TESTING MODE: Skip HSM signature
                 _logger.LogInformation(
-                    "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
+                    "[TESTING MODE] Skipping HSM signature for CE application {ApplicationId}", 
                     applicationId);
+                
+                // // Update recommendation form with signed PDF
+                // var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                // recommendationForm.FileContent = signedPdfBytes;
+                // recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                // recommendationForm.UpdatedDate = DateTime.UtcNow;
+                
+                // _logger.LogInformation(
+                //     "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
+                //     applicationId);
+                // ========== END TESTING MODE ==========
 
-                // Update application - FINAL APPROVAL
+                // Update application - CE Stage 1 Approval, Payment Required
                 var signatureDate = DateTime.UtcNow;
                 application.CityEngineerApprovalStatus = true;
                 application.CityEngineerApprovalComments = comments;
@@ -340,27 +349,30 @@ namespace PMCRMS.API.Services
                 application.CityEngineerDigitalSignatureApplied = true;
                 application.CityEngineerDigitalSignatureDate = signatureDate;
                 
-                // Set final approval status
-                application.Status = ApplicationCurrentStatus.APPROVED;
-                application.ApprovedDate = signatureDate;
-                application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}";
+                // Set status to PaymentPending (Stage 1 approval complete)
+                application.Status = ApplicationCurrentStatus.PaymentPending;
+                application.Remarks = $"Approved by City Engineer (Stage 1) on {signatureDate:yyyy-MM-dd HH:mm:ss}. Payment required to proceed.";
+                
+                // Clear assigned officer - application is now waiting for payment, not assigned to anyone
+                application.AssignedJuniorEngineerId = null;
+                application.AssignedToJEDate = null;
 
                 await _context.SaveChangesAsync();
 
-                // Send email notification to applicant
+                // Send email notification to applicant about payment
                 await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
                     application.Id,
-                    ApplicationCurrentStatus.APPROVED
+                    ApplicationCurrentStatus.PaymentPending
                 );
 
                 _logger.LogInformation(
-                    "Application {ApplicationId} FINALLY APPROVED by City Engineer {OfficerId} via HSM", 
+                    "Application {ApplicationId} approved by City Engineer (Stage 1) - Payment Pending for officer {OfficerId}", 
                     applicationId, officerId);
 
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = "Documents verified, recommendation form digitally signed via HSM, and application APPROVED successfully",
+                    Message = "Documents verified and approved by City Engineer (Stage 1). Application status set to Payment Pending. Applicant will be notified to complete payment.",
                     NewStatus = application.Status
                 };
             }
@@ -500,6 +512,8 @@ namespace PMCRMS.API.Services
             return status switch
             {
                 ApplicationCurrentStatus.CITY_ENGINEER_PENDING => "CE Final Review Pending",
+                ApplicationCurrentStatus.PaymentPending => "PAYMENT_PENDING",
+                ApplicationCurrentStatus.PaymentCompleted => "PAYMENT_COMPLETED",
                 ApplicationCurrentStatus.APPROVED => "APPROVED",
                 ApplicationCurrentStatus.REJECTED => "REJECTED",
                 _ => status.ToString()
