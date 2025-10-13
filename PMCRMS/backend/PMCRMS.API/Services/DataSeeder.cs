@@ -134,16 +134,17 @@ namespace PMCRMS.API.Services
 
                     if (officer != null)
                     {
-                        // Update existing officer - ALWAYS update email and password
+                        // Update existing officer - ALWAYS update email, password, and KeyLabel
                         officer.Email = email;
                         officer.PasswordHash = hashedPassword;
+                        officer.KeyLabel = GetKeyLabelForRole(role);
                         officer.UpdatedBy = "System";
                         officer.UpdatedDate = DateTime.UtcNow;
                         updatedCount++;
                         
                         _logger.LogInformation(
-                            "✓ Updated officer: {Role} → Email: {Email}",
-                            role, email
+                            "✓ Updated officer: {Role} → Email: {Email}, KeyLabel: {KeyLabel}",
+                            role, email, officer.KeyLabel
                         );
                     }
                     else
@@ -158,6 +159,7 @@ namespace PMCRMS.API.Services
                             PasswordHash = hashedPassword,
                             Role = role,
                             EmployeeId = GenerateEmployeeId(role),
+                            KeyLabel = GetKeyLabelForRole(role),
                             IsActive = true,
                             PhoneNumber = "9999999999", // Default phone number
                             CreatedBy = "System",
@@ -177,6 +179,12 @@ namespace PMCRMS.API.Services
                     "✅ Officer seeding completed! Created: {Created}, Updated: {Updated}, Total: {Total}, Password: Test@123",
                     createdCount, updatedCount, createdCount + updatedCount
                 );
+                
+                _logger.LogInformation("📋 KeyLabel assignments:");
+                _logger.LogInformation("  - All Junior Engineers (JE): 28602");
+                _logger.LogInformation("  - All Assistant Engineers (AE): 17076");
+                _logger.LogInformation("  - Executive Engineer (EE): 17177");
+                _logger.LogInformation("  - City Engineer (CE): 11038");
             }
             catch (Exception ex)
             {
@@ -227,6 +235,44 @@ namespace PMCRMS.API.Services
             };
 
             return $"PMC-{roleCode}";
+        }
+
+        /// <summary>
+        /// Returns the HSM KeyLabel for the given officer role
+        /// All Junior Engineers: 28602
+        /// All Assistant Engineers: 17076
+        /// Executive Engineer: 17177
+        /// City Engineer: 11038
+        /// </summary>
+        private string? GetKeyLabelForRole(OfficerRole role)
+        {
+            return role switch
+            {
+                // All Junior Engineer roles
+                OfficerRole.JuniorArchitect => "28602",
+                OfficerRole.JuniorLicenceEngineer => "28602",
+                OfficerRole.JuniorStructuralEngineer => "28602",
+                OfficerRole.JuniorSupervisor1 => "28602",
+                OfficerRole.JuniorSupervisor2 => "28602",
+                
+                // All Assistant Engineer roles
+                OfficerRole.AssistantArchitect => "17076",
+                OfficerRole.AssistantLicenceEngineer => "17076",
+                OfficerRole.AssistantStructuralEngineer => "17076",
+                OfficerRole.AssistantSupervisor1 => "17076",
+                OfficerRole.AssistantSupervisor2 => "17076",
+                
+                // Executive Engineer
+                OfficerRole.ExecutiveEngineer => "17177",
+                
+                // City Engineer
+                OfficerRole.CityEngineer => "11038",
+                
+                // Clerk - no KeyLabel needed
+                OfficerRole.Clerk => null,
+                
+                _ => null
+            };
         }
 
         /// <summary>
