@@ -2,8 +2,11 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using PMCRMS.API.Configuration;
+using PMCRMS.API.Data;
+using PMCRMS.API.Models;
 
 namespace PMCRMS.API.Services
 {
@@ -27,6 +30,16 @@ namespace PMCRMS.API.Services
         /// Check HSM service health
         /// </summary>
         Task<bool> CheckHealthAsync();
+
+        /// <summary>
+        /// Generate OTP for officer signature workflow (validates officer KeyLabel)
+        /// </summary>
+        Task<HsmWorkflowOtpResult> GenerateOtpForOfficerAsync(int applicationId, int officerId, PMCRMSDbContext context);
+
+        /// <summary>
+        /// Sign PDF with OTP verification for officer signature workflow
+        /// </summary>
+        Task<HsmWorkflowSignResult> SignPdfForOfficerAsync(int applicationId, int officerId, byte[] pdfContent, string otp, PMCRMSDbContext context);
     }
 
     public class HsmService : IHsmService
@@ -74,27 +87,62 @@ namespace PMCRMS.API.Services
                 var response = await _httpClient.PostAsync("HSM/GenOtp", content);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                _logger.LogInformation("HSM OTP Response: {Response}", responseContent);
+                _logger.LogInformation("HSM OTP Response Status: {StatusCode}, Body: {Response}", 
+                    response.StatusCode, responseContent);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    return new HsmOtpResult
+                    try
                     {
-                        Success = true,
-                        TransactionId = transactionId,
-                        Message = "OTP generated successfully",
-                        RawResponse = responseContent
-                    };
+                        // Parse HSM response JSON
+                        var hsmResponse = JsonSerializer.Deserialize<HsmOtpResponse>(responseContent);
+                        
+                        // Check status field (1 = success)
+                        if (hsmResponse?.status == 1)
+                        {
+                            _logger.LogInformation("✅ OTP sent successfully: {Message}", hsmResponse.succMsg);
+                            
+                            return new HsmOtpResult
+                            {
+                                Success = true,
+                                TransactionId = transactionId,
+                                Message = hsmResponse.succMsg ?? "OTP sent successfully to officer's mobile",
+                                RawResponse = responseContent
+                            };
+                        }
+                        else
+                        {
+                            _logger.LogError("❌ HSM OTP failed. Status: {Status}, Error: {Error}", 
+                                hsmResponse?.status, hsmResponse?.errMsg);
+                            
+                            return new HsmOtpResult
+                            {
+                                Success = false,
+                                ErrorMessage = hsmResponse?.errMsg ?? "OTP generation failed",
+                                RawResponse = responseContent
+                            };
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger.LogError(ex, "Failed to parse HSM OTP response JSON");
+                        return new HsmOtpResult
+                        {
+                            Success = false,
+                            ErrorMessage = "Failed to parse HSM response",
+                            RawResponse = responseContent
+                        };
+                    }
                 }
                 else
                 {
-                    _logger.LogError("HSM OTP generation failed. Status: {Status}, Response: {Response}",
+                    _logger.LogError("HSM OTP generation failed. HTTP Status: {Status}, Response: {Response}",
                         response.StatusCode, responseContent);
 
                     return new HsmOtpResult
                     {
                         Success = false,
-                        ErrorMessage = $"Failed to generate OTP. Status: {response.StatusCode}",
+                        ErrorMessage = $"HTTP {response.StatusCode}: {responseContent}",
                         RawResponse = responseContent
                     };
                 }
@@ -324,9 +372,193 @@ namespace PMCRMS.API.Services
             return base64.Length % 4 == 0 &&
                    System.Text.RegularExpressions.Regex.IsMatch(base64, @"^[a-zA-Z0-9\+/]*={0,3}$", System.Text.RegularExpressions.RegexOptions.None);
         }
+
+        /// <summary>
+        /// Generate OTP for officer signature workflow
+        /// Validates officer exists and has KeyLabel configured
+        /// </summary>
+        public async Task<HsmWorkflowOtpResult> GenerateOtpForOfficerAsync(int applicationId, int officerId, PMCRMSDbContext context)
+        {
+            try
+            {
+                // Get officer with KeyLabel
+                var officer = await context.Officers.FindAsync(officerId);
+                if (officer == null)
+                {
+                    return new HsmWorkflowOtpResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Officer not found"
+                    };
+                }
+
+                // Validate KeyLabel
+                if (string.IsNullOrEmpty(officer.KeyLabel))
+                {
+                    return new HsmWorkflowOtpResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Officer {officer.Name} ({officer.Role}) does not have a KeyLabel configured"
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Generating OTP for officer {OfficerId} ({OfficerName}, {Role}) with KeyLabel {KeyLabel} for application {ApplicationId}",
+                    officerId, officer.Name, officer.Role, officer.KeyLabel, applicationId);
+
+                // Call HSM OTP service
+                var hsmResult = await GenerateOtpAsync(
+                    transactionId: applicationId.ToString(),
+                    keyLabel: officer.KeyLabel,
+                    otpType: "single"
+                );
+
+                if (!hsmResult.Success)
+                {
+                    _logger.LogError("HSM OTP generation failed: {Error}", hsmResult.ErrorMessage);
+                    return new HsmWorkflowOtpResult
+                    {
+                        Success = false,
+                        ErrorMessage = hsmResult.ErrorMessage ?? "OTP send failed",
+                        RawResponse = hsmResult.RawResponse
+                    };
+                }
+
+                _logger.LogInformation("✅ OTP sent successfully to officer {OfficerId} mobile", officerId);
+
+                // ✅ Return success message from HSM (no local storage needed)
+                return new HsmWorkflowOtpResult
+                {
+                    Success = true,
+                    Message = hsmResult.Message ?? "OTP sent successfully to your mobile",
+                    RawResponse = hsmResult.RawResponse
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating OTP for officer {OfficerId}", officerId);
+                return new HsmWorkflowOtpResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Exception: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Sign PDF for officer signature workflow
+        /// Validates officer, KeyLabel, and performs HSM signature
+        /// </summary>
+        public async Task<HsmWorkflowSignResult> SignPdfForOfficerAsync(
+            int applicationId, 
+            int officerId, 
+            byte[] pdfContent, 
+            string otp, 
+            PMCRMSDbContext context)
+        {
+            try
+            {
+                // Get officer with KeyLabel
+                var officer = await context.Officers.FindAsync(officerId);
+                if (officer == null)
+                {
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Officer not found"
+                    };
+                }
+
+                // Validate KeyLabel
+                if (string.IsNullOrEmpty(officer.KeyLabel))
+                {
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"Officer {officer.Name} ({officer.Role}) does not have a KeyLabel configured"
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Signing PDF for officer {OfficerId} ({OfficerName}, {Role}) with KeyLabel {KeyLabel} for application {ApplicationId}",
+                    officerId, officer.Name, officer.Role, officer.KeyLabel, applicationId);
+
+                // Convert PDF to Base64
+                var base64Pdf = Convert.ToBase64String(pdfContent);
+
+                // Sign PDF using HSM
+                var signRequest = new HsmSignRequest
+                {
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = officer.KeyLabel,
+                    Base64Pdf = base64Pdf,
+                    Otp = otp,
+                    Coordinates = SignatureCoordinates.RecommendationForm,
+                    PageLocation = "last",
+                    OtpType = "single"
+                };
+
+                var hsmResult = await SignPdfAsync(signRequest);
+
+                if (!hsmResult.Success)
+                {
+                    _logger.LogError("HSM signature failed: {Error}", hsmResult.ErrorMessage);
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"HSM signature failed: {hsmResult.ErrorMessage}",
+                        RawResponse = hsmResult.RawResponse
+                    };
+                }
+
+                if (string.IsNullOrEmpty(hsmResult.SignedPdfBase64))
+                {
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Signed PDF not returned by HSM",
+                        RawResponse = hsmResult.RawResponse
+                    };
+                }
+
+                _logger.LogInformation("PDF signed successfully for officer {OfficerId}", officerId);
+
+                // Convert Base64 back to bytes
+                var signedPdfBytes = Convert.FromBase64String(hsmResult.SignedPdfBase64);
+
+                return new HsmWorkflowSignResult
+                {
+                    Success = true,
+                    Message = "PDF signed successfully",
+                    SignedPdfContent = signedPdfBytes,
+                    RawResponse = hsmResult.RawResponse
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error signing PDF for officer {OfficerId}", officerId);
+                return new HsmWorkflowSignResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Exception: {ex.Message}"
+                };
+            }
+        }
     }
 
     #region DTOs
+
+    // HSM OTP Response format
+    public class HsmOtpResponse
+    {
+        public int status { get; set; }
+        public string? txn { get; set; }
+        public string? errCode { get; set; }
+        public string? errMsg { get; set; }
+        public string? retValue { get; set; }
+        public string? succMsg { get; set; }
+        public string? otp { get; set; }
+    }
 
     public class HsmOtpResult
     {
@@ -355,6 +587,30 @@ namespace PMCRMS.API.Services
         public string? SignedPdfBase64 { get; set; }
         public string? Message { get; set; }
         public string? ErrorMessage { get; set; }
+        public string? RawResponse { get; set; }
+    }
+
+    /// <summary>
+    /// Result for workflow OTP generation (with officer validation)
+    /// HSM sends OTP directly to officer's mobile - no local storage
+    /// </summary>
+    public class HsmWorkflowOtpResult
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? ErrorMessage { get; set; }
+        public string? RawResponse { get; set; }
+    }
+
+    /// <summary>
+    /// Result for workflow PDF signing (with officer validation)
+    /// </summary>
+    public class HsmWorkflowSignResult
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+        public string? ErrorMessage { get; set; }
+        public byte[]? SignedPdfContent { get; set; }
         public string? RawResponse { get; set; }
     }
 

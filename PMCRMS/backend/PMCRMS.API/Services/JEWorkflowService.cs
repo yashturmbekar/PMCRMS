@@ -23,6 +23,7 @@ namespace PMCRMS.API.Services
         private readonly IWorkflowNotificationService _workflowNotificationService;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
+        private readonly IHsmService _hsmService;
 
         public JEWorkflowService(
             PMCRMSDbContext context,
@@ -36,7 +37,8 @@ namespace PMCRMS.API.Services
             IEmailService emailService,
             IWorkflowNotificationService workflowNotificationService,
             IHttpClientFactory httpClientFactory,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IHsmService hsmService)
         {
             _context = context;
             _logger = logger;
@@ -50,6 +52,7 @@ namespace PMCRMS.API.Services
             _workflowNotificationService = workflowNotificationService;
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _hsmService = hsmService;
         }
 
         public async Task<WorkflowActionResultDto> StartWorkflowAsync(StartJEWorkflowRequestDto request, int initiatedByUserId)
@@ -629,9 +632,32 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Generating OTP from HSM for application {ApplicationId} and officer {OfficerId}", 
                     applicationId, officerId);
 
-                // Call HSM OTP service - NO FALLBACK
-                var otp = await CallHsmOtpServiceAsync(officer.Email, officer.PhoneNumber);
+                // Validate officer has KeyLabel
+                if (string.IsNullOrEmpty(officer.KeyLabel))
+                {
+                    throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
+                }
+
+                _logger.LogInformation("Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
+                    officer.KeyLabel, officer.Name, officer.Role);
+
+                // Call HSM OTP service with officer's KeyLabel
+                var hsmResult = await _hsmService.GenerateOtpAsync(
+                    transactionId: applicationId.ToString(),
+                    keyLabel: officer.KeyLabel,
+                    otpType: "single"
+                );
+
+                if (!hsmResult.Success)
+                {
+                    _logger.LogError("HSM OTP generation failed: {Error}", hsmResult.ErrorMessage);
+                    throw new Exception($"Failed to generate OTP: {hsmResult.ErrorMessage}");
+                }
+
                 _logger.LogInformation("OTP generated successfully from HSM for officer {OfficerId}", officerId);
+
+                // Generate a mock OTP for database storage (actual OTP is sent by HSM to officer's email/phone)
+                var otp = new Random().Next(100000, 999999).ToString();
 
                 // Store OTP in database for validation
                 var otpVerification = new OtpVerification

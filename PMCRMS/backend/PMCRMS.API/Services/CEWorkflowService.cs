@@ -204,21 +204,20 @@ namespace PMCRMS.API.Services
                     throw new Exception("Application not found");
                 }
 
-                // For CE, all positions use the same key label
-                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("CE", application.PositionType.ToString());
-                
-                if (string.IsNullOrEmpty(keyLabel))
+                // Validate officer has KeyLabel
+                if (string.IsNullOrEmpty(officer.KeyLabel))
                 {
-                    throw new Exception("HSM key label not configured for CE officer");
+                    throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
                 }
 
                 _logger.LogInformation(
-                    "Generating OTP from HSM for CE officer {OfficerId} with key label {KeyLabel}",
-                    officerId, keyLabel);
+                    "Generating OTP from HSM for CE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
+                    officerId, officer.Name, officer.KeyLabel);
 
+                // Call HSM OTP service with officer's KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: keyLabel,
+                    keyLabel: officer.KeyLabel,
                     otpType: "single"
                 );
 

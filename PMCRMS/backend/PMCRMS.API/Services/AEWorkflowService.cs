@@ -176,20 +176,19 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Generating OTP from HSM for AE application {ApplicationId} and officer {OfficerId}", 
                     applicationId, officerId);
 
-                // Get key label for this position type
-                var positionTypeString = application.PositionType.ToString();
-                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("AE", positionTypeString);
-                
-                if (string.IsNullOrEmpty(keyLabel))
+                // Validate officer has KeyLabel
+                if (string.IsNullOrEmpty(officer.KeyLabel))
                 {
-                    _logger.LogWarning("No key label found for AE position type {PositionType}, using default", positionTypeString);
-                    keyLabel = _hsmConfig.Value.KeyLabels.AssistantEngineers.GetValueOrDefault("Architect", "09170");
+                    throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
                 }
 
-                // Call HSM OTP service
+                _logger.LogInformation("Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
+                    officer.KeyLabel, officer.Name, officer.Role);
+
+                // Call HSM OTP service with officer's KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: keyLabel,
+                    keyLabel: officer.KeyLabel,
                     otpType: "single"
                 );
 
@@ -269,24 +268,27 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("Starting HSM digital signature process for AE application {ApplicationId}", applicationId);
 
-                // Get key label for this position type
-                var positionTypeString = positionType.ToString();
-                var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("AE", positionTypeString);
-                
-                if (string.IsNullOrEmpty(keyLabel))
+                // Validate officer has KeyLabel
+                if (string.IsNullOrEmpty(officer.KeyLabel))
                 {
-                    _logger.LogWarning("No key label found for AE position type {PositionType}, using default", positionTypeString);
-                    keyLabel = _hsmConfig.Value.KeyLabels.AssistantEngineers.GetValueOrDefault("Architect", "09170");
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
+                    };
                 }
+
+                _logger.LogInformation("Using KeyLabel {KeyLabel} for AE officer {OfficerName} signature", 
+                    officer.KeyLabel, officer.Name);
 
                 // Convert PDF to Base64
                 var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
 
-                // Sign PDF using HSM
+                // Sign PDF using HSM with officer's KeyLabel
                 var signRequest = new HsmSignRequest
                 {
                     TransactionId = applicationId.ToString(),
-                    KeyLabel = keyLabel,
+                    KeyLabel = officer.KeyLabel,
                     Base64Pdf = base64Pdf,
                     Otp = otp,
                     Coordinates = SignatureCoordinates.RecommendationForm, // 117,383,236,324
