@@ -39,7 +39,10 @@ namespace PMCRMS.API.Services
             int appointmentId,
             DateTime newReviewDate,
             string rescheduleReason,
-            string rescheduledBy);
+            string rescheduledBy,
+            string? place = null,
+            string? contactPerson = null,
+            string? roomNumber = null);
 
         /// <summary>
         /// Mark appointment as completed

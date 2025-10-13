@@ -57,6 +57,24 @@ export const jeWorkflowService = {
   },
 
   /**
+   * Reschedule an existing appointment to a new date/time
+   * POST /api/JEWorkflow/reschedule-appointment
+   */
+  async rescheduleAppointment(request: {
+    appointmentId: number;
+    newReviewDate: string;
+    rescheduleReason: string;
+    place?: string;
+    contactPerson?: string;
+    roomNumber?: string;
+  }): Promise<ApiResponse<WorkflowActionResultDto>> {
+    return apiClient.post(
+      `${workflowEndpoint}/reschedule-appointment`,
+      request
+    );
+  },
+
+  /**
    * Complete appointment and transition to document verification
    * POST /api/JEWorkflow/complete-appointment
    */

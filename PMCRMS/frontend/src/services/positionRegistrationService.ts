@@ -118,6 +118,7 @@ export interface WorkflowInfo {
   currentStage: string;
   nextAction: string;
   hasAppointment: boolean;
+  appointmentId?: number;
   appointmentDate?: string;
   appointmentPlace?: string;
   appointmentRoomNumber?: string;

@@ -1023,6 +1023,7 @@ namespace PMCRMS.API.Controllers
             if (appointment != null)
             {
                 workflowInfo.HasAppointment = true;
+                workflowInfo.AppointmentId = appointment.Id;
                 workflowInfo.AppointmentDate = appointment.ReviewDate;
                 workflowInfo.AppointmentPlace = appointment.Place;
                 workflowInfo.AppointmentRoomNumber = appointment.RoomNumber;

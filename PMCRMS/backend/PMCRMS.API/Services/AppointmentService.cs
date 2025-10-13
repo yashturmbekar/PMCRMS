@@ -229,7 +229,10 @@ namespace PMCRMS.API.Services
             int appointmentId,
             DateTime newReviewDate,
             string rescheduleReason,
-            string rescheduledBy)
+            string rescheduledBy,
+            string? place = null,
+            string? contactPerson = null,
+            string? roomNumber = null)
         {
             try
             {
@@ -265,9 +268,9 @@ namespace PMCRMS.API.Services
                     ApplicationId = originalAppointment.ApplicationId,
                     ScheduledByOfficerId = originalAppointment.ScheduledByOfficerId,
                     ReviewDate = utcNewReviewDate,
-                    ContactPerson = originalAppointment.ContactPerson,
-                    Place = originalAppointment.Place,
-                    RoomNumber = originalAppointment.RoomNumber,
+                    ContactPerson = contactPerson ?? originalAppointment.ContactPerson,
+                    Place = place ?? originalAppointment.Place,
+                    RoomNumber = roomNumber ?? originalAppointment.RoomNumber,
                     Comments = $"Rescheduled from {originalAppointment.ReviewDate:yyyy-MM-dd HH:mm}. Reason: {rescheduleReason}",
                     Status = AppointmentStatus.Scheduled,
                     RescheduledFromAppointmentId = appointmentId,
@@ -276,7 +279,11 @@ namespace PMCRMS.API.Services
                 };
 
                 _context.Appointments.Add(newAppointment);
+                
+                // Save the new appointment first to get its ID
+                await _context.SaveChangesAsync();
 
+                // Now update the original appointment with the new appointment's ID
                 originalAppointment.Status = AppointmentStatus.Rescheduled;
                 originalAppointment.RescheduledToAppointmentId = newAppointment.Id;
                 originalAppointment.UpdatedBy = rescheduledBy;
@@ -284,10 +291,17 @@ namespace PMCRMS.API.Services
 
                 await _context.SaveChangesAsync();
 
-                originalAppointment.RescheduledToAppointmentId = newAppointment.Id;
-                await _context.SaveChangesAsync();
+                // Reload the new appointment with all required navigation properties for email
+                var newAppointmentWithDetails = await _context.Appointments
+                    .Include(a => a.Application)
+                        .ThenInclude(app => app.User)
+                    .Include(a => a.ScheduledByOfficer)
+                    .FirstOrDefaultAsync(a => a.Id == newAppointment.Id);
 
-                await SendAppointmentNotificationAsync(newAppointment, "rescheduled");
+                if (newAppointmentWithDetails != null)
+                {
+                    await SendAppointmentNotificationAsync(newAppointmentWithDetails, "rescheduled");
+                }
 
                 _logger.LogInformation(
                     "Appointment {OriginalId} rescheduled to {NewId} for {NewDate}. Reason: {Reason}",

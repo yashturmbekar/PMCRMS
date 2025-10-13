@@ -28,6 +28,9 @@ namespace PMCRMS.API.DTOs
         public int AppointmentId { get; set; }
         public DateTime NewReviewDate { get; set; }
         public string RescheduleReason { get; set; } = string.Empty;
+        public string? Place { get; set; }
+        public string? ContactPerson { get; set; }
+        public string? RoomNumber { get; set; }
     }
 
     public class CompleteAppointmentRequestDto

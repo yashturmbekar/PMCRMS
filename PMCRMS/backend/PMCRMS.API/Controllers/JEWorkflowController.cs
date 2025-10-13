@@ -74,6 +74,26 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
+        /// Reschedule an existing appointment to a new date/time
+        /// </summary>
+        [HttpPost("reschedule-appointment")]
+        [Authorize(Roles = JuniorRoles)]
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<IActionResult> RescheduleAppointment([FromBody] RescheduleAppointmentRequestDto request)
+        {
+            try
+            {
+                var result = await _workflowService.RescheduleAppointmentAsync(request, GetCurrentUserId());
+                return result.Success ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error rescheduling appointment");
+                return StatusCode(500, new { Message = "Internal server error", Error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Complete appointment and transition to document verification
         /// </summary>
         [HttpPost("complete-appointment")]

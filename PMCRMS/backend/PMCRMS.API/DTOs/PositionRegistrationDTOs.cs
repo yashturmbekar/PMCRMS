@@ -263,6 +263,7 @@ namespace PMCRMS.API.DTOs
         public string CurrentStage { get; set; } = string.Empty;
         public string NextAction { get; set; } = string.Empty;
         public bool HasAppointment { get; set; }
+        public int? AppointmentId { get; set; }
         public DateTime? AppointmentDate { get; set; }
         public string? AppointmentPlace { get; set; }
         public string? AppointmentRoomNumber { get; set; }

@@ -36,13 +36,22 @@ const ViewPositionApplication: React.FC = () => {
   const [showDocumentApprovalModal, setShowDocumentApprovalModal] =
     useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
+  const [rescheduleError, setRescheduleError] = useState("");
   const [scheduleForm, setScheduleForm] = useState({
     comments: "",
     reviewDate: "",
     contactPerson: "",
     place: "",
+    roomNumber: "",
+  });
+  const [rescheduleForm, setRescheduleForm] = useState({
+    newReviewDate: "",
+    rescheduleReason: "",
+    place: "",
+    contactPerson: "",
     roomNumber: "",
   });
   const [notification, setNotification] = useState<{
@@ -229,6 +238,50 @@ const ViewPositionApplication: React.FC = () => {
     } catch (error) {
       console.error("❌ Error scheduling appointment:", error);
       setScheduleError("Failed to schedule appointment. Please try again.");
+    }
+  };
+
+  const handleRescheduleSubmit = async () => {
+    if (!rescheduleForm.newReviewDate || !rescheduleForm.rescheduleReason) {
+      setRescheduleError("Please fill in all required fields");
+      return;
+    }
+
+    if (!application?.workflowInfo?.appointmentId) {
+      setRescheduleError("Appointment ID not found");
+      return;
+    }
+
+    try {
+      setRescheduleError("");
+      await jeWorkflowService.rescheduleAppointment({
+        appointmentId: application.workflowInfo.appointmentId,
+        newReviewDate: rescheduleForm.newReviewDate,
+        rescheduleReason: rescheduleForm.rescheduleReason,
+        place: rescheduleForm.place || undefined,
+        contactPerson: rescheduleForm.contactPerson || undefined,
+        roomNumber: rescheduleForm.roomNumber || undefined,
+      });
+
+      setShowRescheduleModal(false);
+      setNotification({
+        isOpen: true,
+        message: `Appointment rescheduled successfully! User will be notified via email.`,
+        type: "success",
+        title: "Appointment Rescheduled",
+        autoClose: true,
+      });
+
+      // Refresh application data
+      if (id) {
+        const response = await positionRegistrationService.getApplication(
+          parseInt(id)
+        );
+        setApplication(response);
+      }
+    } catch (error) {
+      console.error("❌ Error rescheduling appointment:", error);
+      setRescheduleError("Failed to reschedule appointment. Please try again.");
     }
   };
 
@@ -1138,6 +1191,43 @@ const ViewPositionApplication: React.FC = () => {
                   </p>
                 </div>
               )}
+
+              {/* Reschedule Button for Junior Engineers */}
+              {isJEOfficer && (
+                <div style={{ marginTop: "16px", textAlign: "right" }}>
+                  <button
+                    className="pmc-button pmc-button-secondary"
+                    onClick={() => {
+                      const currentDate = application.workflowInfo
+                        ?.appointmentDate
+                        ? new Date(application.workflowInfo.appointmentDate)
+                            .toISOString()
+                            .slice(0, 16)
+                        : "";
+                      setRescheduleForm({
+                        newReviewDate: currentDate,
+                        rescheduleReason: "",
+                        place: application.workflowInfo?.appointmentPlace || "",
+                        contactPerson:
+                          application.workflowInfo?.appointmentContactPerson ||
+                          "",
+                        roomNumber:
+                          application.workflowInfo?.appointmentRoomNumber || "",
+                      });
+                      setShowRescheduleModal(true);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    <Calendar size={18} />
+                    Reschedule Appointment
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1558,6 +1648,488 @@ const ViewPositionApplication: React.FC = () => {
                   }}
                 >
                   Schedule Appointment
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reschedule Appointment Modal */}
+        {showRescheduleModal && (
+          <div
+            onClick={() => setShowRescheduleModal(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+              overflow: "auto",
+            }}
+          >
+            <div
+              className="pmc-modal pmc-slideInUp"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                maxWidth: "500px",
+                width: "100%",
+                boxShadow:
+                  "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                position: "relative",
+                maxHeight: "95vh",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <div
+                className="pmc-modal-header"
+                style={{
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #e5e7eb",
+                  background:
+                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  flexShrink: 0,
+                }}
+              >
+                <h3
+                  style={{
+                    color: "white",
+                    marginBottom: "2px",
+                    fontSize: "18px",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <Calendar size={20} />
+                  Reschedule Appointment
+                </h3>
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "13px",
+                    margin: 0,
+                  }}
+                >
+                  Application: {application.applicationNumber}
+                </p>
+              </div>
+
+              {/* Error Message */}
+              {rescheduleError && (
+                <div
+                  style={{
+                    margin: "16px 20px 0",
+                    padding: "12px 16px",
+                    background:
+                      "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
+                    border: "1.5px solid #ef4444",
+                    borderRadius: "6px",
+                    color: "#991b1b",
+                    fontSize: "13px",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  {rescheduleError}
+                </div>
+              )}
+
+              <div
+                className="pmc-modal-body"
+                style={{
+                  padding: "20px",
+                  overflowY: "auto",
+                  flexGrow: 1,
+                }}
+              >
+                {/* Current Appointment Info */}
+                {application.workflowInfo?.appointmentDate && (
+                  <div
+                    style={{
+                      marginBottom: "20px",
+                      padding: "12px",
+                      background: "#f0f9ff",
+                      borderRadius: "6px",
+                      border: "1px solid #bae6fd",
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontSize: "12px",
+                        color: "#0369a1",
+                        fontWeight: "600",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      Current Appointment
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "14px",
+                        color: "#1e40af",
+                        fontWeight: "500",
+                        margin: 0,
+                      }}
+                    >
+                      {new Date(
+                        application.workflowInfo.appointmentDate
+                      ).toLocaleString("en-IN", {
+                        dateStyle: "full",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    New Date & Time <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={rescheduleForm.newReviewDate}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        newReviewDate: e.target.value,
+                      })
+                    }
+                    min={new Date().toISOString().slice(0, 16)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      cursor: "pointer",
+                      backgroundColor: "white",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      marginTop: "4px",
+                      marginBottom: 0,
+                    }}
+                  >
+                    Select a date and time after the current date
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Reason for Rescheduling{" "}
+                    <span style={{ color: "#dc2626" }}>*</span>
+                  </label>
+                  <textarea
+                    placeholder="Please provide a reason for rescheduling this appointment..."
+                    value={rescheduleForm.rescheduleReason}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        rescheduleReason: e.target.value,
+                      })
+                    }
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      fontFamily: "inherit",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                    required
+                  />
+                </div>
+
+                {/* Place Field */}
+                <div style={{ marginTop: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Place
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., PMC Main Office, Kharadi Office"
+                    value={rescheduleForm.place}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        place: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "#6b7280",
+                      marginTop: "4px",
+                      marginBottom: 0,
+                    }}
+                  >
+                    Leave empty to keep current location
+                  </p>
+                </div>
+
+                {/* Contact Person Field */}
+                <div style={{ marginTop: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Contact Person
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Junior Engineer Name"
+                    value={rescheduleForm.contactPerson}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        contactPerson: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "#6b7280",
+                      marginTop: "4px",
+                      marginBottom: 0,
+                    }}
+                  >
+                    Leave empty to keep current contact person
+                  </p>
+                </div>
+
+                {/* Room Number Field */}
+                <div style={{ marginTop: "16px" }}>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      display: "block",
+                      marginBottom: "6px",
+                      fontWeight: 500,
+                      fontSize: "13px",
+                      color: "#374151",
+                    }}
+                  >
+                    Room Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g., Room 301, 2nd Floor"
+                    value={rescheduleForm.roomNumber}
+                    onChange={(e) =>
+                      setRescheduleForm({
+                        ...rescheduleForm,
+                        roomNumber: e.target.value,
+                      })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                  <p
+                    style={{
+                      fontSize: "11px",
+                      color: "#6b7280",
+                      marginTop: "4px",
+                      marginBottom: 0,
+                    }}
+                  >
+                    Leave empty to keep current room number
+                  </p>
+                </div>
+
+                {/* Info Notice */}
+                <div
+                  style={{
+                    marginTop: "16px",
+                    padding: "10px 12px",
+                    background: "#fef3c7",
+                    border: "1px solid #fbbf24",
+                    borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>ℹ️</span>
+                  <p
+                    style={{
+                      fontSize: "12px",
+                      color: "#92400e",
+                      margin: 0,
+                      lineHeight: "1.5",
+                    }}
+                  >
+                    The applicant will receive an email notification with the
+                    new appointment date and time.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="pmc-modal-footer"
+                style={{
+                  padding: "12px 20px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "flex-end",
+                  background: "#f9fafb",
+                  flexShrink: 0,
+                }}
+              >
+                <button
+                  className="pmc-button pmc-button-secondary"
+                  onClick={() => {
+                    setShowRescheduleModal(false);
+                    setRescheduleError("");
+                  }}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="pmc-button pmc-button-primary"
+                  onClick={handleRescheduleSubmit}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  <Calendar size={16} />
+                  Reschedule Appointment
                 </button>
               </div>
             </div>

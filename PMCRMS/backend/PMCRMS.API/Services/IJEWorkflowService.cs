@@ -22,6 +22,12 @@ namespace PMCRMS.API.Services
         Task<WorkflowActionResultDto> ScheduleAppointmentAsync(ScheduleAppointmentRequestDto request, int scheduledByOfficerId);
 
         /// <summary>
+        /// Reschedule an existing appointment to a new date/time
+        /// Sends notification email to user with updated appointment details
+        /// </summary>
+        Task<WorkflowActionResultDto> RescheduleAppointmentAsync(RescheduleAppointmentRequestDto request, int officerId);
+
+        /// <summary>
         /// Mark appointment as completed and transition to verification stage
         /// Creates document verification records for all required documents
         /// </summary>

@@ -212,6 +212,71 @@ namespace PMCRMS.API.Services
             }
         }
 
+        public async Task<WorkflowActionResultDto> RescheduleAppointmentAsync(RescheduleAppointmentRequestDto request, int officerId)
+        {
+            try
+            {
+                _logger.LogInformation("Rescheduling appointment {AppointmentId} by officer {OfficerId}", request.AppointmentId, officerId);
+
+                // Get officer details for logging
+                var officer = await _context.Officers.FindAsync(officerId);
+                if (officer == null)
+                {
+                    return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
+                }
+
+                // Reschedule appointment using the AppointmentService
+                var result = await _appointmentService.RescheduleAppointmentAsync(
+                    request.AppointmentId,
+                    request.NewReviewDate,
+                    request.RescheduleReason,
+                    officer.Name,
+                    request.Place,
+                    request.ContactPerson,
+                    request.RoomNumber);
+
+                if (!result.Success)
+                {
+                    return new WorkflowActionResultDto
+                    {
+                        Success = false,
+                        Message = result.Message,
+                        Errors = result.Errors
+                    };
+                }
+
+                // Get the new appointment details
+                var newAppointment = await _context.Appointments
+                    .Include(a => a.Application)
+                    .FirstOrDefaultAsync(a => a.Id == result.AppointmentId);
+
+                if (newAppointment == null)
+                {
+                    return new WorkflowActionResultDto { Success = false, Message = "New appointment not found" };
+                }
+
+                _logger.LogInformation("Appointment rescheduled successfully. New appointment ID: {AppointmentId}", result.AppointmentId);
+
+                return new WorkflowActionResultDto
+                {
+                    Success = true,
+                    Message = $"Appointment rescheduled successfully to {request.NewReviewDate:MMMM dd, yyyy 'at' hh:mm tt}",
+                    NewStatus = newAppointment.Application?.Status ?? ApplicationCurrentStatus.APPOINTMENT_SCHEDULED,
+                    NextAction = "Complete Appointment"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error rescheduling appointment {AppointmentId}", request.AppointmentId);
+                return new WorkflowActionResultDto
+                {
+                    Success = false,
+                    Message = $"Error rescheduling appointment: {ex.Message}",
+                    Errors = new List<string> { ex.Message }
+                };
+            }
+        }
+
         public async Task<WorkflowActionResultDto> CompleteAppointmentAsync(CompleteAppointmentRequestDto request, int officerId)
         {
             try
