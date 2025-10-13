@@ -27,8 +27,9 @@ const OfficerLoginPage: React.FC = () => {
     setError("");
 
     try {
-      // Try admin login first if email is admin@gmail.com
-      const isAdminEmail = formData.email.toLowerCase() === "admin@gmail.com";
+      // Try admin login first if email is admin email
+      const adminEmails = ["admin@gmail.com", "pmc@mailinator.com"];
+      const isAdminEmail = adminEmails.includes(formData.email.toLowerCase());
 
       const response = isAdminEmail
         ? await apiService.auth.adminLogin(formData.email, formData.password)
