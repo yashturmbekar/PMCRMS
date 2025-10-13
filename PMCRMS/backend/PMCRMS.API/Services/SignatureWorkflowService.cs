@@ -181,178 +181,166 @@ namespace PMCRMS.API.Services
             ApplicationCurrentStatus nextStatus,
             string successMessage)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // Use execution strategy for PostgreSQL retry support (no manual transactions)
+            var strategy = _context.Database.CreateExecutionStrategy();
             
-            try
+            return await strategy.ExecuteAsync(async () =>
             {
-                // 1. Get application with documents
-                var application = await _context.Applications
-                    .Include(a => a.Documents)
-                    .Include(a => a.Applicant)
-                    .FirstOrDefaultAsync(a => a.Id == applicationId);
-
-                if (application == null)
+                try
                 {
-                    return new SignatureWorkflowResult
-                    {
-                        Success = false,
-                        ErrorMessage = "Application not found"
-                    };
-                }
+                    // 1. Get application with documents
+                    var application = await _context.PositionApplications
+                        .FirstOrDefaultAsync(a => a.Id == applicationId);
 
-                // 2. Validate officer exists and has correct role
-                var officer = await _context.Officers.FindAsync(officerId);
-                if (officer == null)
-                {
-                    return new SignatureWorkflowResult
+                    if (application == null)
                     {
-                        Success = false,
-                        ErrorMessage = "Officer not found"
-                    };
-                }
-
-                if (!expectedRoles.Contains(officer.Role))
-                {
-                    return new SignatureWorkflowResult
-                    {
-                        Success = false,
-                        ErrorMessage = $"Invalid officer role. Expected one of: {string.Join(", ", expectedRoles)}, got {officer.Role}"
-                    };
-                }
-
-                // 3. Get recommendation form document from SEDocuments table
-                var recommendationDoc = await _context.SEDocuments
-                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && 
-                                            d.DocumentType == SEDocumentType.RecommendedForm);
-
-                if (recommendationDoc == null)
-                {
-                    return new SignatureWorkflowResult
-                    {
-                        Success = false,
-                        ErrorMessage = "Recommendation form not found in database"
-                    };
-                }
-
-                // 4. Read PDF content from database
-                byte[] pdfContent;
-                if (recommendationDoc.FileContent != null && recommendationDoc.FileContent.Length > 0)
-                {
-                    // PDF is stored in database
-                    pdfContent = recommendationDoc.FileContent;
-                    _logger.LogInformation("Reading PDF from database (FileContent), size: {Size} bytes", pdfContent.Length);
-                }
-                else if (!string.IsNullOrEmpty(recommendationDoc.FilePath) && File.Exists(recommendationDoc.FilePath))
-                {
-                    // Fallback: PDF is stored as file
-                    try
-                    {
-                        pdfContent = await File.ReadAllBytesAsync(recommendationDoc.FilePath);
-                        _logger.LogInformation("Reading PDF from file: {FilePath}", recommendationDoc.FilePath);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to read PDF from file path");
                         return new SignatureWorkflowResult
                         {
                             Success = false,
-                            ErrorMessage = "Failed to read recommendation form from file"
+                            ErrorMessage = "Application not found"
                         };
                     }
-                }
-                else
-                {
+
+                    // 2. Validate officer exists and has correct role
+                    var officer = await _context.Officers.FindAsync(officerId);
+                    if (officer == null)
+                    {
+                        return new SignatureWorkflowResult
+                        {
+                            Success = false,
+                            ErrorMessage = "Officer not found"
+                        };
+                    }
+
+                    if (!expectedRoles.Contains(officer.Role))
+                    {
+                        return new SignatureWorkflowResult
+                        {
+                            Success = false,
+                            ErrorMessage = $"Invalid officer role. Expected one of: {string.Join(", ", expectedRoles)}, got {officer.Role}"
+                        };
+                    }
+
+                    // 3. Get recommendation form document from SEDocuments table
+                    var recommendationDoc = await _context.SEDocuments
+                        .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && 
+                                                d.DocumentType == SEDocumentType.RecommendedForm);
+
+                    if (recommendationDoc == null)
+                    {
+                        return new SignatureWorkflowResult
+                        {
+                            Success = false,
+                            ErrorMessage = "Recommendation form not found in database"
+                        };
+                    }
+
+                    // 4. Read PDF content from database
+                    byte[] pdfContent;
+                    if (recommendationDoc.FileContent != null && recommendationDoc.FileContent.Length > 0)
+                    {
+                        // PDF is stored in database
+                        pdfContent = recommendationDoc.FileContent;
+                        _logger.LogInformation("Reading PDF from database (FileContent), size: {Size} bytes", pdfContent.Length);
+                    }
+                    else if (!string.IsNullOrEmpty(recommendationDoc.FilePath) && File.Exists(recommendationDoc.FilePath))
+                    {
+                        // Fallback: PDF is stored as file
+                        try
+                        {
+                            pdfContent = await File.ReadAllBytesAsync(recommendationDoc.FilePath);
+                            _logger.LogInformation("Reading PDF from file: {FilePath}", recommendationDoc.FilePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to read PDF from file path");
+                            return new SignatureWorkflowResult
+                            {
+                                Success = false,
+                                ErrorMessage = "Failed to read recommendation form from file"
+                            };
+                        }
+                    }
+                    else
+                    {
+                        return new SignatureWorkflowResult
+                        {
+                            Success = false,
+                            ErrorMessage = "Recommendation form has no content (neither FileContent nor FilePath)"
+                        };
+                    }
+
+                    // 5. Sign PDF using HSM with test KeyLabel
+                    var signResult = await SignPdfWithTestKeyLabelAsync(
+                        applicationId,
+                        officerId,
+                        pdfContent,
+                        otp,
+                        officer.Role
+                    );
+
+                    if (!signResult.Success)
+                    {
+                        _logger.LogError("HSM signature failed for {Role}: {Error}", 
+                            officer.Role, signResult.ErrorMessage);
+                        
+                        return new SignatureWorkflowResult
+                        {
+                            Success = false,
+                            ErrorMessage = signResult.ErrorMessage,
+                            RawHsmResponse = signResult.RawResponse
+                        };
+                    }
+
+                    // 6. Save signed PDF back to database (update FileContent)
+                    recommendationDoc.FileContent = signResult.SignedPdfContent;
+                    recommendationDoc.FileSize = (decimal)(signResult.SignedPdfContent!.Length / 1024.0); // Size in KB
+                    recommendationDoc.FileName = $"RecommendedForm_Signed_{applicationId}_{officer.Role}.pdf";
+                    recommendationDoc.IsVerified = true;
+                    recommendationDoc.VerifiedBy = officerId;
+                    recommendationDoc.VerifiedDate = DateTime.UtcNow;
+                    recommendationDoc.VerificationRemarks = $"Digitally signed by {officer.Role}";
+                    recommendationDoc.UpdatedDate = DateTime.UtcNow;
+
+                    _logger.LogInformation(
+                        "Updated signed PDF in database for application {ApplicationId}, size: {Size} KB",
+                        applicationId, recommendationDoc.FileSize);
+
+                    // 7. Update application status
+                    application.Status = nextStatus;
+                    application.UpdatedDate = DateTime.UtcNow;
+
+                    // 8. Assign to next officer if not final signature
+                    if (nextStatus != ApplicationCurrentStatus.CLERK_PENDING)
+                    {
+                        await AssignToNextOfficerAsync(application, nextStatus);
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation(
+                        "✅ {Role} signature completed for application {ApplicationId}. New status: {Status}",
+                        officer.Role, applicationId, nextStatus);
+
                     return new SignatureWorkflowResult
                     {
-                        Success = false,
-                        ErrorMessage = "Recommendation form has no content (neither FileContent nor FilePath)"
+                        Success = true,
+                        Message = successMessage,
+                        SignedDocumentId = recommendationDoc.Id,
+                        NextStatus = nextStatus
                     };
                 }
-
-                // 5. Sign PDF using HSM with test KeyLabel
-                var signResult = await SignPdfWithTestKeyLabelAsync(
-                    applicationId,
-                    officerId,
-                    pdfContent,
-                    otp,
-                    officer.Role
-                );
-
-                if (!signResult.Success)
+                catch (Exception ex)
                 {
-                    _logger.LogError("HSM signature failed for {Role}: {Error}", 
-                        officer.Role, signResult.ErrorMessage);
+                    _logger.LogError(ex, "Error during signature workflow");
                     
                     return new SignatureWorkflowResult
                     {
                         Success = false,
-                        ErrorMessage = signResult.ErrorMessage,
-                        RawHsmResponse = signResult.RawResponse
+                        ErrorMessage = $"Exception: {ex.Message}"
                     };
                 }
-
-                // 6. Save signed PDF back to database (update FileContent)
-                recommendationDoc.FileContent = signResult.SignedPdfContent;
-                recommendationDoc.FileSize = (decimal)(signResult.SignedPdfContent!.Length / 1024.0); // Size in KB
-                recommendationDoc.FileName = $"RecommendedForm_Signed_{applicationId}_{officer.Role}.pdf";
-                recommendationDoc.IsVerified = true;
-                recommendationDoc.VerifiedBy = officerId;
-                recommendationDoc.VerifiedDate = DateTime.UtcNow;
-                recommendationDoc.VerificationRemarks = $"Digitally signed by {officer.Role}";
-                recommendationDoc.UpdatedDate = DateTime.UtcNow;
-
-                _logger.LogInformation(
-                    "Updated signed PDF in database for application {ApplicationId}, size: {Size} KB",
-                    applicationId, recommendationDoc.FileSize);
-
-                // 7. Update application status
-                application.CurrentStatus = nextStatus;
-                application.UpdatedDate = DateTime.UtcNow;
-
-                // 9. Add status history
-                var statusHistory = new ApplicationStatus
-                {
-                    ApplicationId = applicationId,
-                    Status = nextStatus,
-                    UpdatedByOfficerId = officerId,
-                    Remarks = $"{officer.Role} signed recommendation form digitally",
-                    StatusDate = DateTime.UtcNow,
-                    IsActive = true
-                };
-                _context.ApplicationStatuses.Add(statusHistory);
-
-                // 10. Assign to next officer if not final signature
-                if (nextStatus != ApplicationCurrentStatus.CLERK_PENDING)
-                {
-                    await AssignToNextOfficerAsync(application, nextStatus);
-                }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                _logger.LogInformation(
-                    "✅ {Role} signature completed for application {ApplicationId}. New status: {Status}",
-                    officer.Role, applicationId, nextStatus);
-
-                return new SignatureWorkflowResult
-                {
-                    Success = true,
-                    Message = successMessage,
-                    SignedDocumentId = recommendationDoc.Id,
-                    NextStatus = nextStatus
-                };
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                _logger.LogError(ex, "Error during signature workflow");
-                
-                return new SignatureWorkflowResult
-                {
-                    Success = false,
-                    ErrorMessage = $"Exception: {ex.Message}"
-                };
-            }
+            });
         }
 
         /// <summary>
@@ -439,7 +427,7 @@ namespace PMCRMS.API.Services
         /// <summary>
         /// Assign application to next officer in workflow
         /// </summary>
-        private async Task AssignToNextOfficerAsync(Application application, ApplicationCurrentStatus status)
+        private async Task AssignToNextOfficerAsync(PositionApplication application, ApplicationCurrentStatus status)
         {
             OfficerRole[]? nextRoles = status switch
             {
@@ -464,10 +452,21 @@ namespace PMCRMS.API.Services
 
             if (nextOfficer != null)
             {
-                application.AssignedOfficerId = nextOfficer.Id;
-                application.AssignedOfficerName = nextOfficer.Name;
-                application.AssignedOfficerDesignation = nextOfficer.Role.ToString();
-                application.AssignedDate = DateTime.UtcNow;
+                // Assign based on status
+                switch (status)
+                {
+                    case ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING:
+                        // Assignment already done in JEWorkflowService
+                        break;
+                    case ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING:
+                        application.AssignedExecutiveEngineerId = nextOfficer.Id;
+                        application.AssignedToExecutiveEngineerDate = DateTime.UtcNow;
+                        break;
+                    case ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING:
+                        application.AssignedCityEngineerId = nextOfficer.Id;
+                        application.AssignedToCityEngineerDate = DateTime.UtcNow;
+                        break;
+                }
 
                 _logger.LogInformation(
                     "Application {ApplicationId} assigned to {Role}: {OfficerName}",
@@ -480,8 +479,7 @@ namespace PMCRMS.API.Services
         /// </summary>
         public async Task<SignatureStatusResult> GetSignatureStatusAsync(int applicationId)
         {
-            var application = await _context.Applications
-                .Include(a => a.StatusHistory)
+            var application = await _context.PositionApplications
                 .FirstOrDefaultAsync(a => a.Id == applicationId);
 
             if (application == null)
@@ -493,32 +491,27 @@ namespace PMCRMS.API.Services
                 };
             }
 
-            // Check which signatures have been completed
-            var statusHistory = application.StatusHistory.OrderBy(s => s.StatusDate).ToList();
-
-            var jeSignature = statusHistory.Any(s => 
-                s.Status == ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING);
-            
-            var aeSignature = statusHistory.Any(s => 
-                s.Status == ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING);
-            
-            var eeSignature = statusHistory.Any(s => 
-                s.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING);
-            
-            var ceSignature = statusHistory.Any(s => 
-                s.Status == ApplicationCurrentStatus.CLERK_PENDING);
+            // Check which signatures have been completed based on application status
+            var jeSignature = application.JEDigitalSignatureApplied;
+            var aeSignature = application.AEArchitectDigitalSignatureApplied || 
+                             application.AELicenceDigitalSignatureApplied || 
+                             application.AEStructuralDigitalSignatureApplied || 
+                             application.AESupervisor1DigitalSignatureApplied || 
+                             application.AESupervisor2DigitalSignatureApplied;
+            var eeSignature = application.ExecutiveEngineerDigitalSignatureApplied;
+            var ceSignature = application.CityEngineerDigitalSignatureApplied;
 
             return new SignatureStatusResult
             {
                 Success = true,
                 ApplicationId = applicationId,
-                CurrentStatus = application.CurrentStatus,
+                CurrentStatus = application.Status,
                 JuniorEngineerSigned = jeSignature,
                 AssistantEngineerSigned = aeSignature,
                 ExecutiveEngineerSigned = eeSignature,
                 CityEngineerSigned = ceSignature,
                 AllSignaturesComplete = ceSignature,
-                NextSigner = GetNextSignerRole(application.CurrentStatus)
+                NextSigner = GetNextSignerRole(application.Status)
             };
         }
 

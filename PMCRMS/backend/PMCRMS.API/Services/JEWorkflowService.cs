@@ -347,33 +347,10 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
                 }
 
-                // Validate OTP and apply digital signature if OTP provided
+                // Apply digital signature if OTP provided (HSM validates OTP directly)
                 if (!string.IsNullOrWhiteSpace(request.Otp))
                 {
-                    var otpVerification = await _context.OtpVerifications
-                        .Where(o => o.Identifier == officer.Email 
-                                 && o.OtpCode == request.Otp 
-                                 && o.Purpose == "DIGITAL_SIGNATURE"
-                                 && !o.IsUsed
-                                 && o.IsActive
-                                 && o.ExpiryTime > DateTime.UtcNow)
-                        .OrderByDescending(o => o.CreatedDate)
-                        .FirstOrDefaultAsync();
-
-                    if (otpVerification == null)
-                    {
-                        return new WorkflowActionResultDto 
-                        { 
-                            Success = false, 
-                            Message = "Invalid or expired OTP. Please generate a new OTP." 
-                        };
-                    }
-
-                    // Mark OTP as used
-                    otpVerification.IsUsed = true;
-                    otpVerification.VerifiedAt = DateTime.UtcNow;
-                    
-                    // ✅ Use SignatureWorkflowService for consistent database-only signature workflow
+                    // ✅ Use SignatureWorkflowService - HSM handles OTP validation
                     _logger.LogInformation(
                         "Initiating JE digital signature for application {ApplicationId} by officer {OfficerId}",
                         request.ApplicationId, officerId);
@@ -599,32 +576,11 @@ namespace PMCRMS.API.Services
                     throw new Exception($"Failed to generate OTP: {hsmResult.ErrorMessage}");
                 }
 
-                _logger.LogInformation("OTP generated successfully from HSM for officer {OfficerId}", officerId);
+                _logger.LogInformation("✅ OTP generated and sent by HSM to officer {OfficerId} - no database storage needed", officerId);
 
-                // Generate a mock OTP for database storage (actual OTP is sent by HSM to officer's email/phone)
-                var otp = new Random().Next(100000, 999999).ToString();
-
-                // Store OTP in database for validation
-                var otpVerification = new OtpVerification
-                {
-                    Identifier = officer.Email,
-                    OtpCode = otp,
-                    Purpose = "DIGITAL_SIGNATURE",
-                    ExpiryTime = DateTime.UtcNow.AddMinutes(5),
-                    IsUsed = false,
-                    IsActive = true,
-                    CreatedBy = officerId.ToString(),
-                    CreatedDate = DateTime.UtcNow
-                };
-
-                _context.OtpVerifications.Add(otpVerification);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("OTP stored in database for application {ApplicationId}", applicationId);
-
-                // Return OTP for development/testing purposes
-                // TODO: Remove this in production
-                return otp;
+                // HSM sends OTP directly to officer's registered mobile/email
+                // No need to store or return OTP - HSM validates it during signing
+                return "OTP sent to registered mobile/email";
             }
             catch (Exception ex)
             {

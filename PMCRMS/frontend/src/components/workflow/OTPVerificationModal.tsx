@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import NotificationModal from "../common/NotificationModal";
 import type { NotificationType } from "../common/NotificationModal";
+import OtpInput from "../OtpInput";
 
 interface OTPVerificationModalProps {
   isOpen: boolean;
@@ -32,7 +33,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   onSuccess,
 }) => {
   const [comments, setComments] = useState("");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpValue, setOtpValue] = useState("");
   const [otpGenerated, setOtpGenerated] = useState(false);
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,28 +65,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     }
   };
 
-  const handleOtpChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return; // Only allow digits
-
-    const newOtp = [...otp];
-    newOtp[index] = value.slice(-1); // Take only last digit
-    setOtp(newOtp);
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      const nextInput = document.getElementById(`otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      prevInput?.focus();
-    }
+  const handleOtpChange = (value: string) => {
+    setOtpValue(value);
   };
 
   const handleGenerateOtp = async () => {
@@ -126,8 +107,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   };
 
   const handleVerifyAndSign = async () => {
-    const otpValue = otp.join("");
-
     if (otpValue.length !== 6) {
       setNotification({
         isOpen: true,
@@ -164,7 +143,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           onClose();
           // Reset state
           setComments("");
-          setOtp(["", "", "", "", "", ""]);
+          setOtpValue("");
           setOtpGenerated(false);
         }, 2000);
       } else {
@@ -344,66 +323,18 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 >
                   Enter OTP
                 </label>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "10px",
-                    justifyContent: "center",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      id={`otp-${index}`}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                      style={{
-                        width: "50px",
-                        height: "55px",
-                        textAlign: "center",
-                        fontSize: "22px",
-                        fontWeight: "bold",
-                        border: "2px solid #d1d5db",
-                        borderRadius: "8px",
-                        outline: "none",
-                        transition: "all 0.2s",
-                        backgroundColor: digit ? "#f0fdf4" : "white",
-                      }}
-                      onFocus={(e) => {
-                        const focusColor =
-                          officerType === "CE"
-                            ? "#dc2626"
-                            : officerType === "EE"
-                            ? "#7c3aed"
-                            : "#3b82f6";
-                        e.target.style.borderColor = focusColor;
-                        e.target.style.boxShadow = `0 0 0 3px ${
-                          officerType === "CE"
-                            ? "rgba(220, 38, 38, 0.1)"
-                            : officerType === "EE"
-                            ? "rgba(124, 58, 237, 0.1)"
-                            : "rgba(59, 130, 246, 0.1)"
-                        }`;
-                        e.target.select();
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = "#d1d5db";
-                        e.target.style.boxShadow = "none";
-                      }}
-                    />
-                  ))}
-                </div>
+                <OtpInput
+                  length={6}
+                  value={otpValue}
+                  onChange={handleOtpChange}
+                  disabled={isSubmitting}
+                />
                 <p
                   style={{
                     fontSize: "13px",
                     color: "#64748b",
                     textAlign: "center",
-                    margin: 0,
+                    margin: "8px 0 0 0",
                   }}
                 >
                   OTP sent to your registered email address (valid for 5
@@ -500,7 +431,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               <button
                 className="pmc-button pmc-button-success"
                 onClick={handleVerifyAndSign}
-                disabled={isSubmitting || otp.join("").length !== 6}
+                disabled={isSubmitting || otpValue.length !== 6}
                 style={{
                   minWidth: "200px",
                   padding: "8px 16px",

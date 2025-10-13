@@ -223,29 +223,11 @@ namespace PMCRMS.API.Services
                     throw new Exception($"Failed to generate OTP: {hsmResult.ErrorMessage}");
                 }
 
-                _logger.LogInformation("OTP generated successfully from HSM for EE officer {OfficerId}", officerId);
+                _logger.LogInformation("✅ OTP generated and sent by HSM to EE officer {OfficerId} - no database storage needed", officerId);
 
-                // Generate a mock OTP for database storage (actual OTP is sent by HSM)
-                var otp = new Random().Next(100000, 999999).ToString();
-
-                // Store OTP verification record in database
-                var otpVerification = new OtpVerification
-                {
-                    Identifier = officer.Email,
-                    OtpCode = otp,
-                    Purpose = "DIGITAL_SIGNATURE_EE",
-                    ExpiryTime = DateTime.UtcNow.AddMinutes(5),
-                    IsUsed = false,
-                    IsActive = true,
-                    CreatedBy = officerId.ToString(),
-                    CreatedDate = DateTime.UtcNow
-                };
-
-                _context.OtpVerifications.Add(otpVerification);
-                await _context.SaveChangesAsync();
-
-                // Return success message (don't return actual OTP)
-                return "OTP sent successfully via HSM";
+                // HSM sends OTP directly to officer's registered mobile/email
+                // No need to store or return OTP - HSM validates it during signing
+                return "OTP sent to registered mobile/email";
             }
             catch (Exception ex)
             {
