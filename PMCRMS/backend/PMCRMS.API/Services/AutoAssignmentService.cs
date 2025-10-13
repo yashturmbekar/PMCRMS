@@ -666,5 +666,317 @@ namespace PMCRMS.API.Services
         }
 
         #endregion
+
+        #region Workflow Chain Auto-Assignment
+
+        /// <summary>
+        /// Auto-assigns application to next officer in workflow chain based on current status
+        /// JE → AE → EE → CE → Clerk
+        /// </summary>
+        public async Task<AssignmentHistory?> AutoAssignToNextWorkflowStageAsync(
+            int applicationId, 
+            ApplicationCurrentStatus currentStatus,
+            int? currentOfficerId = null)
+        {
+            try
+            {
+                var application = await _context.PositionApplications
+                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+                if (application == null)
+                {
+                    _logger.LogWarning("Application {ApplicationId} not found for workflow assignment", applicationId);
+                    return null;
+                }
+
+                Officer? nextOfficer = null;
+                OfficerRole targetRole;
+                string reason = "";
+
+                switch (currentStatus)
+                {
+                    case ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING:
+                        // Assign to Assistant Engineer (AE)
+                        targetRole = MapPositionToAERole(application.PositionType);
+                        nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
+                        reason = $"Auto-assigned to AE after JE approval using workload-based strategy";
+                        
+                        if (nextOfficer != null)
+                        {
+                            AssignToAE(application, nextOfficer.Id);
+                        }
+                        break;
+
+                    case ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING:
+                        // Assign to Executive Engineer (EE)
+                        targetRole = MapPositionToEERole(application.PositionType);
+                        nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
+                        reason = $"Auto-assigned to EE after AE approval using workload-based strategy";
+                        
+                        if (nextOfficer != null)
+                        {
+                            AssignToEE(application, nextOfficer.Id);
+                        }
+                        break;
+
+                    case ApplicationCurrentStatus.CITY_ENGINEER_PENDING:
+                        // Assign to City Engineer (CE)
+                        targetRole = OfficerRole.CityEngineer;
+                        nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
+                        reason = $"Auto-assigned to CE after EE approval using workload-based strategy";
+                        
+                        if (nextOfficer != null)
+                        {
+                            application.AssignedCityEngineerId = nextOfficer.Id;
+                            application.AssignedToCityEngineerDate = DateTime.UtcNow;
+                        }
+                        break;
+
+                    case ApplicationCurrentStatus.CLERK_PENDING:
+                        // Note: Clerk assignment not yet implemented in PositionApplication model
+                        // This section is commented out until Clerk properties are added
+                        /*
+                        // Assign to Clerk for final processing
+                        targetRole = OfficerRole.Clerk;
+                        nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
+                        reason = $"Auto-assigned to Clerk after CE approval using workload-based strategy";
+                        
+                        if (nextOfficer != null)
+                        {
+                            application.AssignedClerkId = nextOfficer.Id;
+                            application.AssignedToClerkDate = DateTime.UtcNow;
+                        }
+                        */
+                        _logger.LogWarning("Clerk auto-assignment not yet implemented - Clerk properties missing in PositionApplication model");
+                        return null;
+
+                    default:
+                        _logger.LogWarning("Status {Status} does not support auto-assignment to next stage", currentStatus);
+                        return null;
+                }
+
+                if (nextOfficer == null)
+                {
+                    _logger.LogWarning("No available officer found for status {Status} and position {PositionType}", 
+                        currentStatus, application.PositionType);
+                    return null;
+                }
+
+                // Calculate workload
+                var currentWorkload = await CalculateWorkloadForRoleAsync(nextOfficer.Id, nextOfficer.Role);
+
+                // Create assignment history
+                var assignmentHistory = new AssignmentHistory
+                {
+                    ApplicationId = applicationId,
+                    PreviousOfficerId = currentOfficerId,
+                    AssignedToOfficerId = nextOfficer.Id,
+                    Action = AssignmentAction.AutoAssigned,
+                    AssignedDate = DateTime.UtcNow,
+                    Reason = reason,
+                    AssignedByAdminId = null,
+                    AutoAssignmentRuleId = null, // Workflow assignment doesn't use rules
+                    OfficerWorkloadAtAssignment = currentWorkload,
+                    StrategyUsed = AssignmentStrategy.WorkloadBased,
+                    NotificationSent = false,
+                    IsActive = true,
+                    ApplicationStatusAtAssignment = currentStatus,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.AssignmentHistories.Add(assignmentHistory);
+                await _context.SaveChangesAsync();
+
+                // Send notification
+                await SendAssignmentNotificationAsync(assignmentHistory.Id);
+
+                _logger.LogInformation(
+                    "Application {ApplicationId} auto-assigned to {Role} officer {OfficerId} for status {Status}",
+                    applicationId, nextOfficer.Role, nextOfficer.Id, currentStatus);
+
+                return assignmentHistory;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error auto-assigning application {ApplicationId} to next workflow stage", applicationId);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets available officer for workflow stage using workload-based assignment
+        /// </summary>
+        private async Task<Officer?> GetAvailableOfficerForWorkflowAsync(OfficerRole role, PositionType positionType)
+        {
+            try
+            {
+                // Get all active officers with this role
+                var officers = await _context.Officers
+                    .Where(o => o.Role == role && o.IsActive)
+                    .ToListAsync();
+
+                if (!officers.Any())
+                {
+                    _logger.LogWarning("No active officers found for role {Role}", role);
+                    return null;
+                }
+
+                // Calculate workload for each officer
+                var officerWorkloads = new Dictionary<int, int>();
+                foreach (var officer in officers)
+                {
+                    var workload = await CalculateWorkloadForRoleAsync(officer.Id, role);
+                    officerWorkloads[officer.Id] = workload;
+                }
+
+                // Select officer with minimum workload
+                var selectedOfficerId = officerWorkloads.OrderBy(kvp => kvp.Value).First().Key;
+                var selectedOfficer = officers.First(o => o.Id == selectedOfficerId);
+
+                _logger.LogInformation(
+                    "Selected officer {OfficerId} ({Name}) for role {Role} with workload {Workload}",
+                    selectedOfficer.Id, selectedOfficer.Name, role, officerWorkloads[selectedOfficerId]);
+
+                return selectedOfficer;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting available officer for role {Role}", role);
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Calculates workload for an officer based on their role
+        /// </summary>
+        private async Task<int> CalculateWorkloadForRoleAsync(int officerId, OfficerRole role)
+        {
+            try
+            {
+                var query = _context.PositionApplications.AsQueryable();
+
+                switch (role)
+                {
+                    // Junior Engineer roles
+                    case OfficerRole.JuniorArchitect:
+                    case OfficerRole.JuniorStructuralEngineer:
+                    case OfficerRole.JuniorLicenceEngineer:
+                    case OfficerRole.JuniorSupervisor1:
+                    case OfficerRole.JuniorSupervisor2:
+                        return await query.CountAsync(a => 
+                            a.AssignedJuniorEngineerId == officerId && 
+                            !a.JEDigitalSignatureApplied);
+
+                    // Assistant Engineer roles
+                    case OfficerRole.AssistantArchitect:
+                    case OfficerRole.AssistantStructuralEngineer:
+                    case OfficerRole.AssistantLicenceEngineer:
+                    case OfficerRole.AssistantSupervisor1:
+                    case OfficerRole.AssistantSupervisor2:
+                        return await query.CountAsync(a => 
+                            (a.AssignedAEArchitectId == officerId || 
+                             a.AssignedAEStructuralId == officerId ||
+                             a.AssignedAELicenceId == officerId ||
+                             a.AssignedAESupervisor1Id == officerId ||
+                             a.AssignedAESupervisor2Id == officerId) &&
+                            !a.AEArchitectDigitalSignatureApplied &&
+                            !a.AEStructuralDigitalSignatureApplied &&
+                            !a.AELicenceDigitalSignatureApplied &&
+                            !a.AESupervisor1DigitalSignatureApplied &&
+                            !a.AESupervisor2DigitalSignatureApplied);
+
+                    // Executive Engineer role (single role, not position-specific)
+                    case OfficerRole.ExecutiveEngineer:
+                        return await query.CountAsync(a => 
+                            a.AssignedExecutiveEngineerId == officerId && 
+                            !a.ExecutiveEngineerDigitalSignatureApplied);
+
+                    // City Engineer role
+                    case OfficerRole.CityEngineer:
+                        return await query.CountAsync(a => 
+                            a.AssignedCityEngineerId == officerId && 
+                            !a.CityEngineerDigitalSignatureApplied);
+
+                    // Note: Clerk assignment not yet implemented in PositionApplication model
+                    case OfficerRole.Clerk:
+                        return 0; // Placeholder - clerk properties don't exist yet
+
+                    default:
+                        return 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calculating workload for officer {OfficerId} with role {Role}", officerId, role);
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Assigns application to AE based on position type
+        /// </summary>
+        private void AssignToAE(PositionApplication application, int aeOfficerId)
+        {
+            switch (application.PositionType)
+            {
+                case PositionType.Architect:
+                    application.AssignedAEArchitectId = aeOfficerId;
+                    application.AssignedToAEArchitectDate = DateTime.UtcNow;
+                    break;
+                case PositionType.StructuralEngineer:
+                    application.AssignedAEStructuralId = aeOfficerId;
+                    application.AssignedToAEStructuralDate = DateTime.UtcNow;
+                    break;
+                case PositionType.LicenceEngineer:
+                    application.AssignedAELicenceId = aeOfficerId;
+                    application.AssignedToAELicenceDate = DateTime.UtcNow;
+                    break;
+                case PositionType.Supervisor1:
+                    application.AssignedAESupervisor1Id = aeOfficerId;
+                    application.AssignedToAESupervisor1Date = DateTime.UtcNow;
+                    break;
+                case PositionType.Supervisor2:
+                    application.AssignedAESupervisor2Id = aeOfficerId;
+                    application.AssignedToAESupervisor2Date = DateTime.UtcNow;
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Assigns application to EE (Executive Engineer is NOT position-specific)
+        /// </summary>
+        private void AssignToEE(PositionApplication application, int eeOfficerId)
+        {
+            // Executive Engineer uses a single assignment field for all positions
+            application.AssignedExecutiveEngineerId = eeOfficerId;
+            application.AssignedToExecutiveEngineerDate = DateTime.UtcNow;
+        }
+
+        /// <summary>
+        /// Maps position type to corresponding AE role
+        /// </summary>
+        private OfficerRole MapPositionToAERole(PositionType positionType)
+        {
+            return positionType switch
+            {
+                PositionType.Architect => OfficerRole.AssistantArchitect,
+                PositionType.StructuralEngineer => OfficerRole.AssistantStructuralEngineer,
+                PositionType.LicenceEngineer => OfficerRole.AssistantLicenceEngineer,
+                PositionType.Supervisor1 => OfficerRole.AssistantSupervisor1,
+                PositionType.Supervisor2 => OfficerRole.AssistantSupervisor2,
+                _ => OfficerRole.AssistantArchitect
+            };
+        }
+
+        /// <summary>
+        /// Maps position type to corresponding EE role
+        /// </summary>
+        private OfficerRole MapPositionToEERole(PositionType positionType)
+        {
+            // Executive Engineer is NOT position-specific - single role for all positions
+            return OfficerRole.ExecutiveEngineer;
+        }
+
+        #endregion
     }
 }

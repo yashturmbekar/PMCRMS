@@ -410,62 +410,28 @@ namespace PMCRMS.API.Services
                 // If OTP was provided and digital signature was applied, auto-forward to Assistant Engineer
                 if (!string.IsNullOrEmpty(request.Otp) && application.JEDigitalSignatureApplied)
                 {
-                    // Forward to appropriate Assistant Engineer based on position type
-                    var targetRole = MapPositionToAERole(application.PositionType);
-                    var targetAE = await _context.Officers
-                        .Where(o => o.Role == targetRole && o.IsActive)
-                        .OrderBy(o => o.Id) // Simple assignment - can be enhanced with load balancing
-                        .FirstOrDefaultAsync();
+                    // Use auto-assignment service for intelligent workload-based assignment
+                    var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
+                        applicationId: application.Id,
+                        currentStatus: ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING,
+                        currentOfficerId: officerId
+                    );
 
-                    if (targetAE != null)
+                    if (assignment != null)
                     {
-                        // Assign to appropriate AE based on position type
-                        switch (application.PositionType)
-                        {
-                            case PositionType.Architect:
-                                application.AssignedAEArchitectId = targetAE.Id;
-                                application.AssignedToAEArchitectDate = DateTime.UtcNow;
-                                break;
-                            case PositionType.StructuralEngineer:
-                                application.AssignedAEStructuralId = targetAE.Id;
-                                application.AssignedToAEStructuralDate = DateTime.UtcNow;
-                                break;
-                            case PositionType.LicenceEngineer:
-                                application.AssignedAELicenceId = targetAE.Id;
-                                application.AssignedToAELicenceDate = DateTime.UtcNow;
-                                break;
-                            case PositionType.Supervisor1:
-                                application.AssignedAESupervisor1Id = targetAE.Id;
-                                application.AssignedToAESupervisor1Date = DateTime.UtcNow;
-                                break;
-                            case PositionType.Supervisor2:
-                                application.AssignedAESupervisor2Id = targetAE.Id;
-                                application.AssignedToAESupervisor2Date = DateTime.UtcNow;
-                                break;
-                        }
-
-                        // Update status to AE pending
+                        // Status already updated by auto-assignment service
                         application.Status = ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING;
                         application.JEApprovalDate = DateTime.UtcNow;
 
-                        // Send notification to AE
-                        await _notificationService.NotifyOfficerAssignmentAsync(
-                            targetAE.Id,
-                            application.ApplicationNumber ?? "N/A",
-                            application.Id,
-                            application.PositionType.ToString(),
-                            $"{application.FirstName} {application.LastName}",
-                            officerId.ToString());
-
                         _logger.LogInformation(
-                            "Application {ApplicationId} automatically forwarded to Assistant Engineer {OfficerId} for position {PositionType}",
-                            application.Id, targetAE.Id, application.PositionType);
+                            "Application {ApplicationId} auto-assigned to Assistant Engineer {OfficerId} using workload-based strategy",
+                            application.Id, assignment.AssignedToOfficerId);
                     }
                     else
                     {
                         _logger.LogWarning(
-                            "No available Assistant Engineer found for role {Role}. Application {ApplicationId} will remain in current status.",
-                            targetRole, application.Id);
+                            "Auto-assignment failed for application {ApplicationId}. No available Assistant Engineer found.",
+                            application.Id);
                     }
                 }
 
@@ -984,8 +950,11 @@ namespace PMCRMS.API.Services
         {
             try
             {
+                // ✅ Only show applications that are still pending JE action
+                // Exclude applications where JE has completed verification and digital signature
                 var applications = await _context.PositionApplications
-                    .Where(a => a.AssignedJuniorEngineerId == officerId)
+                    .Where(a => a.AssignedJuniorEngineerId == officerId 
+                        && (!a.JEDigitalSignatureApplied || a.Status != ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING))
                     .ToListAsync();
 
                 var statusList = new List<JEWorkflowStatusDto>();

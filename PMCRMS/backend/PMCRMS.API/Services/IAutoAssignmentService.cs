@@ -83,5 +83,15 @@ namespace PMCRMS.API.Services
         /// <param name="escalationReason">Reason for escalation</param>
         /// <returns>New assignment history record after escalation</returns>
         Task<AssignmentHistory?> EscalateApplicationAsync(int applicationId, string escalationReason);
+
+        /// <summary>
+        /// Auto-assigns application to the next workflow stage (JE → AE → EE → CE → Clerk)
+        /// Uses workload-based strategy to select the best available officer
+        /// </summary>
+        /// <param name="applicationId">ID of the application to assign</param>
+        /// <param name="currentStatus">Current status determining which stage to assign to next</param>
+        /// <param name="currentOfficerId">Optional ID of the officer completing the current stage</param>
+        /// <returns>Assignment history record if successful, null if no officer available</returns>
+        Task<AssignmentHistory?> AutoAssignToNextWorkflowStageAsync(int applicationId, ApplicationCurrentStatus currentStatus, int? currentOfficerId = null);
     }
 }

@@ -22,6 +22,7 @@ namespace PMCRMS.API.Services
         private readonly IConfiguration _configuration;
         private readonly IHsmService _hsmService;
         private readonly IOptions<HsmConfiguration> _hsmConfig;
+        private readonly IAutoAssignmentService _autoAssignmentService;
 
         public AEWorkflowService(
             PMCRMSDbContext context,
@@ -32,7 +33,8 @@ namespace PMCRMS.API.Services
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
             IHsmService hsmService,
-            IOptions<HsmConfiguration> hsmConfig)
+            IOptions<HsmConfiguration> hsmConfig,
+            IAutoAssignmentService autoAssignmentService)
         {
             _context = context;
             _logger = logger;
@@ -43,6 +45,7 @@ namespace PMCRMS.API.Services
             _configuration = configuration;
             _hsmService = hsmService;
             _hsmConfig = hsmConfig;
+            _autoAssignmentService = autoAssignmentService;
         }
 
         public async Task<List<AEWorkflowStatusDto>> GetPendingApplicationsAsync(int officerId, PositionType positionType)
@@ -308,46 +311,45 @@ namespace PMCRMS.API.Services
                 // Update application based on position type
                 UpdateApplicationAfterAESignature(application, positionType, comments, DateTime.UtcNow);
 
-                // Forward to Executive Engineer
-                var executiveEngineer = await _context.Officers
-                    .Where(o => o.Role == OfficerRole.ExecutiveEngineer && o.IsActive)
-                    .OrderBy(o => o.Id)
-                    .FirstOrDefaultAsync();
+                // Use auto-assignment service for intelligent workload-based assignment to EE
+                var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
+                    applicationId: application.Id,
+                    currentStatus: ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING,
+                    currentOfficerId: officerId
+                );
 
-                if (executiveEngineer != null)
+                if (assignment != null)
                 {
-                    application.AssignedExecutiveEngineerId = executiveEngineer.Id;
-                    application.AssignedToExecutiveEngineerDate = DateTime.UtcNow;
+                    // Status already updated by auto-assignment service
                     application.Status = ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING;
 
                     // Send email notification to applicant
                     await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
-                            application.Id,
-                            ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING
-                        );
+                        application.Id,
+                        ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING
+                    );
 
-                        // Send notification to EE
-                        await _notificationService.NotifyOfficerAssignmentAsync(
-                            executiveEngineer.Id,
-                            application.ApplicationNumber ?? "N/A",
-                            application.Id,
-                            application.PositionType.ToString(),
-                            $"{application.FirstName} {application.LastName}",
-                            officerId.ToString());
+                    _logger.LogInformation(
+                        "Application {ApplicationId} auto-assigned to Executive Engineer {OfficerId} using workload-based strategy",
+                        applicationId, assignment.AssignedToOfficerId);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Auto-assignment failed for application {ApplicationId}. No available Executive Engineer found.",
+                        application.Id);
+                }
 
-                        _logger.LogInformation(
-                            "Application {ApplicationId} forwarded to Executive Engineer {OfficerId}", 
-                            applicationId, executiveEngineer.Id);
-                    }
+                await _context.SaveChangesAsync();
 
-                    await _context.SaveChangesAsync();
-
-                    return new WorkflowActionResultDto
-                    {
-                        Success = true,
-                        Message = "Documents verified, recommendation form digitally signed via HSM, and application forwarded to Executive Engineer successfully",
-                        NewStatus = application.Status
-                    };
+                return new WorkflowActionResultDto
+                {
+                    Success = true,
+                    Message = assignment != null 
+                        ? "Documents verified, recommendation form digitally signed via HSM, and application forwarded to Executive Engineer successfully"
+                        : "Documents verified and digitally signed successfully. Manual assignment to Executive Engineer required.",
+                    NewStatus = application.Status
+                };
             }
             catch (Exception ex)
             {
