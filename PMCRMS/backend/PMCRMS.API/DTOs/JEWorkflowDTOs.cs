@@ -218,6 +218,15 @@ namespace PMCRMS.API.DTOs
     }
 
     /// <summary>
+    /// Request to reject an application
+    /// </summary>
+    public class RejectApplicationRequestDto
+    {
+        public int ApplicationId { get; set; }
+        public string RejectionComments { get; set; } = string.Empty;
+    }
+
+    /// <summary>
     /// Workflow notification settings
     /// </summary>
     public class WorkflowNotificationSettingsDto

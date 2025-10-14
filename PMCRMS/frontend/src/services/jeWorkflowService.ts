@@ -297,6 +297,17 @@ export const jeWorkflowService = {
     return apiClient.post(`${workflowEndpoint}/send-reminders`);
   },
 
+  /**
+   * Reject application with comments
+   * POST /api/JEWorkflow/reject
+   */
+  async rejectApplication(data: {
+    applicationId: number;
+    rejectionComments: string;
+  }): Promise<ApiResponse<WorkflowActionResultDto>> {
+    return apiClient.post(`${workflowEndpoint}/reject`, data);
+  },
+
   // ============================================
   // PositionRegistration Workflow Integration
   // ============================================

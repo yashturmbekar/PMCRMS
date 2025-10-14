@@ -452,6 +452,40 @@ export const PositionRegistrationPage = () => {
     "December",
   ];
 
+  // Format date for display (removes timestamp)
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      // Check if it's a valid date
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Format year only (for passing year)
+  const formatYear = (yearString: string) => {
+    if (!yearString) return "N/A";
+    try {
+      // If it's already just a year (4 digits), return it
+      if (/^\d{4}$/.test(yearString)) return yearString;
+      // If it's a date string with timestamp, extract year
+      const date = new Date(yearString);
+      if (!isNaN(date.getTime())) {
+        return date.getFullYear().toString();
+      }
+      return yearString;
+    } catch {
+      return yearString;
+    }
+  };
+
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
@@ -466,13 +500,24 @@ export const PositionRegistrationPage = () => {
     field: string,
     value: string
   ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [addressType]: {
-        ...prev[addressType],
-        [field]: value,
-      },
-    }));
+    setFormData((prev) => {
+      const newFormData = {
+        ...prev,
+        [addressType]: {
+          ...prev[addressType],
+          [field]: value,
+        },
+      };
+
+      // If changing local address and permanent is synced, update permanent too
+      if (addressType === "currentAddress" && permanentSameAsLocal) {
+        newFormData.permanentAddress = {
+          ...newFormData.currentAddress,
+        };
+      }
+
+      return newFormData;
+    });
   };
 
   const handlePermanentSameAsLocal = (checked: boolean) => {
@@ -4131,7 +4176,8 @@ export const PositionRegistrationPage = () => {
                         <br />
                         {qual.instituteName}, {qual.universityName}
                         <br />
-                        Passing: {qual.passingMonth}/{qual.yearOfPassing}
+                        Passing: {qual.passingMonth}/
+                        {formatYear(qual.yearOfPassing)}
                       </div>
                     ))}
                   </div>
@@ -4178,7 +4224,8 @@ export const PositionRegistrationPage = () => {
                       >
                         <strong>{exp.position}</strong> at {exp.companyName}
                         <br />
-                        Duration: {exp.fromDate} to {exp.toDate}
+                        Duration: {formatDate(exp.fromDate)} to{" "}
+                        {formatDate(exp.toDate)}
                         <br />
                         Experience: {exp.yearsOfExperience} years
                       </div>

@@ -264,6 +264,91 @@ namespace PMCRMS.API.Models
         public bool CityEngineerDigitalSignatureApplied { get; set; } = false;
         public DateTime? CityEngineerDigitalSignatureDate { get; set; }
 
+        // ==================== CLERK (Post-Payment Processing) ====================
+        /// <summary>
+        /// Clerk assigned to process application after payment
+        /// </summary>
+        public int? AssignedClerkId { get; set; }
+        
+        /// <summary>
+        /// Date when application was assigned to Clerk
+        /// </summary>
+        public DateTime? AssignedToClerkDate { get; set; }
+        
+        /// <summary>
+        /// Clerk approval status (true = approved, false/null = pending)
+        /// </summary>
+        public bool? ClerkApprovalStatus { get; set; }
+        
+        /// <summary>
+        /// Comments provided by Clerk during approval
+        /// </summary>
+        [MaxLength(2000)]
+        public string? ClerkApprovalComments { get; set; }
+        
+        /// <summary>
+        /// Date when Clerk approved the application
+        /// </summary>
+        public DateTime? ClerkApprovalDate { get; set; }
+        
+        /// <summary>
+        /// Clerk rejection status (true = rejected)
+        /// </summary>
+        public bool? ClerkRejectionStatus { get; set; }
+        
+        /// <summary>
+        /// Rejection reason provided by Clerk
+        /// </summary>
+        [MaxLength(2000)]
+        public string? ClerkRejectionComments { get; set; }
+        
+        /// <summary>
+        /// Date when Clerk rejected the application
+        /// </summary>
+        public DateTime? ClerkRejectionDate { get; set; }
+
+        // ==================== EXECUTIVE ENGINEER STAGE 2 (Certificate Digital Signature) ====================
+        /// <summary>
+        /// Executive Engineer assigned for certificate digital signature (Stage 2)
+        /// </summary>
+        public int? AssignedEEStage2Id { get; set; }
+        
+        /// <summary>
+        /// Date when assigned to EE Stage 2 for signature
+        /// </summary>
+        public DateTime? AssignedToEEStage2Date { get; set; }
+        
+        /// <summary>
+        /// EE Stage 2 digital signature applied status
+        /// </summary>
+        public bool EEStage2DigitalSignatureApplied { get; set; } = false;
+        
+        /// <summary>
+        /// Date when EE Stage 2 applied digital signature
+        /// </summary>
+        public DateTime? EEStage2DigitalSignatureDate { get; set; }
+
+        // ==================== CITY ENGINEER STAGE 2 (Final Certificate Signature) ====================
+        /// <summary>
+        /// City Engineer assigned for final certificate signature (Stage 2)
+        /// </summary>
+        public int? AssignedCEStage2Id { get; set; }
+        
+        /// <summary>
+        /// Date when assigned to CE Stage 2 for final signature
+        /// </summary>
+        public DateTime? AssignedToCEStage2Date { get; set; }
+        
+        /// <summary>
+        /// CE Stage 2 digital signature applied status
+        /// </summary>
+        public bool CEStage2DigitalSignatureApplied { get; set; } = false;
+        
+        /// <summary>
+        /// Date when CE Stage 2 applied final digital signature
+        /// </summary>
+        public DateTime? CEStage2DigitalSignatureDate { get; set; }
+
         // Foreign Keys
         [ForeignKey("UserId")]
         public virtual User User { get; set; } = null!;
@@ -291,6 +376,15 @@ namespace PMCRMS.API.Models
 
         [ForeignKey("AssignedCityEngineerId")]
         public virtual Officer? AssignedCityEngineer { get; set; }
+
+        [ForeignKey("AssignedClerkId")]
+        public virtual Officer? AssignedClerk { get; set; }
+
+        [ForeignKey("AssignedEEStage2Id")]
+        public virtual Officer? AssignedEEStage2 { get; set; }
+
+        [ForeignKey("AssignedCEStage2Id")]
+        public virtual Officer? AssignedCEStage2 { get; set; }
 
         // Navigation properties
         public virtual ICollection<SEAddress> Addresses { get; set; } = new List<SEAddress>();

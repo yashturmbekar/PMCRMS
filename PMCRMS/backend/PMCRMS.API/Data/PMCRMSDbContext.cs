@@ -229,6 +229,62 @@ namespace PMCRMS.API.Data
                     .WithMany()
                     .HasForeignKey(e => e.AssignedJuniorEngineerId)
                     .OnDelete(DeleteBehavior.SetNull);
+
+                // Assistant Engineer relationships
+                entity.HasOne(e => e.AssignedAEArchitect)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedAEArchitectId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.AssignedAEStructural)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedAEStructuralId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.AssignedAELicence)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedAELicenceId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.AssignedAESupervisor1)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedAESupervisor1Id)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.AssignedAESupervisor2)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedAESupervisor2Id)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Executive Engineer relationship
+                entity.HasOne(e => e.AssignedExecutiveEngineer)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedExecutiveEngineerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // City Engineer relationship
+                entity.HasOne(e => e.AssignedCityEngineer)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedCityEngineerId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // Clerk relationship (Post-Payment Processing)
+                entity.HasOne(e => e.AssignedClerk)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedClerkId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // EE Stage 2 relationship (Certificate Signature)
+                entity.HasOne(e => e.AssignedEEStage2)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedEEStage2Id)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                // CE Stage 2 relationship (Final Certificate Signature)
+                entity.HasOne(e => e.AssignedCEStage2)
+                    .WithMany()
+                    .HasForeignKey(e => e.AssignedCEStage2Id)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // Configure SEAddress entity

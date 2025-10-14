@@ -34,9 +34,19 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation("[ClerkController] Get pending applications request");
+                var clerkId = GetCurrentOfficerId();
+                if (clerkId == 0)
+                {
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Officer ID not found in token"
+                    });
+                }
 
-                var applications = await _clerkService.GetPendingApplicationsAsync();
+                _logger.LogInformation("[ClerkController] Get pending applications request for Clerk {ClerkId}", clerkId);
+
+                var applications = await _clerkService.GetPendingApplicationsAsync(clerkId);
 
                 return Ok(new
                 {
@@ -67,9 +77,19 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation("[ClerkController] Get completed applications request");
+                var clerkId = GetCurrentOfficerId();
+                if (clerkId == 0)
+                {
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Officer ID not found in token"
+                    });
+                }
 
-                var applications = await _clerkService.GetCompletedApplicationsAsync();
+                _logger.LogInformation("[ClerkController] Get completed applications request for Clerk {ClerkId}", clerkId);
+
+                var applications = await _clerkService.GetCompletedApplicationsAsync(clerkId);
 
                 return Ok(new
                 {
@@ -100,16 +120,26 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation($"[ClerkController] Get application details: {id}");
+                var clerkId = GetCurrentOfficerId();
+                if (clerkId == 0)
+                {
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Officer ID not found in token"
+                    });
+                }
 
-                var application = await _clerkService.GetApplicationDetailsAsync(id);
+                _logger.LogInformation("[ClerkController] Get application details: {ApplicationId} for Clerk {ClerkId}", id, clerkId);
+
+                var application = await _clerkService.GetApplicationDetailsAsync(id, clerkId);
 
                 if (application == null)
                 {
                     return NotFound(new
                     {
                         success = false,
-                        message = "Application not found"
+                        message = "Application not found or not assigned to you"
                     });
                 }
 
@@ -122,7 +152,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[ClerkController] Error getting application details: {id}");
+                _logger.LogError(ex, "[ClerkController] Error getting application details: {ApplicationId}", id);
                 return StatusCode(500, new
                 {
                     success = false,
@@ -141,19 +171,19 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var userId = GetCurrentUserId();
-                if (userId == 0)
+                var clerkId = GetCurrentOfficerId();
+                if (clerkId == 0)
                 {
                     return Unauthorized(new
                     {
                         success = false,
-                        message = "User ID not found in token"
+                        message = "Officer ID not found in token"
                     });
                 }
 
-                _logger.LogInformation($"[ClerkController] Approve application {id} by user {userId}");
+                _logger.LogInformation("[ClerkController] Approve application {ApplicationId} by Clerk {ClerkId}", id, clerkId);
 
-                var result = await _clerkService.ApproveApplicationAsync(id, request.Remarks ?? "", userId);
+                var result = await _clerkService.ApproveApplicationAsync(id, request.Remarks ?? "", clerkId);
 
                 if (!result.Success)
                 {
@@ -177,7 +207,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[ClerkController] Error approving application {id}");
+                _logger.LogError(ex, "[ClerkController] Error approving application {ApplicationId}", id);
                 return StatusCode(500, new
                 {
                     success = false,
@@ -196,13 +226,13 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var userId = GetCurrentUserId();
-                if (userId == 0)
+                var clerkId = GetCurrentOfficerId();
+                if (clerkId == 0)
                 {
                     return Unauthorized(new
                     {
                         success = false,
-                        message = "User ID not found in token"
+                        message = "Officer ID not found in token"
                     });
                 }
 
@@ -215,9 +245,9 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                _logger.LogInformation($"[ClerkController] Reject application {id} by user {userId}");
+                _logger.LogInformation("[ClerkController] Reject application {ApplicationId} by Clerk {ClerkId}", id, clerkId);
 
-                var result = await _clerkService.RejectApplicationAsync(id, request.Reason, userId);
+                var result = await _clerkService.RejectApplicationAsync(id, request.Reason, clerkId);
 
                 if (!result.Success)
                 {
@@ -241,7 +271,7 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[ClerkController] Error rejecting application {id}");
+                _logger.LogError(ex, "[ClerkController] Error rejecting application {ApplicationId}", id);
                 return StatusCode(500, new
                 {
                     success = false,
@@ -260,10 +290,20 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation("[ClerkController] Get statistics request");
+                var clerkId = GetCurrentOfficerId();
+                if (clerkId == 0)
+                {
+                    return Unauthorized(new
+                    {
+                        success = false,
+                        message = "Officer ID not found in token"
+                    });
+                }
 
-                var pending = await _clerkService.GetPendingApplicationsAsync();
-                var completed = await _clerkService.GetCompletedApplicationsAsync();
+                _logger.LogInformation("[ClerkController] Get statistics request for Clerk {ClerkId}", clerkId);
+
+                var pending = await _clerkService.GetPendingApplicationsAsync(clerkId);
+                var completed = await _clerkService.GetCompletedApplicationsAsync(clerkId);
 
                 var stats = new
                 {
@@ -294,10 +334,10 @@ namespace PMCRMS.API.Controllers
             }
         }
 
-        private int GetCurrentUserId()
+        private int GetCurrentOfficerId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.TryParse(userIdClaim, out var userId) ? userId : 0;
+            var officerIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return int.TryParse(officerIdClaim, out var officerId) ? officerId : 0;
         }
     }
 }

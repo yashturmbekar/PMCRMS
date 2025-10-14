@@ -119,6 +119,12 @@ namespace PMCRMS.API.Services
         Task<WorkflowActionResultDto> CancelWorkflowAsync(int applicationId, string reason, int userId);
 
         /// <summary>
+        /// Reject application with comments
+        /// Sets rejection status and transitions application to REJECTED status
+        /// </summary>
+        Task<WorkflowActionResultDto> RejectApplicationAsync(int applicationId, int officerId, string rejectionComments);
+
+        /// <summary>
         /// Get workflow timeline events for reporting
         /// </summary>
         Task<List<WorkflowTimelineEventDto>> GetWorkflowTimelineAsync(int applicationId);

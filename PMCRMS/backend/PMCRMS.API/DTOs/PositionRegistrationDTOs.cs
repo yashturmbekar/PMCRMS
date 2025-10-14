@@ -87,8 +87,8 @@ namespace PMCRMS.API.DTOs
 
     public class AddressDTO
     {
-        [Required(ErrorMessage = "Address line 1 is required")]
-        [StringLength(500, MinimumLength = 5, ErrorMessage = "Address line 1 must be between 5 and 500 characters")]
+        [Required(ErrorMessage = "Address line 1 is required", AllowEmptyStrings = false)]
+        [StringLength(500, ErrorMessage = "Address line 1 cannot exceed 500 characters")]
         public string AddressLine1 { get; set; } = string.Empty;
 
         [StringLength(500, ErrorMessage = "Address line 2 cannot exceed 500 characters")]

@@ -5,116 +5,93 @@ using PMCRMS.API.Models;
 namespace PMCRMS.API.Services
 {
     /// <summary>
-    /// Service for Clerk workflow operations
+    /// Service for Clerk workflow operations using PositionApplication table
     /// Handles post-payment application processing
-    /// Status progression: PaymentCompleted (16) → ProcessedByClerk (18) → forwards to EE Stage 2
+    /// Status progression: PaymentCompleted → CLERK_PENDING → EXECUTIVE_ENGINEER_SIGN_PENDING
+    /// Note: Clerk does NOT have digital signature functionality
     /// </summary>
     public class ClerkWorkflowService
     {
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<ClerkWorkflowService> _logger;
-        private readonly IEmailService _emailService;
+        private readonly IWorkflowNotificationService _workflowNotificationService;
+        private readonly IWorkflowProgressionService _workflowProgressionService;
 
         public ClerkWorkflowService(
             PMCRMSDbContext context,
             ILogger<ClerkWorkflowService> logger,
-            IEmailService emailService)
+            IWorkflowNotificationService workflowNotificationService,
+            IWorkflowProgressionService workflowProgressionService)
         {
             _context = context;
             _logger = logger;
-            _emailService = emailService;
+            _workflowNotificationService = workflowNotificationService;
+            _workflowProgressionService = workflowProgressionService;
         }
 
-        /// <summary>
-        /// Get all pending applications for clerk review (PaymentCompleted status)
-        /// </summary>
-        public async Task<List<ClerkApplicationDto>> GetPendingApplicationsAsync()
+        public async Task<List<ClerkApplicationDto>> GetPendingApplicationsAsync(int clerkId)
         {
             try
             {
-                _logger.LogInformation("[ClerkWorkflow] Getting pending applications (PaymentCompleted status)");
+                _logger.LogInformation("[ClerkWorkflow] Getting pending applications for Clerk {ClerkId}", clerkId);
 
-                var applications = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Transactions)
-                    .Where(a => a.CurrentStatus == ApplicationCurrentStatus.PaymentCompleted)
-                    .OrderBy(a => a.PaymentCompletedDate)
+                var applications = await _context.PositionApplications
+                    .Include(a => a.User)
+                    .Include(a => a.AssignedClerk)
+                    .Where(a => a.Status == ApplicationCurrentStatus.CLERK_PENDING && a.AssignedClerkId == clerkId)
+                    .OrderBy(a => a.AssignedToClerkDate)
                     .Select(a => new ClerkApplicationDto
                     {
                         Id = a.Id,
-                        ApplicationNumber = a.ApplicationNumber,
-                        ApplicantName = a.Applicant.Name,
-                        ApplicantEmail = a.Applicant.Email,
-                        ApplicantMobile = a.Applicant.PhoneNumber ?? "",
-                        ApplicationType = a.Type.ToString(),
-                        PropertyAddress = a.SiteAddress ?? "",
-                        PaymentCompletedDate = a.PaymentCompletedDate,
-                        IsPaymentComplete = a.IsPaymentComplete,
-                        PaymentAmount = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.Price)
-                            .FirstOrDefault(),
-                        SubmittedDate = a.CreatedDate,
+                        ApplicationNumber = a.ApplicationNumber ?? "",
+                        ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
+                        ApplicantEmail = a.EmailAddress,
+                        ApplicantMobile = a.MobileNumber,
+                        PositionType = a.PositionType.ToString(),
+                        AssignedToClerkDate = a.AssignedToClerkDate,
+                        SubmittedDate = a.SubmittedDate ?? DateTime.UtcNow,
                         CreatedAt = a.CreatedDate,
                         UpdatedAt = a.UpdatedDate ?? a.CreatedDate
                     })
                     .ToListAsync();
 
-                _logger.LogInformation($"[ClerkWorkflow] Found {applications.Count} pending applications");
+                _logger.LogInformation("[ClerkWorkflow] Found {Count} pending applications for Clerk {ClerkId}", applications.Count, clerkId);
 
                 return applications;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ClerkWorkflow] Error getting pending applications");
+                _logger.LogError(ex, "[ClerkWorkflow] Error getting pending applications for Clerk {ClerkId}", clerkId);
                 throw;
             }
         }
 
-        /// <summary>
-        /// Get application details for clerk review
-        /// </summary>
-        public async Task<ClerkApplicationDetailDto?> GetApplicationDetailsAsync(int applicationId)
+        public async Task<ClerkApplicationDetailDto?> GetApplicationDetailsAsync(int applicationId, int clerkId)
         {
             try
             {
-                _logger.LogInformation($"[ClerkWorkflow] Getting application details: {applicationId}");
+                _logger.LogInformation("[ClerkWorkflow] Getting application details: {ApplicationId} for Clerk {ClerkId}", applicationId, clerkId);
 
-                var application = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Transactions)
-                    .Include(a => a.StatusHistory)
-                    .Where(a => a.Id == applicationId)
+                var application = await _context.PositionApplications
+                    .Include(a => a.User)
+                    .Include(a => a.AssignedClerk)
+                    .Include(a => a.AssignedJuniorEngineer)
+                    .Include(a => a.AssignedCityEngineer)
+                    .Where(a => a.Id == applicationId && a.AssignedClerkId == clerkId)
                     .Select(a => new ClerkApplicationDetailDto
                     {
                         Id = a.Id,
-                        ApplicationNumber = a.ApplicationNumber,
-                        ApplicantName = a.Applicant.Name,
-                        ApplicantEmail = a.Applicant.Email,
-                        ApplicantMobile = a.Applicant.PhoneNumber ?? "",
-                        ApplicationType = a.Type.ToString(),
-                        PropertyAddress = a.SiteAddress ?? "",
-                        CurrentStatus = a.CurrentStatus.ToString(),
-                        PaymentCompletedDate = a.PaymentCompletedDate,
-                        IsPaymentComplete = a.IsPaymentComplete,
-                        PaymentAmount = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.Price)
-                            .FirstOrDefault(),
-                        TransactionId = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.TransactionId)
-                            .FirstOrDefault(),
-                        BdOrderId = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.BdOrderId)
-                            .FirstOrDefault(),
-                        StatusHistoryCount = a.StatusHistory.Count,
-                        SubmittedDate = a.CreatedDate,
+                        ApplicationNumber = a.ApplicationNumber ?? "",
+                        ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
+                        ApplicantEmail = a.EmailAddress,
+                        ApplicantMobile = a.MobileNumber,
+                        PositionType = a.PositionType.ToString(),
+                        CurrentStatus = a.Status.ToString(),
+                        AssignedToClerkDate = a.AssignedToClerkDate,
+                        JuniorEngineerName = a.AssignedJuniorEngineer != null ? a.AssignedJuniorEngineer.Name : null,
+                        CityEngineerName = a.AssignedCityEngineer != null ? a.AssignedCityEngineer.Name : null,
+                        CityEngineerApprovalDate = a.CityEngineerApprovalDate,
+                        SubmittedDate = a.SubmittedDate ?? DateTime.UtcNow,
                         CreatedAt = a.CreatedDate,
                         UpdatedAt = a.UpdatedDate ?? a.CreatedDate
                     })
@@ -124,179 +101,123 @@ namespace PMCRMS.API.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[ClerkWorkflow] Error getting application details: {applicationId}");
+                _logger.LogError(ex, "[ClerkWorkflow] Error getting application details: {ApplicationId}", applicationId);
                 throw;
             }
         }
 
-        /// <summary>
-        /// Approve application and forward to EE Stage 2
-        /// Updates status from PaymentCompleted (16) to ProcessedByClerk (18)
-        /// </summary>
-        public async Task<ClerkActionResult> ApproveApplicationAsync(int applicationId, string remarks, int clerkUserId)
+        public async Task<ClerkActionResult> ApproveApplicationAsync(int applicationId, string? remarks, int clerkId)
         {
             try
             {
-                _logger.LogInformation($"[ClerkWorkflow] Approving application {applicationId} by user {clerkUserId}");
+                _logger.LogInformation("[ClerkWorkflow] Approving application {ApplicationId} by Clerk {ClerkId}", applicationId, clerkId);
 
-                var application = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+                var application = await _context.PositionApplications
+                    .Include(a => a.User)
+                    .FirstOrDefaultAsync(a => a.Id == applicationId && a.AssignedClerkId == clerkId);
 
                 if (application == null)
                 {
-                    return new ClerkActionResult
-                    {
-                        Success = false,
-                        Message = "Application not found"
-                    };
+                    return new ClerkActionResult { Success = false, Message = "Application not found or not assigned to you" };
                 }
 
-                if (application.CurrentStatus != ApplicationCurrentStatus.PaymentCompleted)
+                if (application.Status != ApplicationCurrentStatus.CLERK_PENDING)
                 {
                     return new ClerkActionResult
                     {
                         Success = false,
-                        Message = $"Application is not in PaymentCompleted status. Current status: {application.CurrentStatus}"
+                        Message = $"Application is not in CLERK_PENDING status. Current status: {application.Status}"
                     };
                 }
 
-                // Update application status
-                application.CurrentStatus = ApplicationCurrentStatus.ProcessedByClerk;
+                application.ClerkApprovalStatus = true;
+                application.ClerkApprovalComments = remarks;
+                application.ClerkApprovalDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
+                application.UpdatedBy = $"Clerk_{clerkId}";
 
-                // Add status history entry
-                var statusEntry = new ApplicationStatus
-                {
-                    ApplicationId = applicationId,
-                    Status = ApplicationCurrentStatus.ProcessedByClerk,
-                    UpdatedByUserId = clerkUserId,
-                    UpdatedByOfficerId = 0, // Temporary: Set to 0 since we're using UserId
-                    Remarks = remarks ?? "Processed by Clerk - Forwarded to Executive Engineer (Stage 2)",
-                    StatusDate = DateTime.UtcNow,
-                    CreatedDate = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                _context.ApplicationStatuses.Add(statusEntry);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"[ClerkWorkflow] Application {applicationId} approved successfully");
+                _logger.LogInformation("[ClerkWorkflow] Application {ApplicationId} approved successfully by Clerk {ClerkId}", applicationId, clerkId);
 
-                // Send email notification (non-blocking)
                 try
                 {
-                    var viewUrl = $"{GetBaseUrl()}/view-application/{applicationId}";
-                    await _emailService.SendClerkApprovalEmailAsync(
-                        application.Applicant.Email,
-                        application.Applicant.Name,
-                        application.ApplicationNumber,
-                        remarks ?? "",
-                        viewUrl
-                    );
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(applicationId, ApplicationCurrentStatus.ProcessedByClerk);
                 }
                 catch (Exception emailEx)
                 {
-                    _logger.LogError(emailEx, $"[ClerkWorkflow] Failed to send approval email for application {applicationId}");
+                    _logger.LogError(emailEx, "[ClerkWorkflow] Failed to send approval email for application {ApplicationId}", applicationId);
+                }
+
+                var progressSuccess = await _workflowProgressionService.ProgressToExecutiveEngineerSignatureAsync(applicationId);
+
+                if (!progressSuccess)
+                {
+                    _logger.LogWarning("[ClerkWorkflow] Application {ApplicationId} approved but failed to progress to EE Stage 2", applicationId);
                 }
 
                 return new ClerkActionResult
                 {
                     Success = true,
-                    Message = "Application approved successfully and forwarded to Executive Engineer (Stage 2)",
+                    Message = "Application approved successfully and forwarded to Executive Engineer (Stage 2) for certificate signature",
                     ApplicationId = applicationId,
-                    NewStatus = ApplicationCurrentStatus.ProcessedByClerk.ToString()
+                    NewStatus = ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING.ToString()
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[ClerkWorkflow] Error approving application {applicationId}");
-                return new ClerkActionResult
-                {
-                    Success = false,
-                    Message = $"Error approving application: {ex.Message}"
-                };
+                _logger.LogError(ex, "[ClerkWorkflow] Error approving application {ApplicationId}", applicationId);
+                return new ClerkActionResult { Success = false, Message = $"Error approving application: {ex.Message}" };
             }
         }
 
-        /// <summary>
-        /// Reject application with reason
-        /// </summary>
-        public async Task<ClerkActionResult> RejectApplicationAsync(int applicationId, string rejectionReason, int clerkUserId)
+        public async Task<ClerkActionResult> RejectApplicationAsync(int applicationId, string rejectionReason, int clerkId)
         {
             try
             {
-                _logger.LogInformation($"[ClerkWorkflow] Rejecting application {applicationId} by user {clerkUserId}");
+                _logger.LogInformation("[ClerkWorkflow] Rejecting application {ApplicationId} by Clerk {ClerkId}", applicationId, clerkId);
 
                 if (string.IsNullOrWhiteSpace(rejectionReason))
                 {
-                    return new ClerkActionResult
-                    {
-                        Success = false,
-                        Message = "Rejection reason is required"
-                    };
+                    return new ClerkActionResult { Success = false, Message = "Rejection reason is required" };
                 }
 
-                var application = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+                var application = await _context.PositionApplications
+                    .Include(a => a.User)
+                    .FirstOrDefaultAsync(a => a.Id == applicationId && a.AssignedClerkId == clerkId);
 
                 if (application == null)
                 {
-                    return new ClerkActionResult
-                    {
-                        Success = false,
-                        Message = "Application not found"
-                    };
+                    return new ClerkActionResult { Success = false, Message = "Application not found or not assigned to you" };
                 }
 
-                if (application.CurrentStatus != ApplicationCurrentStatus.PaymentCompleted)
+                if (application.Status != ApplicationCurrentStatus.CLERK_PENDING)
                 {
                     return new ClerkActionResult
                     {
                         Success = false,
-                        Message = $"Application is not in PaymentCompleted status. Current status: {application.CurrentStatus}"
+                        Message = $"Application is not in CLERK_PENDING status. Current status: {application.Status}"
                     };
                 }
 
-                // Update application status to rejected
-                application.CurrentStatus = ApplicationCurrentStatus.RejectedByJE; // Reuse existing rejection status
+                application.ClerkRejectionStatus = true;
+                application.ClerkRejectionComments = rejectionReason;
+                application.ClerkRejectionDate = DateTime.UtcNow;
+                application.Status = ApplicationCurrentStatus.RejectedByJE;
                 application.UpdatedDate = DateTime.UtcNow;
+                application.UpdatedBy = $"Clerk_{clerkId}";
 
-                // Add status history entry with rejection reason
-                var statusEntry = new ApplicationStatus
-                {
-                    ApplicationId = applicationId,
-                    Status = ApplicationCurrentStatus.RejectedByJE,
-                    UpdatedByUserId = clerkUserId,
-                    UpdatedByOfficerId = 0, // Temporary: Set to 0 since we're using UserId
-                    Remarks = "RejectedByClerk",
-                    RejectionReason = rejectionReason,
-                    StatusDate = DateTime.UtcNow,
-                    CreatedDate = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                _context.ApplicationStatuses.Add(statusEntry);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"[ClerkWorkflow] Application {applicationId} rejected successfully");
+                _logger.LogInformation("[ClerkWorkflow] Application {ApplicationId} rejected successfully by Clerk {ClerkId}", applicationId, clerkId);
 
-                // Send rejection email (non-blocking)
                 try
                 {
-                    var viewUrl = $"{GetBaseUrl()}/view-application/{applicationId}";
-                    await _emailService.SendClerkRejectionEmailAsync(
-                        application.Applicant.Email,
-                        application.Applicant.Name,
-                        application.ApplicationNumber,
-                        rejectionReason,
-                        viewUrl
-                    );
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(applicationId, ApplicationCurrentStatus.RejectedByJE);
                 }
                 catch (Exception emailEx)
                 {
-                    _logger.LogError(emailEx, $"[ClerkWorkflow] Failed to send rejection email for application {applicationId}");
+                    _logger.LogError(emailEx, "[ClerkWorkflow] Failed to send rejection email for application {ApplicationId}", applicationId);
                 }
 
                 return new ClerkActionResult
@@ -309,74 +230,49 @@ namespace PMCRMS.API.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"[ClerkWorkflow] Error rejecting application {applicationId}");
-                return new ClerkActionResult
-                {
-                    Success = false,
-                    Message = $"Error rejecting application: {ex.Message}"
-                };
+                _logger.LogError(ex, "[ClerkWorkflow] Error rejecting application {ApplicationId}", applicationId);
+                return new ClerkActionResult { Success = false, Message = $"Error rejecting application: {ex.Message}" };
             }
         }
 
-        /// <summary>
-        /// Get completed applications processed by clerk
-        /// </summary>
-        public async Task<List<ClerkApplicationDto>> GetCompletedApplicationsAsync()
+        public async Task<List<ClerkApplicationDto>> GetCompletedApplicationsAsync(int clerkId)
         {
             try
             {
-                _logger.LogInformation("[ClerkWorkflow] Getting completed applications");
+                _logger.LogInformation("[ClerkWorkflow] Getting completed applications for Clerk {ClerkId}", clerkId);
 
-                var applications = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Transactions)
-                    .Where(a =>
-                        a.CurrentStatus == ApplicationCurrentStatus.ProcessedByClerk ||
-                        a.CurrentStatus == ApplicationCurrentStatus.UnderDigitalSignatureByEE2 ||
-                        a.CurrentStatus == ApplicationCurrentStatus.DigitalSignatureCompletedByEE2 ||
-                        a.CurrentStatus == ApplicationCurrentStatus.UnderFinalApprovalByCE2 ||
-                        a.CurrentStatus == ApplicationCurrentStatus.CertificateIssued)
+                var applications = await _context.PositionApplications
+                    .Include(a => a.User)
+                    .Include(a => a.AssignedClerk)
+                    .Where(a => a.AssignedClerkId == clerkId && (a.ClerkApprovalStatus == true || a.ClerkRejectionStatus == true))
                     .OrderByDescending(a => a.UpdatedDate)
                     .Select(a => new ClerkApplicationDto
                     {
                         Id = a.Id,
-                        ApplicationNumber = a.ApplicationNumber,
-                        ApplicantName = a.Applicant.Name,
-                        ApplicantEmail = a.Applicant.Email,
-                        ApplicantMobile = a.Applicant.PhoneNumber ?? "",
-                        ApplicationType = a.Type.ToString(),
-                        PropertyAddress = a.SiteAddress ?? "",
-                        PaymentCompletedDate = a.PaymentCompletedDate,
-                        IsPaymentComplete = a.IsPaymentComplete,
-                        PaymentAmount = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.Price)
-                            .FirstOrDefault(),
-                        SubmittedDate = a.CreatedDate,
+                        ApplicationNumber = a.ApplicationNumber ?? "",
+                        ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
+                        ApplicantEmail = a.EmailAddress,
+                        ApplicantMobile = a.MobileNumber,
+                        PositionType = a.PositionType.ToString(),
+                        AssignedToClerkDate = a.AssignedToClerkDate,
+                        SubmittedDate = a.SubmittedDate ?? DateTime.UtcNow,
                         CreatedAt = a.CreatedDate,
                         UpdatedAt = a.UpdatedDate ?? a.CreatedDate
                     })
                     .ToListAsync();
 
-                _logger.LogInformation($"[ClerkWorkflow] Found {applications.Count} completed applications");
+                _logger.LogInformation("[ClerkWorkflow] Found {Count} completed applications for Clerk {ClerkId}", applications.Count, clerkId);
 
                 return applications;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[ClerkWorkflow] Error getting completed applications");
+                _logger.LogError(ex, "[ClerkWorkflow] Error getting completed applications for Clerk {ClerkId}", clerkId);
                 throw;
             }
         }
-
-        private string GetBaseUrl()
-        {
-            return Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:5173";
-        }
     }
 
-    // DTOs for Clerk Workflow
     public class ClerkApplicationDto
     {
         public int Id { get; set; }
@@ -384,11 +280,8 @@ namespace PMCRMS.API.Services
         public string ApplicantName { get; set; } = string.Empty;
         public string ApplicantEmail { get; set; } = string.Empty;
         public string ApplicantMobile { get; set; } = string.Empty;
-        public string ApplicationType { get; set; } = string.Empty;
-        public string PropertyAddress { get; set; } = string.Empty;
-        public DateTime? PaymentCompletedDate { get; set; }
-        public bool IsPaymentComplete { get; set; }
-        public decimal? PaymentAmount { get; set; }
+        public string PositionType { get; set; } = string.Empty;
+        public DateTime? AssignedToClerkDate { get; set; }
         public DateTime SubmittedDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -397,9 +290,9 @@ namespace PMCRMS.API.Services
     public class ClerkApplicationDetailDto : ClerkApplicationDto
     {
         public string CurrentStatus { get; set; } = string.Empty;
-        public string? TransactionId { get; set; }
-        public string? BdOrderId { get; set; }
-        public int StatusHistoryCount { get; set; }
+        public string? JuniorEngineerName { get; set; }
+        public string? CityEngineerName { get; set; }
+        public DateTime? CityEngineerApprovalDate { get; set; }
     }
 
     public class ClerkActionResult

@@ -1299,5 +1299,84 @@ namespace PMCRMS.API.Services
 
             _logger.LogInformation("Recommendation form generated and saved to database for application {ApplicationId}", applicationId);
         }
+
+        /// <summary>
+        /// Reject application with comments
+        /// </summary>
+        public async Task<WorkflowActionResultDto> RejectApplicationAsync(
+            int applicationId, 
+            int officerId, 
+            string rejectionComments)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(rejectionComments))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "Rejection comments are mandatory" 
+                    };
+                }
+
+                var application = await _context.PositionApplications
+                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+                if (application == null)
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "Application not found" 
+                    };
+                }
+
+                // Verify that the officer is assigned to this application
+                if (application.AssignedJuniorEngineerId != officerId)
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "You are not authorized to reject this application" 
+                    };
+                }
+
+                // Set rejection fields
+                application.JERejectionStatus = true;
+                application.JERejectionComments = rejectionComments;
+                application.JERejectionDate = DateTime.UtcNow;
+                application.Status = ApplicationCurrentStatus.REJECTED;
+                application.Remarks = $"Rejected by Junior Engineer: {rejectionComments}";
+
+                await _context.SaveChangesAsync();
+
+                // Send email notification to applicant
+                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                    application.Id,
+                    ApplicationCurrentStatus.REJECTED,
+                    rejectionComments
+                );
+
+                _logger.LogInformation(
+                    "Application {ApplicationId} rejected by JE officer {OfficerId}", 
+                    applicationId, officerId);
+
+                return new WorkflowActionResultDto
+                {
+                    Success = true,
+                    Message = "Application rejected successfully",
+                    NewStatus = application.Status
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error rejecting application {ApplicationId}", applicationId);
+                return new WorkflowActionResultDto 
+                { 
+                    Success = false, 
+                    Message = $"Error rejecting application: {ex.Message}" 
+                };
+            }
+        }
     }
 }

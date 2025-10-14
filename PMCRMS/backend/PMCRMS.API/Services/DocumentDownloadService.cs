@@ -366,7 +366,7 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Get payment challan PDF file
+        /// Get payment challan PDF file from database (no physical file access)
         /// </summary>
         public async Task<(byte[]? FileBytes, string? FileName, string ErrorMessage)> GetChallanAsync(
             string token,
@@ -382,33 +382,34 @@ namespace PMCRMS.API.Services
 
             try
             {
-                // Payment challan should be in wwwroot/challans/{ApplicationNumber}_challan.pdf
-                string fileName = $"{application.ApplicationNumber}_challan.pdf";
-                string filePath = Path.Combine(_env.WebRootPath, "challans", fileName);
+                // Retrieve payment challan from database (SEDocuments table)
+                var document = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.ApplicationId == application.Id 
+                                           && d.DocumentType == SEDocumentType.PaymentChallan);
 
-                if (!File.Exists(filePath))
+                if (document?.FileContent == null)
                 {
-                    _logger.LogError("Payment challan not found for application {ApplicationNumber}: {FilePath}",
-                        application.ApplicationNumber, filePath);
+                    _logger.LogError("Payment challan not found in database for application {ApplicationNumber}",
+                        application.ApplicationNumber);
                     await LogDownloadAsync(application.Id, token, "Challan", false, ipAddress, userAgent,
-                        "Payment challan not found on server");
+                        "Payment challan not found in database");
                     return (null, null, "Payment challan not available.");
                 }
 
-                byte[] fileBytes = await File.ReadAllBytesAsync(filePath);
+                string fileName = $"{application.ApplicationNumber}_challan.pdf";
 
                 await LogDownloadAsync(application.Id, token, "Challan", true, ipAddress, userAgent);
 
-                _logger.LogInformation("Payment challan downloaded for application {ApplicationNumber}",
+                _logger.LogInformation("Payment challan retrieved from database for application {ApplicationNumber}",
                     application.ApplicationNumber);
 
-                return (fileBytes, fileName, string.Empty);
+                return (document.FileContent, fileName, string.Empty);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error downloading payment challan for application {ApplicationId}", application.Id);
+                _logger.LogError(ex, "Error retrieving payment challan from database for application {ApplicationId}", application.Id);
                 await LogDownloadAsync(application.Id, token, "Challan", false, ipAddress, userAgent, ex.Message);
-                return (null, null, "Error downloading payment challan. Please try again.");
+                return (null, null, "Error retrieving payment challan. Please try again.");
             }
         }
 

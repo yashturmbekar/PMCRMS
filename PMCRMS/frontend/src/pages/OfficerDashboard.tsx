@@ -36,7 +36,14 @@ interface Application {
   verificationInfo?: {
     allVerified?: boolean;
   } | null;
-  workflow?: any;
+  workflow?: {
+    hasAppointment?: boolean;
+    appointmentDate?: string;
+    isAppointmentCompleted?: boolean;
+    allDocumentsVerified?: boolean;
+    digitalSignatureApplied?: boolean;
+    currentStage?: string;
+  };
   documents?: any[];
   id?: number;
   jeApprovalStatus?: boolean;
@@ -297,23 +304,32 @@ const OfficerDashboard: React.FC = () => {
   const getFilteredApplications = () => {
     if (officerConfig.type === "JE") {
       if (activeTab === "tab1") {
-        // Schedule Appointment tab - NOT appointment scheduled
+        // Schedule Appointment tab - only show applications WITHOUT scheduled appointments
         return applications.filter((app) => {
-          const isAppointmentScheduled =
-            app.currentStage === "Appointment Scheduled" ||
-            app.currentStage === "APPOINTMENT_SCHEDULED";
-          return !isAppointmentScheduled;
+          // Check if appointment is scheduled using the workflow data
+          const hasScheduledAppointment = app.workflow?.hasAppointment === true;
+          // Exclude applications that already have appointments or have completed payment/moved forward
+          const hasCompletedPayment =
+            app.status === "PaymentCompleted" ||
+            app.status === "CLERK_PENDING" ||
+            app.currentStage === "Payment Completed" ||
+            app.currentStage?.includes("Clerk") ||
+            app.currentStage?.includes("PAYMENT") ||
+            app.currentStage?.includes("EXECUTIVE_ENGINEER_SIGN");
+
+          return !hasScheduledAppointment && !hasCompletedPayment;
         });
       } else {
-        // JE Pending tab - appointment scheduled but not auto-forwarded
+        // JE Pending tab - appointment scheduled but JE workflow not completed
+        // Show if: appointment scheduled AND (JE hasn't approved OR digital signature not applied)
         return applications.filter((app) => {
-          const isAppointmentScheduled =
-            app.currentStage === "Appointment Scheduled" ||
-            app.currentStage === "APPOINTMENT_SCHEDULED";
-          const isAutoForwarded =
-            app.verificationInfo?.allVerified === true &&
+          const hasScheduledAppointment = app.workflow?.hasAppointment === true;
+          const jeWorkflowCompleted =
+            app.workflow?.digitalSignatureApplied === true &&
             app.currentStatus === "ASSISTANT_ENGINEER_PENDING";
-          return isAppointmentScheduled && !isAutoForwarded;
+
+          // Show applications where appointment is scheduled and JE work is not complete
+          return hasScheduledAppointment && !jeWorkflowCompleted;
         });
       }
     } else if (officerConfig.type === "EE" || officerConfig.type === "CE") {
@@ -519,7 +535,12 @@ const OfficerDashboard: React.FC = () => {
       setIsRejecting(true);
       let result;
 
-      if (officerConfig.type === "AE") {
+      if (officerConfig.type === "JE") {
+        result = await jeWorkflowService.rejectApplication({
+          applicationId: selectedApplication.applicationId,
+          rejectionComments,
+        });
+      } else if (officerConfig.type === "AE") {
         const getDefaultPositionType = (role: string): PositionType => {
           const roleToPositionType: Record<string, PositionType> = {
             AssistantArchitect: 0 as PositionType,
@@ -658,27 +679,32 @@ const OfficerDashboard: React.FC = () => {
               {officerConfig.tabs.map((tab) => {
                 const Icon = tab.icon;
 
-                // Calculate count for each tab independently
+                // Calculate count for each tab independently - MUST match getFilteredApplications() logic
                 let tabCount = 0;
                 if (officerConfig.type === "JE") {
                   if (tab.id === "tab1") {
-                    // Schedule Appointment tab
+                    // Schedule Appointment tab - same logic as getFilteredApplications()
                     tabCount = applications.filter((app) => {
-                      const isAppointmentScheduled =
-                        app.currentStage === "Appointment Scheduled" ||
-                        app.currentStage === "APPOINTMENT_SCHEDULED";
-                      return !isAppointmentScheduled;
+                      const hasScheduledAppointment =
+                        app.workflow?.hasAppointment === true;
+                      const hasCompletedPayment =
+                        app.status === "PaymentCompleted" ||
+                        app.status === "CLERK_PENDING" ||
+                        app.currentStage === "Payment Completed" ||
+                        app.currentStage?.includes("Clerk") ||
+                        app.currentStage?.includes("PAYMENT") ||
+                        app.currentStage?.includes("EXECUTIVE_ENGINEER_SIGN");
+                      return !hasScheduledAppointment && !hasCompletedPayment;
                     }).length;
                   } else if (tab.id === "tab2") {
-                    // JE Pending tab
+                    // JE Pending tab - same logic as getFilteredApplications()
                     tabCount = applications.filter((app) => {
-                      const isAppointmentScheduled =
-                        app.currentStage === "Appointment Scheduled" ||
-                        app.currentStage === "APPOINTMENT_SCHEDULED";
-                      const isAutoForwarded =
-                        app.verificationInfo?.allVerified === true &&
+                      const hasScheduledAppointment =
+                        app.workflow?.hasAppointment === true;
+                      const jeWorkflowCompleted =
+                        app.workflow?.digitalSignatureApplied === true &&
                         app.currentStatus === "ASSISTANT_ENGINEER_PENDING";
-                      return isAppointmentScheduled && !isAutoForwarded;
+                      return hasScheduledAppointment && !jeWorkflowCompleted;
                     }).length;
                   }
                 } else if (
@@ -994,20 +1020,39 @@ const OfficerDashboard: React.FC = () => {
                               )}
                             {officerConfig.type === "JE" &&
                               activeTab === "tab2" && (
-                                <button
-                                  className="pmc-button pmc-button-sm pmc-button-success"
-                                  onClick={() => handleDocumentApprove(app)}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                  }}
-                                >
-                                  <CheckCircle
-                                    style={{ width: "16px", height: "16px" }}
-                                  />
-                                  Document Approve
-                                </button>
+                                <>
+                                  <button
+                                    className="pmc-button pmc-button-sm pmc-button-success"
+                                    onClick={() => handleDocumentApprove(app)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                    }}
+                                  >
+                                    <CheckCircle
+                                      style={{ width: "16px", height: "16px" }}
+                                    />
+                                    Document Approve
+                                  </button>
+                                  <button
+                                    className="pmc-button pmc-button-sm"
+                                    onClick={() => handleRejectClick(app)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      background:
+                                        "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                      color: "white",
+                                    }}
+                                  >
+                                    <XCircle
+                                      style={{ width: "16px", height: "16px" }}
+                                    />
+                                    Reject
+                                  </button>
+                                </>
                               )}
                             {(officerConfig.type === "AE" ||
                               officerConfig.type === "EE" ||

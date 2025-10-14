@@ -473,5 +473,28 @@ namespace PMCRMS.API.Controllers
                 return StatusCode(500, new { Message = "Internal server error", Error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Reject application with comments
+        /// </summary>
+        [HttpPost("reject")]
+        [Authorize(Roles = JuniorRoles)]
+        [ProducesResponseType(typeof(WorkflowActionResultDto), 200)]
+        public async Task<IActionResult> RejectApplication([FromBody] RejectApplicationRequestDto request)
+        {
+            try
+            {
+                var result = await _workflowService.RejectApplicationAsync(
+                    request.ApplicationId, 
+                    GetCurrentUserId(), 
+                    request.RejectionComments);
+                return result.Success ? Ok(result) : BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error rejecting application {ApplicationId}", request.ApplicationId);
+                return StatusCode(500, new { Message = "Internal server error", Error = ex.Message });
+            }
+        }
     }
 }
