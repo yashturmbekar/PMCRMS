@@ -5,7 +5,8 @@
 
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5062";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5086";
 
 // DTOs matching backend
 export interface CEStage2ApplicationDto {
@@ -82,7 +83,7 @@ class CEStage2WorkflowService {
    */
   async getPendingApplications(): Promise<CEStage2ApplicationDto[]> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(`${API_BASE_URL}/api/CEStage2/Pending`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -109,7 +110,7 @@ class CEStage2WorkflowService {
    */
   async getCompletedApplications(): Promise<CEStage2ApplicationDto[]> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(
         `${API_BASE_URL}/api/CEStage2/Completed`,
         {
@@ -141,7 +142,7 @@ class CEStage2WorkflowService {
     applicationId: number
   ): Promise<CEStage2ApplicationDetailDto> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(
         `${API_BASE_URL}/api/CEStage2/Application/${applicationId}`,
         {
@@ -171,7 +172,7 @@ class CEStage2WorkflowService {
    */
   async generateOtp(applicationId: number): Promise<CEStage2OtpResult> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("pmcrms_token");
       const response = await axios.post(
         `${API_BASE_URL}/api/CEStage2/GenerateOtp/${applicationId}`,
         {},
@@ -203,7 +204,7 @@ class CEStage2WorkflowService {
     otpCode: string
   ): Promise<CEStage2SignResult> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("pmcrms_token");
       const requestData: CEStage2SignRequest = { otpCode };
       const response = await axios.post(
         `${API_BASE_URL}/api/CEStage2/Sign/${applicationId}`,
@@ -236,7 +237,7 @@ class CEStage2WorkflowService {
    */
   async getStatistics(): Promise<CEStage2Statistics> {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(
         `${API_BASE_URL}/api/CEStage2/Statistics`,
         {

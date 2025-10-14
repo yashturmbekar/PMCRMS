@@ -29,41 +29,52 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Get all pending applications for EE Stage 2 signature (ProcessedByClerk status)
+        /// Get all pending applications for EE Stage 2 signature (EXECUTIVE_ENGINEER_SIGN_PENDING status)
         /// </summary>
         public async Task<List<EEStage2ApplicationDto>> GetPendingApplicationsAsync()
         {
             try
             {
-                _logger.LogInformation("[EEStage2Workflow] Getting pending applications (ProcessedByClerk status)");
+                _logger.LogInformation("[EEStage2Workflow] Getting pending applications (EXECUTIVE_ENGINEER_SIGN_PENDING status)");
 
-                var applications = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Transactions)
-                    .Where(a => a.CurrentStatus == ApplicationCurrentStatus.ProcessedByClerk)
-                    .OrderBy(a => a.UpdatedDate)
-                    .Select(a => new EEStage2ApplicationDto
-                    {
-                        Id = a.Id,
-                        ApplicationNumber = a.ApplicationNumber,
-                        ApplicantName = a.Applicant.Name,
-                        ApplicantEmail = a.Applicant.Email,
-                        ApplicationType = a.Type.ToString(),
-                        PropertyAddress = a.SiteAddress ?? "",
-                        PaymentAmount = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.Price)
-                            .FirstOrDefault(),
-                        ProcessedByClerkDate = a.UpdatedDate ?? a.CreatedDate,
-                        CreatedAt = a.CreatedDate,
-                        UpdatedAt = a.UpdatedDate ?? a.CreatedDate
-                    })
+                var applications = await _context.PositionApplications
+                    .Include(a => a.Addresses)
+                    .Where(a => a.Status == ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING)
+                    .OrderBy(a => a.ClerkApprovalDate ?? a.UpdatedDate)
                     .ToListAsync();
 
-                _logger.LogInformation($"[EEStage2Workflow] Found {applications.Count} pending applications");
+                // Get payment amounts from Challan table
+                var applicationIds = applications.Select(a => a.Id).ToList();
+                var challans = await _context.Challans
+                    .Where(c => applicationIds.Contains(c.ApplicationId))
+                    .ToDictionaryAsync(c => c.ApplicationId, c => c.Amount);
 
-                return applications;
+                var result = applications.Select(a =>
+                {
+                    // Get permanent address
+                    var permanentAddress = a.Addresses.FirstOrDefault(addr => addr.AddressType == "Permanent");
+                    var addressText = permanentAddress != null
+                        ? $"{permanentAddress.AddressLine1}, {permanentAddress.AddressLine2}, {permanentAddress.AddressLine3}".TrimEnd(',', ' ')
+                        : "";
+
+                    return new EEStage2ApplicationDto
+                    {
+                        Id = a.Id,
+                        ApplicationNumber = a.ApplicationNumber ?? "",
+                        ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
+                        ApplicantEmail = a.EmailAddress,
+                        ApplicationType = a.PositionType.ToString(),
+                        PropertyAddress = addressText,
+                        PaymentAmount = challans.TryGetValue(a.Id, out var amount) ? amount : null,
+                        ProcessedByClerkDate = a.ClerkApprovalDate ?? a.UpdatedDate ?? a.CreatedDate,
+                        CreatedAt = a.CreatedDate,
+                        UpdatedAt = a.UpdatedDate ?? a.CreatedDate
+                    };
+                }).ToList();
+
+                _logger.LogInformation($"[EEStage2Workflow] Found {result.Count} pending applications");
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -81,32 +92,37 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation($"[EEStage2Workflow] Getting application details: {applicationId}");
 
-                var application = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Transactions)
-                    .Include(a => a.StatusHistory)
+                var application = await _context.PositionApplications
+                    .Include(a => a.Addresses)
                     .Where(a => a.Id == applicationId)
                     .FirstOrDefaultAsync();
 
                 if (application == null) return null;
 
+                // Get challan for payment amount
+                var challan = await _context.Challans
+                    .Where(c => c.ApplicationId == applicationId)
+                    .FirstOrDefaultAsync();
+
+                // Get permanent address
+                var permanentAddress = application.Addresses.FirstOrDefault(addr => addr.AddressType == "Permanent");
+                var addressText = permanentAddress != null
+                    ? $"{permanentAddress.AddressLine1}, {permanentAddress.AddressLine2}, {permanentAddress.AddressLine3}".TrimEnd(',', ' ')
+                    : "";
+
                 var detail = new EEStage2ApplicationDetailDto
                 {
                     Id = application.Id,
-                    ApplicationNumber = application.ApplicationNumber,
-                    ApplicantName = application.Applicant.Name,
-                    ApplicantEmail = application.Applicant.Email,
-                    ApplicationType = application.Type.ToString(),
-                    PropertyAddress = application.SiteAddress ?? "",
-                    CurrentStatus = application.CurrentStatus.ToString(),
-                    PaymentAmount = application.Transactions
-                        .Where(t => t.Status == "SUCCESS")
-                        .OrderByDescending(t => t.CreatedAt)
-                        .Select(t => t.Price)
-                        .FirstOrDefault(),
-                    ProcessedByClerkDate = application.UpdatedDate ?? application.CreatedDate,
-                    CertificateNumber = application.CertificateNumber,
-                    StatusHistoryCount = application.StatusHistory.Count,
+                    ApplicationNumber = application.ApplicationNumber ?? "",
+                    ApplicantName = $"{application.FirstName} {(string.IsNullOrEmpty(application.MiddleName) ? "" : application.MiddleName + " ")}{application.LastName}".Trim(),
+                    ApplicantEmail = application.EmailAddress,
+                    ApplicationType = application.PositionType.ToString(),
+                    PropertyAddress = addressText,
+                    CurrentStatus = application.Status.ToString(),
+                    PaymentAmount = challan?.Amount,
+                    ProcessedByClerkDate = application.ClerkApprovalDate ?? application.UpdatedDate ?? application.CreatedDate,
+                    CertificateNumber = null, // Will be generated after signature
+                    StatusHistoryCount = 0, // Can be implemented later if needed
                     CreatedAt = application.CreatedDate,
                     UpdatedAt = application.UpdatedDate ?? application.CreatedDate
                 };
@@ -129,7 +145,7 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation($"[EEStage2Workflow] Generating OTP for application {applicationId} by EE {eeUserId}");
 
-                var application = await _context.Applications.FindAsync(applicationId);
+                var application = await _context.PositionApplications.FindAsync(applicationId);
                 if (application == null)
                 {
                     return new EEStage2OtpResult
@@ -139,12 +155,12 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                if (application.CurrentStatus != ApplicationCurrentStatus.ProcessedByClerk)
+                if (application.Status != ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING)
                 {
                     return new EEStage2OtpResult
                     {
                         Success = false,
-                        Message = $"Application is not in ProcessedByClerk status. Current status: {application.CurrentStatus}"
+                        Message = $"Application is not in EXECUTIVE_ENGINEER_SIGN_PENDING status. Current status: {application.Status}"
                     };
                 }
 
@@ -193,7 +209,7 @@ namespace PMCRMS.API.Services
 
         /// <summary>
         /// Apply digital signature to certificate
-        /// Updates status from ProcessedByClerk (18) to DigitalSignatureCompletedByEE2 (20)
+        /// Updates status from EXECUTIVE_ENGINEER_SIGN_PENDING (32) to CITY_ENGINEER_SIGN_PENDING (33)
         /// </summary>
         public async Task<EEStage2SignResult> ApplyDigitalSignatureAsync(int applicationId, int eeUserId, string otpCode)
         {
@@ -201,8 +217,7 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation($"[EEStage2Workflow] Applying digital signature for application {applicationId} by EE {eeUserId}");
 
-                var application = await _context.Applications
-                    .Include(a => a.Applicant)
+                var application = await _context.PositionApplications
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
 
                 if (application == null)
@@ -214,12 +229,12 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                if (application.CurrentStatus != ApplicationCurrentStatus.ProcessedByClerk)
+                if (application.Status != ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING)
                 {
                     return new EEStage2SignResult
                     {
                         Success = false,
-                        Message = $"Application is not in ProcessedByClerk status. Current status: {application.CurrentStatus}"
+                        Message = $"Application is not in EXECUTIVE_ENGINEER_SIGN_PENDING status. Current status: {application.Status}"
                     };
                 }
 
@@ -272,24 +287,12 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Update application status to DigitalSignatureCompletedByEE2
-                application.CurrentStatus = ApplicationCurrentStatus.DigitalSignatureCompletedByEE2;
+                // Update application status to CITY_ENGINEER_SIGN_PENDING and mark EE Stage 2 signature complete
+                application.Status = ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING;
+                application.EEStage2DigitalSignatureApplied = true;
+                application.EEStage2DigitalSignatureDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
 
-                // Add status history entry
-                var statusEntry = new ApplicationStatus
-                {
-                    ApplicationId = applicationId,
-                    Status = ApplicationCurrentStatus.DigitalSignatureCompletedByEE2,
-                    UpdatedByUserId = eeUserId,
-                    UpdatedByOfficerId = 0, // Temporary: Set to 0 since we're using UserId
-                    Remarks = "Executive Engineer digital signature applied to certificate",
-                    StatusDate = DateTime.UtcNow,
-                    CreatedDate = DateTime.UtcNow,
-                    IsActive = true
-                };
-
-                _context.ApplicationStatuses.Add(statusEntry);
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"[EEStage2Workflow] Digital signature applied successfully for application {applicationId}");
@@ -300,8 +303,8 @@ namespace PMCRMS.API.Services
                     var viewUrl = $"{GetBaseUrl()}/view-application/{applicationId}";
                     // TODO: Implement SendEE2SignatureCompletedEmailAsync in EmailService
                     // await _emailService.SendEE2SignatureCompletedEmailAsync(
-                    //     application.Applicant.Email,
-                    //     application.Applicant.Name,
+                    //     application.EmailAddress,
+                    //     $"{application.FirstName} {application.LastName}",
                     //     application.ApplicationNumber,
                     //     viewUrl
                     // );
@@ -316,7 +319,7 @@ namespace PMCRMS.API.Services
                     Success = true,
                     Message = "Digital signature applied successfully. Application forwarded to City Engineer for final approval.",
                     ApplicationId = applicationId,
-                    NewStatus = ApplicationCurrentStatus.DigitalSignatureCompletedByEE2.ToString(),
+                    NewStatus = ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING.ToString(),
                     SignedCertificateUrl = completeResult.SignedDocumentPath
                 };
             }
@@ -340,36 +343,44 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation("[EEStage2Workflow] Getting completed applications");
 
-                var applications = await _context.Applications
-                    .Include(a => a.Applicant)
-                    .Include(a => a.Transactions)
-                    .Where(a =>
-                        a.CurrentStatus == ApplicationCurrentStatus.DigitalSignatureCompletedByEE2 ||
-                        a.CurrentStatus == ApplicationCurrentStatus.UnderFinalApprovalByCE2 ||
-                        a.CurrentStatus == ApplicationCurrentStatus.CertificateIssued)
-                    .OrderByDescending(a => a.UpdatedDate)
-                    .Select(a => new EEStage2ApplicationDto
-                    {
-                        Id = a.Id,
-                        ApplicationNumber = a.ApplicationNumber,
-                        ApplicantName = a.Applicant.Name,
-                        ApplicantEmail = a.Applicant.Email,
-                        ApplicationType = a.Type.ToString(),
-                        PropertyAddress = a.SiteAddress ?? "",
-                        PaymentAmount = a.Transactions
-                            .Where(t => t.Status == "SUCCESS")
-                            .OrderByDescending(t => t.CreatedAt)
-                            .Select(t => t.Price)
-                            .FirstOrDefault(),
-                        ProcessedByClerkDate = a.UpdatedDate ?? a.CreatedDate,
-                        CreatedAt = a.CreatedDate,
-                        UpdatedAt = a.UpdatedDate ?? a.CreatedDate
-                    })
+                var applications = await _context.PositionApplications
+                    .Include(a => a.Addresses)
+                    .Where(a => a.EEStage2DigitalSignatureApplied == true)
+                    .OrderByDescending(a => a.EEStage2DigitalSignatureDate)
                     .ToListAsync();
 
-                _logger.LogInformation($"[EEStage2Workflow] Found {applications.Count} completed applications");
+                // Get payment amounts from Challan table
+                var applicationIds = applications.Select(a => a.Id).ToList();
+                var challans = await _context.Challans
+                    .Where(c => applicationIds.Contains(c.ApplicationId))
+                    .ToDictionaryAsync(c => c.ApplicationId, c => c.Amount);
 
-                return applications;
+                var result = applications.Select(a =>
+                {
+                    // Get permanent address
+                    var permanentAddress = a.Addresses.FirstOrDefault(addr => addr.AddressType == "Permanent");
+                    var addressText = permanentAddress != null
+                        ? $"{permanentAddress.AddressLine1}, {permanentAddress.AddressLine2}, {permanentAddress.AddressLine3}".TrimEnd(',', ' ')
+                        : "";
+
+                    return new EEStage2ApplicationDto
+                    {
+                        Id = a.Id,
+                        ApplicationNumber = a.ApplicationNumber ?? "",
+                        ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
+                        ApplicantEmail = a.EmailAddress,
+                        ApplicationType = a.PositionType.ToString(),
+                        PropertyAddress = addressText,
+                        PaymentAmount = challans.TryGetValue(a.Id, out var amount) ? amount : null,
+                        ProcessedByClerkDate = a.ClerkApprovalDate ?? a.UpdatedDate ?? a.CreatedDate,
+                        CreatedAt = a.CreatedDate,
+                        UpdatedAt = a.UpdatedDate ?? a.CreatedDate
+                    };
+                }).ToList();
+
+                _logger.LogInformation($"[EEStage2Workflow] Found {result.Count} completed applications");
+
+                return result;
             }
             catch (Exception ex)
             {

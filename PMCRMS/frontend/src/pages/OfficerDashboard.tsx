@@ -4,7 +4,9 @@ import { useAuth } from "../hooks/useAuth";
 import { jeWorkflowService } from "../services/jeWorkflowService";
 import { aeWorkflowService } from "../services/aeWorkflowService";
 import { eeWorkflowService } from "../services/eeWorkflowService";
+import eeStage2WorkflowService from "../services/eeStage2WorkflowService";
 import { ceWorkflowService } from "../services/ceWorkflowService";
+import ceStage2WorkflowService from "../services/ceStage2WorkflowService";
 import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import positionRegistrationService from "../services/positionRegistrationService";
 import { Calendar, Clock, Eye, CheckCircle, XCircle, Info } from "lucide-react";
@@ -51,6 +53,8 @@ interface Application {
   aeApprovalStatus?: boolean;
   eeApprovalStatus?: boolean;
   ceApprovalStatus?: boolean;
+  isStage2?: boolean;
+  stage2Data?: any;
 }
 
 const OfficerDashboard: React.FC = () => {
@@ -83,6 +87,9 @@ const OfficerDashboard: React.FC = () => {
   const [showClerkApprovalModal, setShowClerkApprovalModal] = useState(false);
   const [clerkRemarks, setClerkRemarks] = useState("");
   const [isApprovingClerk, setIsApprovingClerk] = useState(false);
+  const [showEEStage2ConfirmModal, setShowEEStage2ConfirmModal] =
+    useState(false);
+  const [eeStage2Remarks, setEEStage2Remarks] = useState("");
   const [notification, setNotification] = useState<{
     isOpen: boolean;
     message: string;
@@ -270,19 +277,71 @@ const OfficerDashboard: React.FC = () => {
             assignedAEName: app.assignedToAEName,
           }));
         } else if (officerConfig.type === "EE") {
-          const pending = await eeWorkflowService.getPendingApplications();
-          fetchedApplications = pending.map((app) => ({
+          // Fetch both Stage 1 and Stage 2 applications
+          const stage1Pending =
+            await eeWorkflowService.getPendingApplications();
+          const stage2Pending =
+            await eeStage2WorkflowService.getPendingApplications();
+
+          // Map Stage 1 applications
+          const stage1Apps = stage1Pending.map((app) => ({
             ...app,
             status: app.status || "EXECUTIVE_ENGINEER_PENDING",
             createdDate: app.createdDate || new Date().toISOString(),
+            isStage2: false,
           }));
+
+          // Map Stage 2 applications
+          const stage2Apps = stage2Pending.map((app) => ({
+            applicationId: app.applicationId,
+            applicationNumber: app.applicationNumber,
+            applicantName: app.applicantName,
+            firstName: app.applicantName?.split(" ")[0] || "",
+            lastName: app.applicantName?.split(" ").slice(1).join(" ") || "",
+            status: "EXECUTIVE_ENGINEER_SIGN_PENDING",
+            createdDate: app.clerkProcessedDate || new Date().toISOString(),
+            positionType: app.buildingType,
+            position: app.buildingType,
+            assignedAEName: "Clerk",
+            isStage2: true,
+            stage2Data: app,
+          }));
+
+          // Combine both stages
+          fetchedApplications = [...stage1Apps, ...stage2Apps];
         } else if (officerConfig.type === "CE") {
-          const pending = await ceWorkflowService.getPendingApplications();
-          fetchedApplications = pending.map((app) => ({
+          // Fetch both Stage 1 and Stage 2 applications
+          const stage1Pending =
+            await ceWorkflowService.getPendingApplications();
+          const stage2Pending =
+            await ceStage2WorkflowService.getPendingApplications();
+
+          // Map Stage 1 applications
+          const stage1Apps = stage1Pending.map((app) => ({
             ...app,
             status: app.status || "CITY_ENGINEER_PENDING",
             createdDate: app.createdDate || new Date().toISOString(),
+            isStage2: false,
           }));
+
+          // Map Stage 2 applications
+          const stage2Apps = stage2Pending.map((app) => ({
+            applicationId: app.applicationId,
+            applicationNumber: app.applicationNumber,
+            applicantName: app.applicantName,
+            firstName: app.applicantName?.split(" ")[0] || "",
+            lastName: app.applicantName?.split(" ").slice(1).join(" ") || "",
+            status: "CITY_ENGINEER_SIGN_PENDING",
+            createdDate: app.ee2SignedDate || new Date().toISOString(),
+            positionType: app.buildingType,
+            position: app.buildingType,
+            assignedAEName: "EE Stage 2",
+            isStage2: true,
+            stage2Data: app,
+          }));
+
+          // Combine both stages
+          fetchedApplications = [...stage1Apps, ...stage2Apps];
         } else if (officerConfig.type === "Clerk") {
           const pending = await clerkWorkflowService.getPendingApplications();
           fetchedApplications = pending.map((app) => ({
@@ -348,15 +407,13 @@ const OfficerDashboard: React.FC = () => {
         // Stage 1 - filter logic based on status
         return applications.filter(
           (app) =>
-            app.status?.includes("PENDING") && !app.status?.includes("STAGE2")
+            !app.isStage2 &&
+            app.status?.includes("PENDING") &&
+            !app.status?.includes("STAGE2")
         );
       } else {
-        // Stage 2 - filter logic based on status
-        return applications.filter(
-          (app) =>
-            app.status?.includes("STAGE2") ||
-            app.status?.includes("CERTIFICATE")
-        );
+        // Stage 2 - filter logic based on isStage2 flag
+        return applications.filter((app) => app.isStage2 === true);
       }
     }
 
@@ -472,6 +529,20 @@ const OfficerDashboard: React.FC = () => {
 
   const handleVerifyDocuments = (application: Application) => {
     setSelectedApplication(application);
+
+    // For EE Stage 2 (tab2), show confirmation modal first
+    if (officerConfig.type === "EE" && activeTab === "tab2") {
+      setEEStage2Remarks("");
+      setShowEEStage2ConfirmModal(true);
+    } else {
+      // For Stage 1, directly show OTP modal
+      setShowOTPModal(true);
+    }
+  };
+
+  const handleEEStage2ConfirmSubmit = () => {
+    // Close confirmation modal and open OTP modal
+    setShowEEStage2ConfirmModal(false);
     setShowOTPModal(true);
   };
 
@@ -794,18 +865,17 @@ const OfficerDashboard: React.FC = () => {
                   officerConfig.type === "CE"
                 ) {
                   if (tab.id === "tab1") {
-                    // Stage 1
+                    // Stage 1 - count non-Stage2 applications
                     tabCount = applications.filter(
                       (app) =>
+                        !app.isStage2 &&
                         app.status?.includes("PENDING") &&
                         !app.status?.includes("STAGE2")
                     ).length;
                   } else if (tab.id === "tab2") {
-                    // Stage 2
+                    // Stage 2 - count applications with isStage2 flag
                     tabCount = applications.filter(
-                      (app) =>
-                        app.status?.includes("STAGE2") ||
-                        app.status?.includes("CERTIFICATE")
+                      (app) => app.isStage2 === true
                     ).length;
                   }
                 } else {
@@ -1964,6 +2034,232 @@ const OfficerDashboard: React.FC = () => {
                       Approve Application
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EE Stage 2 Confirmation Modal */}
+        {showEEStage2ConfirmModal && selectedApplication && (
+          <div
+            onClick={() => setShowEEStage2ConfirmModal(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+          >
+            <div
+              className="pmc-modal pmc-slideInUp"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "12px",
+                maxWidth: "520px",
+                width: "100%",
+                boxShadow:
+                  "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: "24px 24px 20px",
+                  borderBottom: "1px solid #e5e7eb",
+                  background:
+                    "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  borderRadius: "12px 12px 0 0",
+                }}
+              >
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      background: "rgba(255, 255, 255, 0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CheckCircle size={28} style={{ color: "white" }} />
+                  </div>
+                  <div>
+                    <h3
+                      style={{
+                        color: "white",
+                        margin: 0,
+                        fontSize: "20px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Certificate Signature
+                    </h3>
+                    <p
+                      style={{
+                        color: "rgba(255,255,255,0.9)",
+                        fontSize: "13px",
+                        margin: "4px 0 0 0",
+                      }}
+                    >
+                      Apply Digital Signature to Certificate
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: "24px" }}>
+                <div
+                  style={{
+                    marginBottom: "20px",
+                    padding: "14px 16px",
+                    background:
+                      "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                    borderRadius: "8px",
+                    border: "1px solid #3b82f6",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <Info
+                      size={20}
+                      style={{
+                        color: "#1e40af",
+                        flexShrink: 0,
+                        marginTop: "2px",
+                      }}
+                    />
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "14px",
+                          color: "#1e3a8a",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        <strong>
+                          Application #{selectedApplication.applicationNumber}
+                        </strong>
+                      </p>
+                      <p
+                        style={{
+                          margin: "4px 0 0 0",
+                          fontSize: "13px",
+                          color: "#1e40af",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        You will apply your digital signature to the certificate
+                        for this application. An OTP will be sent to your
+                        registered mobile number.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "4px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      color: "#374151",
+                    }}
+                  >
+                    Remarks / Comments{" "}
+                    <span style={{ color: "#9ca3af" }}>(Optional)</span>
+                  </label>
+                  <textarea
+                    placeholder="Add any remarks or comments about this signature..."
+                    value={eeStage2Remarks}
+                    onChange={(e) => setEEStage2Remarks(e.target.value)}
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      fontFamily: "inherit",
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  padding: "16px 24px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                  background: "#f9fafb",
+                  borderRadius: "0 0 12px 12px",
+                }}
+              >
+                <button
+                  onClick={() => setShowEEStage2ConfirmModal(false)}
+                  style={{
+                    padding: "10px 20px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: "white",
+                    color: "#374151",
+                    border: "1.5px solid #d1d5db",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEEStage2ConfirmSubmit}
+                  style={{
+                    padding: "10px 24px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background:
+                      "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <CheckCircle size={16} />
+                  Proceed to OTP Verification
                 </button>
               </div>
             </div>

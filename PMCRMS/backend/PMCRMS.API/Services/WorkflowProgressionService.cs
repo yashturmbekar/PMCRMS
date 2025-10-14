@@ -253,28 +253,35 @@ namespace PMCRMS.API.Services
                     return false;
                 }
 
-                _logger.LogInformation("STAGE 6→7: Progressing application {ApplicationId} to Executive Engineer (Digital Signature)", applicationId);
+                _logger.LogInformation("STAGE 6→7: Progressing application {ApplicationId} to Executive Engineer (Digital Signature - Stage 2)", applicationId);
 
-                // Update status
+                // Update status to EXECUTIVE_ENGINEER_SIGN_PENDING (Status 32)
                 application.Status = ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING;
                 application.UpdatedDate = DateTime.UtcNow;
                 application.UpdatedBy = "System";
 
-                await _context.SaveChangesAsync();
-
-                // Auto-assign to Executive Engineer for signature
-                var assignmentResult = await _autoAssignmentService.AssignApplicationAsync(applicationId);
+                // Auto-assign to Executive Engineer for Stage 2 digital signature
+                var assignmentResult = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
+                    applicationId,
+                    ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING,
+                    null
+                );
                 
                 if (assignmentResult != null)
                 {
-                    _logger.LogInformation("✓ Application {ApplicationId} auto-assigned to Executive Engineer for signature {OfficerId}", 
+                    _logger.LogInformation("✓ Application {ApplicationId} auto-assigned to Executive Engineer for Stage 2 signature {OfficerId}", 
                         applicationId, assignmentResult.AssignedToOfficerId);
+                    
+                    // Save the assignment
+                    await _context.SaveChangesAsync();
                     return true;
                 }
                 else
                 {
-                    _logger.LogWarning("⚠ Application {ApplicationId} status updated but no Executive Engineer available for signature", applicationId);
-                    return false;
+                    // Save status change even if no EE available
+                    await _context.SaveChangesAsync();
+                    _logger.LogWarning("⚠ Application {ApplicationId} status updated to EXECUTIVE_ENGINEER_SIGN_PENDING but no Executive Engineer available for Stage 2 signature", applicationId);
+                    return true; // Return true since status was updated successfully
                 }
             }
             catch (Exception ex)

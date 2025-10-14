@@ -759,6 +759,32 @@ namespace PMCRMS.API.Services
                         }
                         break;
 
+                    case ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING:
+                        // Assign to Executive Engineer for Stage 2 digital signature
+                        targetRole = MapPositionToEERole(application.PositionType);
+                        nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
+                        reason = $"Auto-assigned to EE for Stage 2 certificate signature after Clerk approval using workload-based strategy";
+                        
+                        if (nextOfficer != null)
+                        {
+                            application.AssignedEEStage2Id = nextOfficer.Id;
+                            application.AssignedToEEStage2Date = DateTime.UtcNow;
+                        }
+                        break;
+
+                    case ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING:
+                        // Assign to City Engineer for final Stage 2 digital signature
+                        targetRole = OfficerRole.CityEngineer;
+                        nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
+                        reason = $"Auto-assigned to CE for final certificate signature after EE Stage 2 using workload-based strategy";
+                        
+                        if (nextOfficer != null)
+                        {
+                            application.AssignedCEStage2Id = nextOfficer.Id;
+                            application.AssignedToCEStage2Date = DateTime.UtcNow;
+                        }
+                        break;
+
                     default:
                         _logger.LogWarning("Status {Status} does not support auto-assignment to next stage", currentStatus);
                         return null;
