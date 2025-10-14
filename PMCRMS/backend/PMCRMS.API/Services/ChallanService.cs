@@ -17,6 +17,12 @@ namespace PMCRMS.API.Services
 
         static ChallanService()
         {
+            // Configure QuestPDF license for Community use (revenue < $1M USD)
+            QuestPDF.Settings.License = LicenseType.Community;
+            
+            // Enable debugging to get detailed layout information
+            QuestPDF.Settings.EnableDebugging = true;
+            
             // Configure QuestPDF to handle missing glyphs (for Marathi/Devanagari fonts)
             QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
         }
@@ -94,6 +100,7 @@ namespace PMCRMS.API.Services
                     existingChallan.AmountInWords = request.AmountInWords;
                     existingChallan.ChallanDate = request.Date;
                     existingChallan.FilePath = filePath;
+                    existingChallan.PdfContent = pdfContent; // Store PDF content
                     existingChallan.IsGenerated = true;
                     existingChallan.LastModifiedAt = DateTime.UtcNow;
                     _context.Challans.Update(existingChallan);
@@ -110,13 +117,46 @@ namespace PMCRMS.API.Services
                         AmountInWords = request.AmountInWords,
                         ChallanDate = request.Date,
                         FilePath = filePath,
+                        PdfContent = pdfContent, // Store PDF content
                         IsGenerated = true,
                         CreatedAt = DateTime.UtcNow
                     };
                     _context.Challans.Add(challan);
                 }
 
+                // Save challan PDF to SEDocuments table
+                var existingDocument = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.ApplicationId == request.ApplicationId 
+                                           && d.DocumentType == SEDocumentType.PaymentChallan);
+
+                if (existingDocument != null)
+                {
+                    existingDocument.FileName = fileName;
+                    existingDocument.FilePath = filePath;
+                    existingDocument.FileContent = pdfContent;
+                    existingDocument.FileSize = (decimal)(pdfContent.Length / 1024.0); // Size in KB
+                    existingDocument.ContentType = "application/pdf";
+                    _context.SEDocuments.Update(existingDocument);
+                }
+                else
+                {
+                    var seDocument = new SEDocument
+                    {
+                        ApplicationId = request.ApplicationId,
+                        DocumentType = SEDocumentType.PaymentChallan,
+                        FileName = fileName,
+                        FileId = challanNumber,
+                        FilePath = filePath,
+                        FileContent = pdfContent,
+                        FileSize = (decimal)(pdfContent.Length / 1024.0), // Size in KB
+                        ContentType = "application/pdf",
+                        IsVerified = true // Auto-verify payment challans
+                    };
+                    _context.SEDocuments.Add(seDocument);
+                }
+
                 await _context.SaveChangesAsync();
+                _logger.LogInformation("Challan saved to SEDocuments table with type PaymentChallan");
 
                 return new ChallanGenerationResponse
                 {
@@ -142,8 +182,26 @@ namespace PMCRMS.API.Services
         {
             try
             {
+                // First try to get from SEDocuments table (preferred)
+                var document = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId 
+                                           && d.DocumentType == SEDocumentType.PaymentChallan);
+
+                if (document?.FileContent != null)
+                {
+                    _logger.LogInformation("Retrieved challan from SEDocuments table for application {ApplicationId}", applicationId);
+                    return document.FileContent;
+                }
+
+                // Fallback to Challans table and file system
                 var challan = await _context.Challans
                     .FirstOrDefaultAsync(c => c.ApplicationId == applicationId && c.IsGenerated);
+
+                if (challan?.PdfContent != null)
+                {
+                    _logger.LogInformation("Retrieved challan PDF content from Challans table for application {ApplicationId}", applicationId);
+                    return challan.PdfContent;
+                }
 
                 if (challan == null || !File.Exists(challan.FilePath))
                 {
@@ -210,13 +268,13 @@ namespace PMCRMS.API.Services
                     page.Content().Row(row =>
                     {
                         // Left copy of challan
-                        row.RelativeItem().Border(1).Width(280).Height(374).Padding(10)
+                        row.RelativeItem().Border(1).Padding(10)
                             .Column(column => BuildChallanContent(column, request, challanNumber, true));
 
                         row.ConstantItem(10); // Spacer
 
                         // Right copy of challan
-                        row.RelativeItem().Border(1).Width(280).Height(374).Padding(10)
+                        row.RelativeItem().Border(1).Padding(10)
                             .Column(column => BuildChallanContent(column, request, challanNumber, true));
                     });
                 });
@@ -237,13 +295,13 @@ namespace PMCRMS.API.Services
                     page.Content().Row(row =>
                     {
                         // Left copy of challan
-                        row.RelativeItem().Border(1).Width(280).Height(374).Padding(10)
+                        row.RelativeItem().Border(1).Padding(10)
                             .Column(column => BuildChallanContent(column, request, challanNumber, false));
 
                         row.ConstantItem(10); // Spacer
 
                         // Right copy of challan
-                        row.RelativeItem().Border(1).Width(280).Height(374).Padding(10)
+                        row.RelativeItem().Border(1).Padding(10)
                             .Column(column => BuildChallanContent(column, request, challanNumber, false));
                     });
                 });

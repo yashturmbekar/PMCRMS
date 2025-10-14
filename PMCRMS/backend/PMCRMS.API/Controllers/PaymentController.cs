@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PMCRMS.API.Data;
+using PMCRMS.API.DTOs;
+using PMCRMS.API.Models;
 using PMCRMS.API.Services;
 using PMCRMS.API.ViewModels;
 
@@ -16,20 +20,37 @@ namespace PMCRMS.API.Controllers
         private readonly PaymentService _paymentService;
         private readonly IBillDeskPaymentService _billDeskPaymentService;
         private readonly ILogger<PaymentController> _logger;
+        private readonly PMCRMSDbContext _context;
+        private readonly IChallanService _challanService;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
+        private readonly string _baseUrl;
 
         public PaymentController(
             PaymentService paymentService,
             IBillDeskPaymentService billDeskPaymentService,
-            ILogger<PaymentController> logger)
+            ILogger<PaymentController> logger,
+            PMCRMSDbContext context,
+            IChallanService challanService,
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             _paymentService = paymentService;
             _billDeskPaymentService = billDeskPaymentService;
             _logger = logger;
+            _context = context;
+            _challanService = challanService;
+            _emailService = emailService;
+            _configuration = configuration;
+            _baseUrl = _configuration["AppSettings:BaseUrl"] ?? "http://localhost:5173";
         }
 
         /// <summary>
         /// Initiate payment for an application
         /// POST /api/Payment/Initiate
+        /// 
+        /// NOTE: BillDesk integration commented out for testing (similar to HSM)
+        /// Using MOCK payment system that completes payment immediately
         /// </summary>
         [HttpPost("Initiate")]
         [Authorize]
@@ -39,6 +60,10 @@ namespace PMCRMS.API.Controllers
             {
                 _logger.LogInformation($"[PaymentController] Initiate payment request for application: {request.ApplicationId}");
 
+                // ==================== BILLDESK INTEGRATION COMMENTED OUT FOR TESTING ====================
+                // Similar to HSM commenting pattern - BillDesk payment gateway disabled
+                // To enable BillDesk: Uncomment the code below and comment out the MOCK section
+                /*
                 var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
                 var userAgent = HttpContext.Request.Headers["User-Agent"].ToString() ?? 
                                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
@@ -72,6 +97,282 @@ namespace PMCRMS.API.Controllers
                         paymentGatewayUrl = "https://pay.billdesk.com/web/v1_2/embeddedsdk"
                     }
                 });
+                */
+                // ==================== END OF BILLDESK CODE ====================
+
+                // ==================== MOCK PAYMENT FOR TESTING ====================
+                _logger.LogInformation($"[PaymentController] Using MOCK payment (BillDesk disabled)");
+
+                // 1. Get application
+                var application = await _context.PositionApplications
+                    .FirstOrDefaultAsync(a => a.Id == request.ApplicationId);
+
+                if (application == null)
+                {
+                    return NotFound(new { success = false, message = "Application not found" });
+                }
+
+                // 2. Create mock transaction
+                var mockTransaction = new Transaction
+                {
+                    Id = Guid.NewGuid(),
+                    ApplicationId = request.ApplicationId,
+                    TransactionId = $"MOCK{DateTime.Now:yyyyMMddHHmmss}",
+                    BdOrderId = $"MOCK_BD_{DateTime.Now:yyyyMMddHHmmss}",
+                    Status = "SUCCESS",
+                    Price = 3000.00m,
+                    AmountPaid = 3000.00m,
+                    Mode = "MOCK_PAYMENT",
+                    CardType = "TEST",
+                    FirstName = application.FirstName,
+                    LastName = application.LastName,
+                    Email = application.EmailAddress,
+                    PhoneNumber = application.MobileNumber,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _context.Transactions.Add(mockTransaction);
+                _logger.LogInformation($"[PaymentController] Mock transaction created: {mockTransaction.TransactionId}");
+
+                // 3. Update application status to PaymentCompleted
+                application.Status = ApplicationCurrentStatus.PaymentCompleted;
+
+                // 4. Generate Challan (with debugging enabled)
+                var challanRequest = new ChallanGenerationRequest
+                {
+                    ApplicationId = request.ApplicationId,
+                    Name = $"{application.FirstName} {application.LastName}",
+                    Position = application.PositionType.ToString(),
+                    Amount = 3000m,
+                    AmountInWords = "Three Thousand Only",
+                    Date = DateTime.Now
+                };
+
+                var challanResult = await _challanService.GenerateChallanAsync(challanRequest);
+                
+                if (!challanResult.Success)
+                {
+                    _logger.LogError($"[PaymentController] Challan generation failed: {challanResult.Message}");
+                    return BadRequest(new { success = false, message = "Challan generation failed", error = challanResult.Message });
+                }
+
+                _logger.LogInformation($"[PaymentController] Challan generated: {challanResult.ChallanNumber}");
+
+                // 5. Update status to UnderProcessingByClerk
+                application.Status = ApplicationCurrentStatus.UnderProcessingByClerk;
+
+                // 6. Save changes (EF Core handles transaction automatically)
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"[PaymentController] Mock payment completed successfully");
+
+                // 7. Send email notification
+                try
+                {
+                    var emailBody = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }}
+        .header {{
+            background-color: #0c4a6e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }}
+        .logo-container {{
+            margin-bottom: 15px;
+        }}
+        .badge {{
+            background-color: #f59e0b;
+            color: white;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }}
+        .header h1 {{
+            margin: 10px 0 5px 0;
+            font-size: 24px;
+        }}
+        .header p {{
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        .content {{
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }}
+        .success-icon {{
+            text-align: center;
+            font-size: 64px;
+            color: #10b981;
+            margin: 10px 0;
+        }}
+        .info-box {{
+            background-color: #f0f9ff;
+            border: 2px solid #0c4a6e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }}
+        .info-row {{
+            display: flex;
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        .info-row:last-child {{
+            border-bottom: none;
+        }}
+        .info-label {{
+            font-weight: bold;
+            color: #0c4a6e;
+            min-width: 180px;
+        }}
+        .info-value {{
+            color: #333;
+        }}
+        .success-badge {{
+            background-color: #10b981;
+            color: white;
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 15px 0;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }}
+        .info-notice {{
+            background-color: #dcfce7;
+            border-left: 4px solid #10b981;
+            padding: 12px;
+            margin: 15px 0;
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <div class='logo-container'>
+                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+            </div>
+            <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
+            <h1>Pune Municipal Corporation</h1>
+            <p>Permit Management & Certificate Recommendation System</p>
+        </div>
+        
+        <div class='content'>
+            <div class='success-icon'>✓</div>
+            <div class='success-badge'>Payment Successful</div>
+            
+            <p>Dear {application.FirstName} {application.LastName},</p>
+            
+            <p>Your payment has been successfully processed. Your application is now being reviewed by our team.</p>
+            
+            <div class='info-box'>
+                <h3 style='color: #0c4a6e; margin-top: 0;'>Payment Details</h3>
+                <div class='info-row'>
+                    <div class='info-label'>Transaction ID:</div>
+                    <div class='info-value'>{mockTransaction.TransactionId}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Application Number:</div>
+                    <div class='info-value'>{application.ApplicationNumber}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Amount Paid:</div>
+                    <div class='info-value'>₹{mockTransaction.AmountPaid:F2}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Challan Number:</div>
+                    <div class='info-value'>{challanResult.ChallanNumber}</div>
+                </div>
+                <div class='info-row'>
+                    <div class='info-label'>Payment Date:</div>
+                    <div class='info-value'>{DateTime.Now:dd MMM yyyy, hh:mm tt}</div>
+                </div>
+            </div>
+            
+            <div class='info-notice'>
+                <strong>📋 Next Steps:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li>Your application is now under processing by the clerk</li>
+                    <li>You will receive updates via email at each stage</li>
+                    <li>You can download your challan from the application portal</li>
+                    <li>Keep your application number for future reference</li>
+                </ul>
+            </div>
+            
+            <p>Thank you for using PMCRMS.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        
+        <div class='footer'>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>For support, please visit our website or contact us at support@pmcrms.gov.in</p>
+            <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                    await _emailService.SendEmailAsync(
+                        application.EmailAddress,
+                        $"✅ Payment Successful - Application {application.ApplicationNumber}",
+                        emailBody
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError(emailEx, "[PaymentController] Error sending email");
+                }
+
+                // 8. Return response (same structure as BillDesk but payment already complete)
+                return Ok(new
+                {
+                    success = true,
+                    message = "Payment completed successfully (TEST MODE)",
+                    data = new
+                    {
+                        bdOrderId = mockTransaction.BdOrderId,
+                        rData = "MOCK_TEST_MODE",
+                        paymentGatewayUrl = (string?)null,  // No redirect - payment complete
+                        transactionId = mockTransaction.TransactionId,
+                        challanNumber = challanResult.ChallanNumber,
+                        mockMode = true
+                    }
+                });
+                // ==================== END OF MOCK PAYMENT ====================
             }
             catch (Exception ex)
             {

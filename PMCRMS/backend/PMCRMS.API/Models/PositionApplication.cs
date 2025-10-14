@@ -41,7 +41,8 @@ namespace PMCRMS.API.Models
         SelfDeclaration = 9,
         COACertificate = 10,
         AdditionalDocument = 11,
-        RecommendedForm = 12
+        RecommendedForm = 12,
+        PaymentChallan = 13
     }
 
     public class PositionApplication : BaseEntity

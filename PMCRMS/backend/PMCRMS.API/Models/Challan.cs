@@ -11,6 +11,7 @@ namespace PMCRMS.API.Models
         public string AmountInWords { get; set; } = string.Empty;
         public DateTime ChallanDate { get; set; }
         public string FilePath { get; set; } = string.Empty;
+        public byte[]? PdfContent { get; set; } // Store PDF in Base64 format
         public bool IsGenerated { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastModifiedAt { get; set; }
