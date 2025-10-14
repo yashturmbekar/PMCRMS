@@ -592,6 +592,79 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
+        /// Get detailed transaction information by transaction ID
+        /// GET /api/Payment/Transaction/{transactionId}
+        /// </summary>
+        [HttpGet("Transaction/{transactionId}")]
+        [Authorize]
+        public async Task<IActionResult> GetTransactionDetails(Guid transactionId)
+        {
+            try
+            {
+                _logger.LogInformation($"[PaymentController] Get transaction details for: {transactionId}");
+
+                var transaction = await _context.Transactions
+                    .Include(t => t.Application)
+                    .FirstOrDefaultAsync(t => t.Id == transactionId);
+
+                if (transaction == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message = "Transaction not found"
+                    });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Transaction details retrieved",
+                    data = new
+                    {
+                        id = transaction.Id,
+                        transactionId = transaction.TransactionId,
+                        bdOrderId = transaction.BdOrderId,
+                        status = transaction.Status,
+                        price = transaction.Price,
+                        amountPaid = transaction.AmountPaid,
+                        applicationId = transaction.ApplicationId,
+                        firstName = transaction.FirstName,
+                        lastName = transaction.LastName,
+                        email = transaction.Email,
+                        phoneNumber = transaction.PhoneNumber,
+                        easeBuzzStatus = transaction.EaseBuzzStatus,
+                        errorMessage = transaction.ErrorMessage,
+                        cardType = transaction.CardType,
+                        mode = transaction.Mode,
+                        paymentGatewayResponse = transaction.PaymentGatewayResponse,
+                        clientIpAddress = transaction.ClientIpAddress,
+                        userAgent = transaction.UserAgent,
+                        createdAt = transaction.CreatedAt,
+                        updatedAt = transaction.UpdatedAt,
+                        applicationDetails = transaction.Application != null ? new
+                        {
+                            id = transaction.Application.Id,
+                            applicantName = $"{transaction.Application.FirstName} {transaction.Application.MiddleName} {transaction.Application.LastName}".Trim(),
+                            positionType = transaction.Application.PositionType.ToString(),
+                            status = transaction.Application.Status.ToString()
+                        } : null
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PaymentController] Error in GetTransactionDetails");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error getting transaction details",
+                    error = ex.Message
+                });
+            }
+        }
+
+        /// <summary>
         /// Verify payment with BillDesk
         /// POST /api/Payment/Verify
         /// </summary>

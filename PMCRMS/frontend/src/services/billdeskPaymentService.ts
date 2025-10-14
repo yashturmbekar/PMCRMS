@@ -64,6 +64,39 @@ export interface PaymentHistoryResponse {
   data?: Transaction[];
 }
 
+export interface TransactionDetailsResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    id: string;
+    transactionId: string;
+    bdOrderId: string;
+    status: string;
+    price: number;
+    amountPaid: number;
+    applicationId: number;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    easeBuzzStatus?: string;
+    errorMessage?: string;
+    cardType?: string;
+    mode?: string;
+    paymentGatewayResponse?: string;
+    clientIpAddress?: string;
+    userAgent?: string;
+    createdAt: string;
+    updatedAt: string;
+    applicationDetails?: {
+      id: number;
+      applicantName: string;
+      positionType: string;
+      status: string;
+    };
+  };
+}
+
 export interface VerifyPaymentRequest {
   applicationId: number;
   bdOrderId: string;
@@ -172,6 +205,30 @@ class BillDeskPaymentService {
         );
       }
       throw new Error("Network error: Unable to fetch payment history");
+    }
+  }
+
+  /**
+   * Get detailed transaction information by transaction ID
+   * @param transactionId - The transaction ID (GUID)
+   * @returns Detailed transaction information
+   */
+  async getTransactionDetails(
+    transactionId: string
+  ): Promise<TransactionDetailsResponse> {
+    try {
+      const response = await axios.get<TransactionDetailsResponse>(
+        `${API_URL}/Payment/Transaction/${transactionId}`,
+        { headers: this.getAuthHeader() }
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(
+          error.response.data.message || "Failed to get transaction details"
+        );
+      }
+      throw new Error("Network error: Unable to fetch transaction details");
     }
   }
 

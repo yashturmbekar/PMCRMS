@@ -102,7 +102,7 @@ const ViewPositionApplication: React.FC = () => {
       return "/ae-dashboard";
     } else if (user.role.includes("Executive")) {
       return "/ee-dashboard";
-    } else if (user.role.includes("Chief")) {
+    } else if (user.role.includes("City")) {
       return "/ce-dashboard";
     }
 
@@ -252,9 +252,20 @@ const ViewPositionApplication: React.FC = () => {
       setTimeout(() => {
         navigate(backPath);
       }, 2000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("❌ Error scheduling appointment:", error);
-      setScheduleError("Failed to schedule appointment. Please try again.");
+      // Extract error message from API response if available
+      let errorMessage = "Failed to schedule appointment. Please try again.";
+      if (error && typeof error === "object" && "response" in error) {
+        const response = (
+          error as {
+            response?: { data?: { message?: string; Message?: string } };
+          }
+        ).response;
+        errorMessage =
+          response?.data?.message || response?.data?.Message || errorMessage;
+      }
+      setScheduleError(errorMessage);
     } finally {
       setIsScheduling(false);
     }
@@ -299,9 +310,20 @@ const ViewPositionApplication: React.FC = () => {
         );
         setApplication(response);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("❌ Error rescheduling appointment:", error);
-      setRescheduleError("Failed to reschedule appointment. Please try again.");
+      // Extract error message from API response if available
+      let errorMessage = "Failed to reschedule appointment. Please try again.";
+      if (error && typeof error === "object" && "response" in error) {
+        const response = (
+          error as {
+            response?: { data?: { message?: string; Message?: string } };
+          }
+        ).response;
+        errorMessage =
+          response?.data?.message || response?.data?.Message || errorMessage;
+      }
+      setRescheduleError(errorMessage);
     } finally {
       setIsRescheduling(false);
     }
@@ -2181,7 +2203,6 @@ const ViewPositionApplication: React.FC = () => {
                       })
                     }
                     minDate={new Date()}
-                    placeholder="Select appointment date & time"
                   />
                 </div>
 

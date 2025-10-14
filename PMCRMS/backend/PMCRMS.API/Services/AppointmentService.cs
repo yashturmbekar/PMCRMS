@@ -53,7 +53,24 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // All validation removed - frontend handles validation
+                // Validate that the review date is not in the past
+                var now = DateTime.UtcNow;
+                var reviewDateUtc = reviewDate.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(reviewDate, DateTimeKind.Local).ToUniversalTime()
+                    : reviewDate.ToUniversalTime();
+
+                if (reviewDateUtc < now)
+                {
+                    _logger.LogWarning("Attempted to schedule appointment in the past. ReviewDate: {ReviewDate}, Current: {Now}", 
+                        reviewDateUtc, now);
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Cannot schedule an appointment in the past. Please select a future date and time.",
+                        Errors = new List<string> { "Review date cannot be in the past" }
+                    };
+                }
+
                 _logger.LogInformation("Creating appointment entity for application {ApplicationId}", applicationId);
 
                 // Convert reviewDate to UTC - frontend sends local time (IST) without timezone info
@@ -257,7 +274,23 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // All date and availability validation removed - frontend handles validation
+                // Validate that the new review date is not in the past
+                var now = DateTime.UtcNow;
+                var newReviewDateUtc = newReviewDate.Kind == DateTimeKind.Unspecified 
+                    ? DateTime.SpecifyKind(newReviewDate, DateTimeKind.Local).ToUniversalTime()
+                    : newReviewDate.ToUniversalTime();
+
+                if (newReviewDateUtc < now)
+                {
+                    _logger.LogWarning("Attempted to reschedule appointment to a past date. NewReviewDate: {NewReviewDate}, Current: {Now}", 
+                        newReviewDateUtc, now);
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Cannot reschedule an appointment to a past date. Please select a future date and time.",
+                        Errors = new List<string> { "New review date cannot be in the past" }
+                    };
+                }
 
                 // Convert newReviewDate to UTC - frontend sends local time (IST) without timezone info
                 // We need to treat the incoming datetime as local time, not UTC

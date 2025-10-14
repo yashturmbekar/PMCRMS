@@ -403,9 +403,20 @@ const OfficerDashboard: React.FC = () => {
       setTimeout(() => {
         window.location.reload();
       }, 2000);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error scheduling appointment:", error);
-      setScheduleError("Failed to schedule appointment. Please try again.");
+      // Extract error message from API response if available
+      let errorMessage = "Failed to schedule appointment. Please try again.";
+      if (error && typeof error === "object" && "response" in error) {
+        const response = (
+          error as {
+            response?: { data?: { message?: string; Message?: string } };
+          }
+        ).response;
+        errorMessage =
+          response?.data?.message || response?.data?.Message || errorMessage;
+      }
+      setScheduleError(errorMessage);
     } finally {
       setIsScheduling(false);
     }

@@ -23,6 +23,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
   const [currentMonth, setCurrentMonth] = useState(
     value ? new Date(value) : new Date()
   );
+  const [validationError, setValidationError] = useState<string>("");
   // Convert 24-hour to 12-hour format for display
   const getDisplayHour = (hour24: number) => {
     if (hour24 === 0) return 12; // Midnight
@@ -111,6 +112,8 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
       minutes
     );
     setSelectedDate(newDate);
+    // Clear validation error when date changes
+    setValidationError("");
   };
 
   const handleApply = () => {
@@ -129,6 +132,18 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
       hour24,
       minutes
     );
+
+    // Validate that the selected date/time is not in the past
+    const now = new Date();
+    if (finalDate < now) {
+      setValidationError(
+        "Cannot select a past date and time. Please choose a future date and time."
+      );
+      return;
+    }
+
+    // Clear any previous validation errors
+    setValidationError("");
 
     // Format to datetime-local format (YYYY-MM-DDTHH:mm)
     const year = finalDate.getFullYear();
@@ -238,10 +253,14 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   const handleHourChange = (newHours: number) => {
     setHours(newHours);
+    // Clear validation error when time changes
+    setValidationError("");
   };
 
   const handleMinuteChange = (newMinutes: number) => {
     setMinutes(newMinutes);
+    // Clear validation error when time changes
+    setValidationError("");
   };
 
   return (
@@ -471,6 +490,41 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                   </span>
                 </div>
 
+                {/* Validation Error Message */}
+                {validationError && (
+                  <div
+                    style={{
+                      marginBottom: "10px",
+                      padding: "8px 12px",
+                      backgroundColor: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "6px",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "8px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: "#dc2626",
+                        fontSize: "14px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      ⚠
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "#dc2626",
+                        lineHeight: "1.4",
+                      }}
+                    >
+                      {validationError}
+                    </span>
+                  </div>
+                )}
+
                 <div
                   style={{
                     display: "flex",
@@ -601,6 +655,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           setPeriod("AM");
+                          setValidationError("");
                         }}
                         style={{
                           flex: 1,
@@ -623,6 +678,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           setPeriod("PM");
+                          setValidationError("");
                         }}
                         style={{
                           flex: 1,
