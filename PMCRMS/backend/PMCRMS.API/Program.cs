@@ -6,6 +6,10 @@ using System.Text;
 using Serilog;
 using PMCRMS.API.Data;
 using PMCRMS.API.Services;
+using QuestPDF.Infrastructure;
+
+// Configure QuestPDF License (Community License for non-commercial/government projects under $1M revenue)
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 

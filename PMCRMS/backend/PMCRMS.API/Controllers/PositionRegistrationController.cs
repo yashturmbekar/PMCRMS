@@ -34,19 +34,14 @@ namespace PMCRMS.API.Controllers
             _jeWorkflowService = jeWorkflowService;
         }
 
-        // Helper method to format enum names with proper spacing
+        // Helper method to format enum names - just remove underscores
         private string FormatEnumName(string enumValue)
         {
             if (string.IsNullOrEmpty(enumValue))
                 return enumValue;
 
-            // Add space before capital letters and remove underscores
-            var result = System.Text.RegularExpressions.Regex.Replace(enumValue, "([A-Z])", " $1").Trim();
-            result = result.Replace("_", " ");
-            
-            // Capitalize first letter of each word
-            var textInfo = CultureInfo.CurrentCulture.TextInfo;
-            return textInfo.ToTitleCase(result.ToLower());
+            // Only remove underscores and replace with spaces
+            return enumValue.Replace("_", " ");
         }
 
         // POST: api/PositionRegistration

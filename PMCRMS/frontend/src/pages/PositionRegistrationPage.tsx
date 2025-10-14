@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import positionRegistrationService, {
   type PositionRegistrationRequest,
   type Qualification as ApiQualification,
@@ -1461,6 +1462,22 @@ export const PositionRegistrationPage = () => {
         className="pmc-content-header pmc-fadeInDown"
         style={{ marginBottom: "16px" }}
       >
+        {/* Back to Dashboard Button */}
+        <button
+          type="button"
+          onClick={() => navigate("/dashboard")}
+          className="pmc-button pmc-button-secondary"
+          style={{
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back to Dashboard
+        </button>
+
         <h1
           className="pmc-content-title"
           style={{

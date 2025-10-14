@@ -362,23 +362,20 @@ const ViewPositionApplication: React.FC = () => {
     );
   }
 
-  const getStatusBadge = (status: number) => {
-    switch (status) {
-      case 1: // Draft
-        return <span className="pmc-badge pmc-status-pending">Draft</span>;
-      case 2: // Submitted
-        return (
-          <span className="pmc-badge pmc-status-under-review">Submitted</span>
-        );
-      case 23: // Completed
-        return <span className="pmc-badge pmc-status-approved">Completed</span>;
-      default:
-        return (
-          <span className="pmc-badge pmc-status-under-review">
-            Under Review
-          </span>
-        );
+  const getStatusBadge = (status: number, statusName: string) => {
+    // Use statusName from backend for display
+    const displayText = statusName || "Under Review";
+
+    // Determine badge class based on status code
+    let badgeClass = "pmc-badge pmc-status-under-review";
+
+    if (status === 1) {
+      badgeClass = "pmc-badge pmc-status-pending"; // Draft
+    } else if (status === 23) {
+      badgeClass = "pmc-badge pmc-status-approved"; // Completed
     }
+
+    return <span className={badgeClass}>{displayText}</span>;
   };
 
   return (
@@ -426,7 +423,7 @@ const ViewPositionApplication: React.FC = () => {
                 </p>
               )}
             </div>
-            {getStatusBadge(application.status)}
+            {getStatusBadge(application.status, application.statusName)}
           </div>
         </div>
 

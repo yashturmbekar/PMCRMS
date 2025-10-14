@@ -14,6 +14,7 @@ import {
   OTPVerificationModal,
 } from "../components/workflow";
 import NotificationModal from "../components/common/NotificationModal";
+import DateTimePicker from "../components/DateTimePicker";
 import type { NotificationType } from "../components/common/NotificationModal";
 import type { JEWorkflowStatusDto } from "../types/jeWorkflow";
 import type { AEWorkflowStatusDto, PositionType } from "../types/aeWorkflow";
@@ -1003,20 +1004,41 @@ const OfficerDashboard: React.FC = () => {
                             </button>
                             {officerConfig.type === "JE" &&
                               activeTab === "tab1" && (
-                                <button
-                                  className="pmc-button pmc-button-sm pmc-button-success"
-                                  onClick={() => handleScheduleAppointment(app)}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                  }}
-                                >
-                                  <Calendar
-                                    style={{ width: "16px", height: "16px" }}
-                                  />
-                                  Schedule
-                                </button>
+                                <>
+                                  <button
+                                    className="pmc-button pmc-button-sm pmc-button-success"
+                                    onClick={() =>
+                                      handleScheduleAppointment(app)
+                                    }
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                    }}
+                                  >
+                                    <Calendar
+                                      style={{ width: "16px", height: "16px" }}
+                                    />
+                                    Schedule
+                                  </button>
+                                  <button
+                                    className="pmc-button pmc-button-sm"
+                                    onClick={() => handleRejectClick(app)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      background:
+                                        "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                      color: "white",
+                                    }}
+                                  >
+                                    <XCircle
+                                      style={{ width: "16px", height: "16px" }}
+                                    />
+                                    Reject
+                                  </button>
+                                </>
                               )}
                             {officerConfig.type === "JE" &&
                               activeTab === "tab2" && (
@@ -1128,7 +1150,7 @@ const OfficerDashboard: React.FC = () => {
               style={{
                 background: "white",
                 borderRadius: "8px",
-                maxWidth: "500px",
+                maxWidth: "600px",
                 width: "100%",
                 boxShadow:
                   "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
@@ -1200,48 +1222,16 @@ const OfficerDashboard: React.FC = () => {
                 }}
               >
                 <div style={{ marginBottom: "16px" }}>
-                  <label
-                    className="pmc-label"
-                    style={{
-                      display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
-                      color: "#374151",
-                    }}
-                  >
-                    Review Date <span style={{ color: "#dc2626" }}>*</span>
-                  </label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
+                    label="Review Date"
                     value={scheduleForm.reviewDate}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setScheduleForm({
                         ...scheduleForm,
-                        reviewDate: e.target.value,
+                        reviewDate: value,
                       })
                     }
-                    min={new Date().toISOString().slice(0, 16)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                      cursor: "pointer",
-                      backgroundColor: "white",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
+                    minDate={new Date()}
                     required
                   />
                 </div>
