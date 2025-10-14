@@ -133,5 +133,17 @@ namespace PMCRMS.API.Services
         /// Check for delayed applications and send reminders
         /// </summary>
         Task<int> SendDelayedApplicationRemindersAsync();
+
+        /// <summary>
+        /// Retry recommendation form generation for an application
+        /// Useful when automatic generation fails during appointment scheduling
+        /// </summary>
+        Task<WorkflowActionResultDto> RetryRecommendationFormGenerationAsync(int applicationId);
+
+        /// <summary>
+        /// Get recommendation form generation status for an application
+        /// Returns generation status, attempts, errors, and timestamps
+        /// </summary>
+        Task<object> GetRecommendationFormStatusAsync(int applicationId);
     }
 }

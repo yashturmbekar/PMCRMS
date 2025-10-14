@@ -1257,47 +1257,120 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Generates recommendation form PDF and saves it to the database
+        /// Generates recommendation form PDF and saves it to the database with retry logic
         /// </summary>
         private async Task GenerateAndSaveRecommendationFormAsync(int applicationId)
         {
+            const int MAX_RETRY_ATTEMPTS = 3;
+            const int RETRY_DELAY_MS = 2000; // 2 seconds between retries
+
+            var application = await _context.PositionApplications
+                .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+            if (application == null)
+            {
+                throw new Exception($"Application {applicationId} not found");
+            }
+
             // Check if recommendation form already exists
             var existingForm = await _context.SEDocuments
                 .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && d.DocumentType == SEDocumentType.RecommendedForm);
 
-            if (existingForm != null)
+            if (existingForm != null && application.IsRecommendationFormGenerated)
             {
                 _logger.LogInformation("Recommendation form already exists for application {ApplicationId}", applicationId);
                 return;
             }
 
-            // Generate PDF
-            var pdfResult = await _pdfService.GenerateApplicationPdfAsync(applicationId);
+            // Increment attempt counter
+            application.RecommendationFormGenerationAttempts++;
+            
+            Exception? lastException = null;
+            bool success = false;
 
-            if (!pdfResult.IsSuccess || pdfResult.FileContent == null)
+            for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++)
             {
-                throw new Exception($"Failed to generate recommendation form: {pdfResult.Message}");
+                try
+                {
+                    _logger.LogInformation("Attempting to generate recommendation form for application {ApplicationId} (Attempt {Attempt}/{MaxAttempts})", 
+                        applicationId, attempt, MAX_RETRY_ATTEMPTS);
+
+                    // Generate PDF
+                    var pdfResult = await _pdfService.GenerateApplicationPdfAsync(applicationId);
+
+                    if (!pdfResult.IsSuccess || pdfResult.FileContent == null)
+                    {
+                        throw new Exception($"Failed to generate recommendation form: {pdfResult.Message}");
+                    }
+
+                    // Delete existing form if re-generating
+                    if (existingForm != null)
+                    {
+                        _context.SEDocuments.Remove(existingForm);
+                        _logger.LogInformation("Removed existing incomplete recommendation form for application {ApplicationId}", applicationId);
+                    }
+
+                    // Create document record - Store PDF content in database
+                    var document = new SEDocument
+                    {
+                        ApplicationId = applicationId,
+                        DocumentType = SEDocumentType.RecommendedForm,
+                        FileName = pdfResult.FileName ?? $"RecommendedForm_{applicationId}.pdf",
+                        FilePath = null, // No physical file path needed
+                        FileId = Guid.NewGuid().ToString(),
+                        FileSize = (decimal)(pdfResult.FileContent.Length / 1024.0), // Size in KB
+                        ContentType = "application/pdf",
+                        FileContent = pdfResult.FileContent, // Store PDF binary data in database
+                        IsVerified = false,
+                        CreatedDate = DateTime.UtcNow
+                    };
+
+                    _context.SEDocuments.Add(document);
+
+                    // Update application tracking fields
+                    application.IsRecommendationFormGenerated = true;
+                    application.RecommendationFormGeneratedDate = DateTime.UtcNow;
+                    application.RecommendationFormGenerationError = null;
+
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("✅ Recommendation form generated and saved successfully for application {ApplicationId} on attempt {Attempt}", 
+                        applicationId, attempt);
+                    
+                    success = true;
+                    break; // Success - exit retry loop
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    _logger.LogError(ex, "❌ Failed to generate recommendation form for application {ApplicationId} on attempt {Attempt}/{MaxAttempts}", 
+                        applicationId, attempt, MAX_RETRY_ATTEMPTS);
+
+                    // Save error details
+                    application.RecommendationFormGenerationError = $"Attempt {attempt}: {ex.Message}";
+
+                    if (attempt < MAX_RETRY_ATTEMPTS)
+                    {
+                        _logger.LogWarning("Retrying recommendation form generation after {Delay}ms delay...", RETRY_DELAY_MS);
+                        await Task.Delay(RETRY_DELAY_MS);
+                    }
+                }
             }
 
-            // Create document record - Store PDF content in database instead of file path
-            var document = new SEDocument
-            {
-                ApplicationId = applicationId,
-                DocumentType = SEDocumentType.RecommendedForm,
-                FileName = pdfResult.FileName ?? $"RecommendedForm_{applicationId}.pdf",
-                FilePath = null, // No physical file path needed
-                FileId = Guid.NewGuid().ToString(),
-                FileSize = (decimal)(pdfResult.FileContent.Length / 1024.0), // Size in KB
-                ContentType = "application/pdf",
-                FileContent = pdfResult.FileContent, // Store PDF binary data in database
-                IsVerified = false,
-                CreatedDate = DateTime.UtcNow
-            };
-
-            _context.SEDocuments.Add(document);
+            // Save final status
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Recommendation form generated and saved to database for application {ApplicationId}", applicationId);
+            if (!success)
+            {
+                var errorMessage = $"Failed to generate recommendation form after {MAX_RETRY_ATTEMPTS} attempts: {lastException?.Message}";
+                _logger.LogError("🔴 CRITICAL: {ErrorMessage} for application {ApplicationId}", errorMessage, applicationId);
+                
+                // Store comprehensive error
+                application.RecommendationFormGenerationError = errorMessage;
+                await _context.SaveChangesAsync();
+                
+                throw new Exception(errorMessage, lastException);
+            }
         }
 
         /// <summary>
@@ -1377,6 +1450,132 @@ namespace PMCRMS.API.Services
                     Message = $"Error rejecting application: {ex.Message}" 
                 };
             }
+        }
+
+        /// <summary>
+        /// Retry recommendation form generation for an application
+        /// This is a manual retry endpoint for cases where automatic generation failed
+        /// </summary>
+        public async Task<WorkflowActionResultDto> RetryRecommendationFormGenerationAsync(int applicationId)
+        {
+            try
+            {
+                var application = await _context.PositionApplications
+                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+                if (application == null)
+                {
+                    return new WorkflowActionResultDto
+                    {
+                        Success = false,
+                        Message = "Application not found"
+                    };
+                }
+
+                // Check if form already generated successfully
+                if (application.IsRecommendationFormGenerated)
+                {
+                    return new WorkflowActionResultDto
+                    {
+                        Success = true,
+                        Message = "Recommendation form already generated successfully",
+                        Data = new Dictionary<string, object>
+                        {
+                            ["ApplicationId"] = applicationId,
+                            ["IsRecommendationFormGenerated"] = application.IsRecommendationFormGenerated,
+                            ["RecommendationFormGeneratedDate"] = application.RecommendationFormGeneratedDate ?? (object)DBNull.Value,
+                            ["RecommendationFormGenerationAttempts"] = application.RecommendationFormGenerationAttempts
+                        }
+                    };
+                }
+
+                _logger.LogInformation("Manual retry of recommendation form generation requested for application {ApplicationId}", applicationId);
+
+                // Call the generation method which has built-in retry logic
+                await GenerateAndSaveRecommendationFormAsync(applicationId);
+
+                // Refresh application data
+                await _context.Entry(application).ReloadAsync();
+
+                return new WorkflowActionResultDto
+                {
+                    Success = true,
+                    Message = "Recommendation form generated successfully",
+                    Data = new Dictionary<string, object>
+                    {
+                        ["ApplicationId"] = applicationId,
+                        ["IsRecommendationFormGenerated"] = application.IsRecommendationFormGenerated,
+                        ["RecommendationFormGeneratedDate"] = application.RecommendationFormGeneratedDate ?? (object)DBNull.Value,
+                        ["RecommendationFormGenerationAttempts"] = application.RecommendationFormGenerationAttempts
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrying recommendation form generation for application {ApplicationId}", applicationId);
+                
+                // Update error in database
+                var application = await _context.PositionApplications.FindAsync(applicationId);
+                if (application != null)
+                {
+                    application.RecommendationFormGenerationError = $"Manual retry failed: {ex.Message}";
+                    await _context.SaveChangesAsync();
+                }
+
+                return new WorkflowActionResultDto
+                {
+                    Success = false,
+                    Message = $"Failed to generate recommendation form: {ex.Message}",
+                    Data = new Dictionary<string, object>
+                    {
+                        ["ApplicationId"] = applicationId,
+                        ["Error"] = ex.Message
+                    }
+                };
+            }
+        }
+
+        /// <summary>
+        /// Get recommendation form generation status for an application
+        /// </summary>
+        public async Task<object> GetRecommendationFormStatusAsync(int applicationId)
+        {
+            var application = await _context.PositionApplications
+                .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+            if (application == null)
+            {
+                throw new Exception("Application not found");
+            }
+
+            // Check if document exists in database
+            var recommendationForm = await _context.SEDocuments
+                .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && d.DocumentType == SEDocumentType.RecommendedForm);
+
+            return new
+            {
+                ApplicationId = applicationId,
+                ApplicationNumber = application.ApplicationNumber,
+                IsGenerated = application.IsRecommendationFormGenerated,
+                GeneratedDate = application.RecommendationFormGeneratedDate,
+                GenerationAttempts = application.RecommendationFormGenerationAttempts,
+                LastError = application.RecommendationFormGenerationError,
+                DocumentExists = recommendationForm != null,
+                DocumentDetails = recommendationForm != null ? new
+                {
+                    FileName = recommendationForm.FileName,
+                    FileSize = recommendationForm.FileSize,
+                    CreatedDate = recommendationForm.CreatedDate,
+                    IsVerified = recommendationForm.IsVerified
+                } : null,
+                CanRetry = !application.IsRecommendationFormGenerated,
+                Status = application.Status.ToString(),
+                Message = application.IsRecommendationFormGenerated 
+                    ? "Recommendation form generated successfully" 
+                    : application.RecommendationFormGenerationAttempts > 0 
+                        ? $"Generation failed after {application.RecommendationFormGenerationAttempts} attempts" 
+                        : "Not yet generated"
+            };
         }
     }
 }

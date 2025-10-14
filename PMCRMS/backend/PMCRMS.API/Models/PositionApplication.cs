@@ -151,6 +151,27 @@ namespace PMCRMS.API.Models
         public DateTime? JEAppointmentScheduledDate { get; set; }
 
         /// <summary>
+        /// Whether recommendation form has been successfully created and saved
+        /// </summary>
+        public bool IsRecommendationFormGenerated { get; set; } = false;
+
+        /// <summary>
+        /// Date when recommendation form was successfully generated
+        /// </summary>
+        public DateTime? RecommendationFormGeneratedDate { get; set; }
+
+        /// <summary>
+        /// Number of attempts made to generate recommendation form
+        /// </summary>
+        public int RecommendationFormGenerationAttempts { get; set; } = 0;
+
+        /// <summary>
+        /// Last error encountered during recommendation form generation
+        /// </summary>
+        [MaxLength(2000)]
+        public string? RecommendationFormGenerationError { get; set; }
+
+        /// <summary>
         /// Current workflow stage comments from JE
         /// </summary>
         [MaxLength(2000)]

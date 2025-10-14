@@ -496,5 +496,76 @@ namespace PMCRMS.API.Controllers
                 return StatusCode(500, new { Message = "Internal server error", Error = ex.Message });
             }
         }
+
+        /// <summary>
+        /// Retry recommendation form generation - for cases where automatic generation failed
+        /// </summary>
+        [HttpPost("retry-recommendation-form/{applicationId}")]
+        [Authorize(Roles = JuniorRoles + ",Admin")]
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<IActionResult> RetryRecommendationFormGeneration(int applicationId)
+        {
+            try
+            {
+                var result = await _workflowService.RetryRecommendationFormGenerationAsync(applicationId);
+                
+                if (result.Success)
+                {
+                    return Ok(new 
+                    { 
+                        Success = true,
+                        Message = result.Message,
+                        Data = new
+                        {
+                            ApplicationId = applicationId,
+                            IsRecommendationFormGenerated = result.Data?.GetType().GetProperty("IsRecommendationFormGenerated")?.GetValue(result.Data),
+                            GeneratedDate = result.Data?.GetType().GetProperty("RecommendationFormGeneratedDate")?.GetValue(result.Data),
+                            Attempts = result.Data?.GetType().GetProperty("RecommendationFormGenerationAttempts")?.GetValue(result.Data)
+                        }
+                    });
+                }
+                
+                return BadRequest(new 
+                { 
+                    Success = false,
+                    Message = result.Message 
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrying recommendation form generation for application {ApplicationId}", applicationId);
+                return StatusCode(500, new 
+                { 
+                    Success = false,
+                    Message = "Internal server error", 
+                    Error = ex.Message 
+                });
+            }
+        }
+
+        /// <summary>
+        /// Check recommendation form generation status for an application
+        /// </summary>
+        [HttpGet("recommendation-form-status/{applicationId}")]
+        [Authorize(Roles = AllOfficerRoles)]
+        [ProducesResponseType(typeof(object), 200)]
+        public async Task<IActionResult> GetRecommendationFormStatus(int applicationId)
+        {
+            try
+            {
+                var status = await _workflowService.GetRecommendationFormStatusAsync(applicationId);
+                return Ok(status);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting recommendation form status for application {ApplicationId}", applicationId);
+                return StatusCode(500, new 
+                { 
+                    Success = false,
+                    Message = "Internal server error", 
+                    Error = ex.Message 
+                });
+            }
+        }
     }
 }
