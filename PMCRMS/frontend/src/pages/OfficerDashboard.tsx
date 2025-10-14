@@ -466,6 +466,52 @@ const OfficerDashboard: React.FC = () => {
     setShowOTPModal(true);
   };
 
+  const handleClerkApprove = async (application: Application) => {
+    if (
+      !window.confirm(
+        "Are you sure you want to approve this application? It will be forwarded to Executive Engineer (Stage 2) for certificate signature."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await clerkWorkflowService.approveApplication(
+        application.applicationId,
+        "Approved by Clerk"
+      );
+
+      if (result.success) {
+        setNotification({
+          isOpen: true,
+          message: result.message || "Application approved successfully",
+          type: "success",
+          title: "Success",
+          autoClose: true,
+        });
+        // Refresh the application list
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setNotification({
+          isOpen: true,
+          message: result.message || "Failed to approve application",
+          type: "error",
+          title: "Error",
+          autoClose: false,
+        });
+      }
+    } catch (error) {
+      console.error("Error approving application:", error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to approve application. Please try again.",
+        type: "error",
+        title: "Error",
+        autoClose: false,
+      });
+    }
+  };
+
   const handleRejectClick = (application: Application) => {
     setSelectedApplication(application);
     setRejectionComments("");
@@ -584,6 +630,11 @@ const OfficerDashboard: React.FC = () => {
           applicationId: selectedApplication.applicationId,
           rejectionComments,
         });
+      } else if (officerConfig.type === "Clerk") {
+        result = await clerkWorkflowService.rejectApplication(
+          selectedApplication.applicationId,
+          rejectionComments
+        );
       }
 
       if (result?.success) {
@@ -1109,6 +1160,41 @@ const OfficerDashboard: React.FC = () => {
                                     style={{ width: "16px", height: "16px" }}
                                   />
                                   Verify
+                                </button>
+                                <button
+                                  className="pmc-button pmc-button-sm"
+                                  onClick={() => handleRejectClick(app)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                    background:
+                                      "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                    color: "white",
+                                  }}
+                                >
+                                  <XCircle
+                                    style={{ width: "16px", height: "16px" }}
+                                  />
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                            {officerConfig.type === "Clerk" && (
+                              <>
+                                <button
+                                  className="pmc-button pmc-button-sm pmc-button-success"
+                                  onClick={() => handleClerkApprove(app)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  <CheckCircle
+                                    style={{ width: "16px", height: "16px" }}
+                                  />
+                                  Approve
                                 </button>
                                 <button
                                   className="pmc-button pmc-button-sm"

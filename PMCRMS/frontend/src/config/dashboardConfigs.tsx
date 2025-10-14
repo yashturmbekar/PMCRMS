@@ -194,10 +194,10 @@ export const clerkConfig: OfficerConfig = {
   ],
   allowedActions: {
     schedule: false,
-    approve: false,
-    verify: true,
-    reject: false,
+    approve: true,
+    verify: false,
+    reject: true,
   },
   autoForwardMessage:
-    "After verification, applications proceed to the next stage in the workflow.",
+    "After approval, applications automatically forward to Executive Engineer (Stage 2) for certificate signature and are removed from this list. No document verification or digital signature required.",
 };

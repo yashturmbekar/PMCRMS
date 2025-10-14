@@ -26,7 +26,7 @@ import { jeWorkflowService } from "../services/jeWorkflowService";
 import { aeWorkflowService } from "../services/aeWorkflowService";
 import { eeWorkflowService } from "../services/eeWorkflowService";
 import { ceWorkflowService } from "../services/ceWorkflowService";
-import type { PositionType } from "../services/aeWorkflowService";
+import type { PositionType } from "../types/aeWorkflow";
 import NotificationModal from "../components/common/NotificationModal";
 import type { NotificationType } from "../components/common/NotificationModal";
 import PaymentButton from "../components/PaymentButton";
@@ -94,10 +94,24 @@ const ViewPositionApplication: React.FC = () => {
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
   const isJEOfficer = user?.role && user.role.includes("Junior");
+  const isClerkOfficer = user?.role && user.role.includes("Clerk");
+  const isAEOfficer = user?.role && user.role.includes("Assistant");
+  const isEEOfficer = user?.role && user.role.includes("Executive");
+  const isCEOfficer = user?.role && user.role.includes("City");
+
+  const getOfficerType = (): "AE" | "EE" | "CE" => {
+    if (isAEOfficer) return "AE";
+    if (isEEOfficer) return "EE";
+    if (isCEOfficer) return "CE";
+    return "AE"; // Default
+  };
+
   const backPath = isAdminView
     ? "/admin/applications"
     : isJEOfficer
     ? "/je-dashboard"
+    : isClerkOfficer
+    ? "/clerk-dashboard"
     : "/dashboard";
 
   // Determine the correct dashboard route based on officer role
@@ -112,6 +126,8 @@ const ViewPositionApplication: React.FC = () => {
       return "/ee-dashboard";
     } else if (user.role.includes("City")) {
       return "/ce-dashboard";
+    } else if (user.role.includes("Clerk")) {
+      return "/clerk-dashboard";
     }
 
     return "/dashboard";
@@ -3301,6 +3317,7 @@ const ViewPositionApplication: React.FC = () => {
             isOpen={showOTPModal}
             onClose={() => setShowOTPModal(false)}
             applicationId={application.id}
+            officerType={getOfficerType()}
             onGenerateOtp={handleGenerateOtp}
             onVerifyAndSign={handleVerifyAndSign}
             onSuccess={handleOTPVerificationComplete}
