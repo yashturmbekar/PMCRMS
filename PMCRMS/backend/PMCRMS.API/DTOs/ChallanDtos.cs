@@ -8,7 +8,7 @@ namespace PMCRMS.API.DTOs
         public string Position { get; set; } = string.Empty;
         public decimal Amount { get; set; }
         public string AmountInWords { get; set; } = string.Empty;
-        public DateTime Date { get; set; } = DateTime.Now;
+        public DateTime Date { get; set; } = DateTime.UtcNow;
     }
 
     public class ChallanGenerationResponse

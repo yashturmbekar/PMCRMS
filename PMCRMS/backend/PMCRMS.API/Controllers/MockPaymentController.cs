@@ -88,7 +88,7 @@ namespace PMCRMS.API.Controllers
                     Position = application.PositionType.ToString(),
                     Amount = 3000m,
                     AmountInWords = "Three Thousand Only",
-                    Date = DateTime.Now
+                    Date = DateTime.UtcNow
                 };
 
                 var challanResult = await _challanService.GenerateChallanAsync(challanRequest);
@@ -102,9 +102,26 @@ namespace PMCRMS.API.Controllers
 
                 _logger.LogInformation($"[MOCK PAYMENT] Challan generated successfully: {challanResult.ChallanNumber}");
 
-                // 5. Update status to show payment completed and ready for clerk processing
-                application.Status = ApplicationCurrentStatus.UnderProcessingByClerk;
-                _logger.LogInformation($"[MOCK PAYMENT] Updated application status to UnderProcessingByClerk");
+                // 5. Auto-assign to Clerk for processing
+                var clerk = await _context.Officers
+                    .Where(o => o.Role == Models.OfficerRole.Clerk && o.IsActive)
+                    .OrderBy(o => Guid.NewGuid()) // Random assignment for now
+                    .FirstOrDefaultAsync();
+
+                if (clerk != null)
+                {
+                    application.AssignedClerkId = clerk.Id;
+                    application.AssignedToClerkDate = DateTime.UtcNow;
+                    application.Status = ApplicationCurrentStatus.CLERK_PENDING;
+                    application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{mockTransaction.AmountPaid:F2}. Challan: {challanResult.ChallanNumber}. Assigned to Clerk for processing.";
+                    _logger.LogInformation($"[MOCK PAYMENT] Assigned to Clerk {clerk.Id} - {clerk.Name}");
+                }
+                else
+                {
+                    application.Status = ApplicationCurrentStatus.PaymentCompleted;
+                    application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{mockTransaction.AmountPaid:F2}. Challan: {challanResult.ChallanNumber}. Awaiting clerk assignment.";
+                    _logger.LogWarning($"[MOCK PAYMENT] No active clerk found for assignment");
+                }
 
                 // 6. Save all changes
                 await _context.SaveChangesAsync();

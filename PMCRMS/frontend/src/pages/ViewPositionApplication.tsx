@@ -92,6 +92,23 @@ const ViewPositionApplication: React.FC = () => {
     ? "/je-dashboard"
     : "/dashboard";
 
+  // Determine the correct dashboard route based on officer role
+  const getDashboardRoute = () => {
+    if (!user?.role) return "/dashboard";
+
+    if (user.role.includes("Junior")) {
+      return "/je-dashboard";
+    } else if (user.role.includes("Assistant")) {
+      return "/ae-dashboard";
+    } else if (user.role.includes("Executive")) {
+      return "/ee-dashboard";
+    } else if (user.role.includes("Chief")) {
+      return "/ce-dashboard";
+    }
+
+    return "/dashboard";
+  };
+
   useEffect(() => {
     const fetchApplication = async () => {
       if (!id) {
@@ -178,9 +195,10 @@ const ViewPositionApplication: React.FC = () => {
   }, [selectedDocument]);
 
   const handleDocumentApprovalComplete = async () => {
-    // Navigate to dashboard after successful document verification
+    // Navigate to appropriate dashboard after successful document verification
     // The form will be removed from the officer's list after digital signature is added
-    navigate("/officer-dashboard");
+    const dashboardRoute = getDashboardRoute();
+    navigate(dashboardRoute);
   };
 
   const handleScheduleAppointment = () => {
@@ -924,8 +942,8 @@ const ViewPositionApplication: React.FC = () => {
           </div>
         )}
 
-        {/* Payment Section - Shows when CE approved (status 15 - PaymentPending or 16 - PaymentCompleted) */}
-        {(application.status === 15 || application.status === 16) && (
+        {/* Payment Section - Shows when payment is completed */}
+        {application.isPaymentComplete && (
           <div
             className="pmc-card"
             style={{
@@ -1191,85 +1209,160 @@ const ViewPositionApplication: React.FC = () => {
                         application.id
                       );
                     }}
+                    onPaymentSuccess={async () => {
+                      // Refresh application data after payment success
+                      if (id) {
+                        const response =
+                          await positionRegistrationService.getApplication(
+                            parseInt(id)
+                          );
+                        setApplication(response);
+                      }
+                    }}
                   />
                 </>
               ) : (
                 <>
-                  {/* Payment Success */}
-                  <div className="pmc-form-grid pmc-form-grid-2">
+                  {/* Payment Completed - Show Transaction Details */}
+                  <div
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                      padding: "20px",
+                      borderRadius: "8px",
+                      border: "2px solid #10b981",
+                      marginBottom: "20px",
+                    }}
+                  >
                     <div
                       style={{
-                        background:
-                          "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                        padding: "20px",
-                        borderRadius: "8px",
-                        border: "1px solid #bbf7d0",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        marginBottom: "16px",
                       }}
                     >
                       <div
                         style={{
+                          width: "48px",
+                          height: "48px",
+                          borderRadius: "50%",
+                          background: "#10b981",
                           display: "flex",
                           alignItems: "center",
-                          gap: "12px",
-                          marginBottom: "12px",
+                          justifyContent: "center",
+                          color: "white",
                         }}
                       >
-                        <div
+                        <CheckCircle size={28} />
+                      </div>
+                      <div>
+                        <p
                           style={{
-                            width: "40px",
-                            height: "40px",
-                            borderRadius: "50%",
-                            background: "#10b981",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
+                            margin: 0,
+                            fontSize: "18px",
+                            fontWeight: 700,
+                            color: "#065f46",
+                            marginBottom: "2px",
                           }}
                         >
-                          <CheckCircle size={24} />
-                        </div>
-                        <div>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "16px",
-                              fontWeight: 600,
-                              color: "#065f46",
-                            }}
-                          >
-                            Payment Successful
-                          </p>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "13px",
-                              color: "#059669",
-                            }}
-                          >
-                            Transaction completed
-                          </p>
-                        </div>
+                          Payment Completed Successfully
+                        </p>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "14px",
+                            color: "#059669",
+                          }}
+                        >
+                          Your application has been forwarded to the Clerk for
+                          verification
+                        </p>
                       </div>
+                    </div>
+
+                    {/* Transaction & Challan Details Grid */}
+                    <div
+                      className="pmc-form-grid pmc-form-grid-3"
+                      style={{ marginBottom: "16px" }}
+                    >
+                      <div
+                        style={{
+                          background: "white",
+                          padding: "14px",
+                          borderRadius: "6px",
+                          border: "1px solid #bbf7d0",
+                        }}
+                      >
+                        <label
+                          className="pmc-label"
+                          style={{ color: "#065f46", marginBottom: "4px" }}
+                        >
+                          Payment Amount
+                        </label>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "20px",
+                            fontWeight: 700,
+                            color: "#047857",
+                          }}
+                        >
+                          ₹3,000
+                        </p>
+                      </div>
+
+                      <div
+                        style={{
+                          background: "white",
+                          padding: "14px",
+                          borderRadius: "6px",
+                          border: "1px solid #bbf7d0",
+                        }}
+                      >
+                        <label
+                          className="pmc-label"
+                          style={{ color: "#065f46", marginBottom: "4px" }}
+                        >
+                          Payment Status
+                        </label>
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "15px",
+                            fontWeight: 700,
+                            color: "#047857",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <CheckCircle size={18} />
+                          Success
+                        </p>
+                      </div>
+
                       {application.paymentCompletedDate && (
                         <div
                           style={{
                             background: "white",
-                            padding: "10px",
+                            padding: "14px",
                             borderRadius: "6px",
                             border: "1px solid #bbf7d0",
                           }}
                         >
                           <label
                             className="pmc-label"
-                            style={{ marginBottom: "4px" }}
+                            style={{ color: "#065f46", marginBottom: "4px" }}
                           >
                             Completed On
                           </label>
                           <p
                             style={{
                               margin: 0,
+                              fontSize: "13px",
                               fontWeight: 600,
-                              color: "#065f46",
+                              color: "#047857",
                             }}
                           >
                             {new Date(
@@ -1283,71 +1376,93 @@ const ViewPositionApplication: React.FC = () => {
                       )}
                     </div>
 
-                    <div
-                      style={{
-                        background: "#f0f9ff",
-                        padding: "20px",
-                        borderRadius: "8px",
-                        border: "1px solid #bae6fd",
-                      }}
-                    >
-                      <div
+                    {/* Action Buttons */}
+                    <div style={{ display: "flex", gap: "12px" }}>
+                      <button
+                        className="pmc-button pmc-button-primary"
+                        onClick={() => setShowPaymentModal(true)}
                         style={{
+                          flex: 1,
                           display: "flex",
                           alignItems: "center",
-                          gap: "12px",
-                          marginBottom: "12px",
+                          justifyContent: "center",
+                          gap: "8px",
                         }}
                       >
-                        <Info size={24} color="#0284c7" />
-                        <div>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "16px",
-                              fontWeight: 600,
-                              color: "#0c4a6e",
-                            }}
-                          >
-                            Next Steps
-                          </p>
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: "13px",
-                              color: "#0369a1",
-                            }}
-                          >
-                            Application forwarded to Clerk
-                          </p>
-                        </div>
-                      </div>
-                      <p
+                        <Eye size={16} />
+                        View Transaction Details
+                      </button>
+
+                      {/* Download Challan Button */}
+                      <button
+                        className="pmc-button pmc-button-success"
+                        onClick={async () => {
+                          try {
+                            // Find the challan document in the documents array
+                            const challanDoc = application.documents.find(
+                              (doc) => doc.documentTypeName === "PaymentChallan"
+                            );
+
+                            if (challanDoc && challanDoc.fileBase64) {
+                              // Download from base64 data
+                              const byteCharacters = atob(
+                                challanDoc.fileBase64
+                              );
+                              const byteNumbers = new Array(
+                                byteCharacters.length
+                              );
+                              for (let i = 0; i < byteCharacters.length; i++) {
+                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                              }
+                              const byteArray = new Uint8Array(byteNumbers);
+                              const blob = new Blob([byteArray], {
+                                type: "application/pdf",
+                              });
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement("a");
+                              link.href = url;
+                              link.download = challanDoc.fileName;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                              URL.revokeObjectURL(url);
+                            } else {
+                              setNotification({
+                                isOpen: true,
+                                message:
+                                  "Challan not found. Please contact support.",
+                                type: "error",
+                                title: "Download Failed",
+                                autoClose: false,
+                              });
+                            }
+                          } catch (error) {
+                            console.error("Error downloading challan:", error);
+                            setNotification({
+                              isOpen: true,
+                              message:
+                                "Failed to download challan. Please try again.",
+                              type: "error",
+                              title: "Download Failed",
+                              autoClose: false,
+                            });
+                          }
+                        }}
                         style={{
-                          margin: 0,
-                          fontSize: "13px",
-                          color: "#075985",
+                          flex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "8px",
+                          background:
+                            "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                         }}
                       >
-                        Your application is now being reviewed by the Clerk. You
-                        will receive updates via email.
-                      </p>
+                        <Download size={16} />
+                        Download Challan
+                      </button>
                     </div>
                   </div>
-
-                  <button
-                    className="pmc-button pmc-button-primary"
-                    onClick={() => setShowPaymentModal(true)}
-                    style={{
-                      marginTop: "16px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <Eye size={16} />
-                    View Payment Details
-                  </button>
                 </>
               )}
             </div>
@@ -1507,9 +1622,9 @@ const ViewPositionApplication: React.FC = () => {
                     onClick={() => {
                       const currentDate = application.workflowInfo
                         ?.appointmentDate
-                        ? new Date(application.workflowInfo.appointmentDate)
-                            .toISOString()
-                            .slice(0, 16)
+                        ? new Date(
+                            application.workflowInfo.appointmentDate
+                          ).toISOString()
                         : "";
                       setRescheduleForm({
                         newReviewDate: currentDate,
@@ -1702,37 +1817,15 @@ const ViewPositionApplication: React.FC = () => {
                   >
                     Review Date <span style={{ color: "#dc2626" }}>*</span>
                   </label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={scheduleForm.reviewDate}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setScheduleForm({
                         ...scheduleForm,
-                        reviewDate: e.target.value,
+                        reviewDate: value,
                       })
                     }
-                    min={new Date().toISOString().slice(0, 16)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                      cursor: "pointer",
-                      backgroundColor: "white",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                    required
+                    minDate={new Date()}
                   />
                 </div>
 
@@ -2428,37 +2521,15 @@ const ViewPositionApplication: React.FC = () => {
                   >
                     Review Date <span style={{ color: "#dc2626" }}>*</span>
                   </label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={scheduleForm.reviewDate}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setScheduleForm({
                         ...scheduleForm,
-                        reviewDate: e.target.value,
+                        reviewDate: value,
                       })
                     }
-                    min={new Date().toISOString().slice(0, 16)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                      cursor: "pointer",
-                      backgroundColor: "white",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                    required
+                    minDate={new Date()}
                   />
                 </div>
 

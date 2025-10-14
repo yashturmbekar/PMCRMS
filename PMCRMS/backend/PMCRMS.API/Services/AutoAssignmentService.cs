@@ -733,22 +733,17 @@ namespace PMCRMS.API.Services
                         break;
 
                     case ApplicationCurrentStatus.CLERK_PENDING:
-                        // Note: Clerk assignment not yet implemented in PositionApplication model
-                        // This section is commented out until Clerk properties are added
-                        /*
                         // Assign to Clerk for final processing
                         targetRole = OfficerRole.Clerk;
                         nextOfficer = await GetAvailableOfficerForWorkflowAsync(targetRole, application.PositionType);
-                        reason = $"Auto-assigned to Clerk after CE approval using workload-based strategy";
+                        reason = $"Auto-assigned to Clerk after payment completion using workload-based strategy";
                         
                         if (nextOfficer != null)
                         {
                             application.AssignedClerkId = nextOfficer.Id;
                             application.AssignedToClerkDate = DateTime.UtcNow;
                         }
-                        */
-                        _logger.LogWarning("Clerk auto-assignment not yet implemented - Clerk properties missing in PositionApplication model");
-                        return null;
+                        break;
 
                     default:
                         _logger.LogWarning("Status {Status} does not support auto-assignment to next stage", currentStatus);

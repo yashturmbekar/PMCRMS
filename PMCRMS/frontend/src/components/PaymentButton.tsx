@@ -16,6 +16,7 @@ interface PaymentButtonProps {
   applicationStatus: number;
   isPaymentComplete: boolean;
   onPaymentInitiated?: () => void;
+  onPaymentSuccess?: () => void;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   applicationStatus,
   isPaymentComplete,
   onPaymentInitiated,
+  onPaymentSuccess,
   className = "",
 }) => {
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,24 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
       if (response.success && response.data) {
         const { bdOrderId, rData, paymentGatewayUrl } = response.data;
 
-        // BillDesk Embedded SDK Integration
+        // Check if this is a MOCK payment (TEST MODE)
+        if (response.message && response.message.includes("TEST MODE")) {
+          // Mock payment completed immediately
+          console.log("✅ Mock payment completed successfully");
+
+          // Call success callback if provided
+          if (onPaymentSuccess) {
+            onPaymentSuccess();
+          } else {
+            // Fallback: reload the page after a short delay to show updated status
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          }
+          return;
+        }
+
+        // BillDesk Embedded SDK Integration (for real payments)
         if (bdOrderId && rData && paymentGatewayUrl) {
           // Create a form to submit to BillDesk
           const form = document.createElement("form");
@@ -83,9 +102,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
           }, 1000);
         } else {
           setError("Invalid payment gateway response. Please try again.");
+          setLoading(false);
         }
       } else {
         setError(response.message || "Failed to initiate payment");
+        setLoading(false);
       }
     } catch (err) {
       const error = err as Error;

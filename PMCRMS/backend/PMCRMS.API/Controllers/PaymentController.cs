@@ -145,7 +145,7 @@ namespace PMCRMS.API.Controllers
                     Position = application.PositionType.ToString(),
                     Amount = 3000m,
                     AmountInWords = "Three Thousand Only",
-                    Date = DateTime.Now
+                    Date = DateTime.UtcNow
                 };
 
                 var challanResult = await _challanService.GenerateChallanAsync(challanRequest);

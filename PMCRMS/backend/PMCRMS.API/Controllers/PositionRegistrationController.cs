@@ -794,6 +794,12 @@ namespace PMCRMS.API.Controllers
                 Remarks = application.Remarks,
                 CreatedDate = application.CreatedDate,
                 UpdatedDate = application.UpdatedDate,
+                
+                // Payment Information - Derive from status and transaction data
+                IsPaymentComplete = application.Status == ApplicationCurrentStatus.PaymentCompleted || 
+                                   application.Status > ApplicationCurrentStatus.PaymentCompleted,
+                PaymentCompletedDate = GetPaymentCompletedDate(application),
+                
                 AssignedJuniorEngineerId = application.AssignedJuniorEngineerId,
                 AssignedJuniorEngineerName = application.AssignedJuniorEngineer?.Name,
                 Addresses = application.Addresses.Select(a => new AddressResponseDTO
@@ -1219,6 +1225,19 @@ namespace PMCRMS.API.Controllers
             }
 
             return timeline.OrderBy(t => t.Timestamp).ToList();
+        }
+
+        /// <summary>
+        /// Get payment completed date from Transaction table for the application
+        /// </summary>
+        private DateTime? GetPaymentCompletedDate(PositionApplication application)
+        {
+            var successfulTransaction = _context.Transactions
+                .Where(t => t.ApplicationId == application.Id && t.Status == "SUCCESS")
+                .OrderByDescending(t => t.UpdatedAt)
+                .FirstOrDefault();
+
+            return successfulTransaction?.UpdatedAt;
         }
 
         #endregion

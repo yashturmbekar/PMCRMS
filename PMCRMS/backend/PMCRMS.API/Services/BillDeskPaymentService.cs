@@ -316,10 +316,28 @@ namespace PMCRMS.API.Services
                 // Update application status based on payment result
                 if (request.Status?.ToUpper() == "SUCCESS")
                 {
-                    application.Status = ApplicationCurrentStatus.PaymentCompleted;
-                    application.UpdatedDate = DateTime.UtcNow;
+                    // Auto-assign to Clerk for processing
+                    var clerk = await _context.Officers
+                        .Where(o => o.Role == Models.OfficerRole.Clerk && o.IsActive)
+                        .OrderBy(o => Guid.NewGuid()) // Random assignment for now
+                        .FirstOrDefaultAsync();
 
-                    _logger.LogInformation($"[PAYMENT] Payment successful - Application {request.ApplicationId} moved to PaymentCompleted status");
+                    if (clerk != null)
+                    {
+                        application.AssignedClerkId = clerk.Id;
+                        application.AssignedToClerkDate = DateTime.UtcNow;
+                        application.Status = ApplicationCurrentStatus.CLERK_PENDING;
+                        application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{request.Amount}. Transaction ID: {request.TransactionId}. Assigned to Clerk for processing.";
+                        _logger.LogInformation($"[PAYMENT] Payment successful - Application {request.ApplicationId} assigned to Clerk {clerk.Id} - {clerk.Name}");
+                    }
+                    else
+                    {
+                        application.Status = ApplicationCurrentStatus.PaymentCompleted;
+                        application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{request.Amount}. Transaction ID: {request.TransactionId}. Awaiting clerk assignment.";
+                        _logger.LogWarning($"[PAYMENT] Payment successful but no active clerk found for assignment");
+                    }
+                    
+                    application.UpdatedDate = DateTime.UtcNow;
 
                     // TODO: Generate Certificate and Challan PDFs here
                     // await GenerateCertificateAndChallan(application);

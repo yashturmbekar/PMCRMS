@@ -220,6 +220,10 @@ namespace PMCRMS.API.DTOs
         public DateTime CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
         
+        // Payment Information
+        public bool IsPaymentComplete { get; set; }
+        public DateTime? PaymentCompletedDate { get; set; }
+        
         // Assigned Officer Information
         public int? AssignedJuniorEngineerId { get; set; }
         public string? AssignedJuniorEngineerName { get; set; }
