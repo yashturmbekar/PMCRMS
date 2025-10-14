@@ -158,8 +158,36 @@ namespace PMCRMS.API.Controllers
 
                 _logger.LogInformation($"[PaymentController] Challan generated: {challanResult.ChallanNumber}");
 
-                // 5. Update status to UnderProcessingByClerk
-                application.Status = ApplicationCurrentStatus.UnderProcessingByClerk;
+                // 5. Auto-assign to Clerk for processing
+                _logger.LogInformation($"[PaymentController] Searching for active clerks...");
+                
+                var allClerks = await _context.Officers
+                    .Where(o => o.Role == Models.OfficerRole.Clerk)
+                    .ToListAsync();
+                
+                _logger.LogInformation($"[PaymentController] Total clerks found: {allClerks.Count}");
+                foreach (var c in allClerks)
+                {
+                    _logger.LogInformation($"[PaymentController] Clerk: Id={c.Id}, Name={c.Name}, IsActive={c.IsActive}, Role={c.Role}");
+                }
+                
+                var clerk = await _context.Officers
+                    .Where(o => o.Role == Models.OfficerRole.Clerk && o.IsActive)
+                    .OrderBy(o => Guid.NewGuid()) // Random assignment for now
+                    .FirstOrDefaultAsync();
+
+                if (clerk != null)
+                {
+                    application.AssignedClerkId = clerk.Id;
+                    application.AssignedToClerkDate = DateTime.UtcNow;
+                    application.Status = ApplicationCurrentStatus.CLERK_PENDING;
+                    _logger.LogInformation($"[PaymentController] Assigned to Clerk {clerk.Id} - {clerk.Name}, Status: CLERK_PENDING");
+                }
+                else
+                {
+                    application.Status = ApplicationCurrentStatus.PaymentCompleted;
+                    _logger.LogWarning($"[PaymentController] No active clerk found for assignment, Status: PaymentCompleted");
+                }
 
                 // 6. Save changes (EF Core handles transaction automatically)
                 await _context.SaveChangesAsync();

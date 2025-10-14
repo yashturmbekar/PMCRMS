@@ -32,7 +32,7 @@ interface Application {
   currentStage?: string;
   currentStatus?: string;
   assignedJEName?: string;
-  assignedAEName?: string;
+  assignedAEName?: string | null;
   assignedToAEName?: string;
   verificationInfo?: {
     allVerified?: boolean;
@@ -285,6 +285,12 @@ const OfficerDashboard: React.FC = () => {
           fetchedApplications = pending.map((app) => ({
             ...app,
             applicationId: app.id,
+            applicationNumber: app.applicationNumber,
+            applicantName: app.applicantName,
+            firstName: app.applicantName?.split(" ")[0] || "",
+            lastName: app.applicantName?.split(" ").slice(1).join(" ") || "",
+            positionType: app.positionType,
+            assignedAEName: app.assignedAEName,
             status: "CLERK_PENDING",
             createdDate: app.createdAt || new Date().toISOString(),
           }));
@@ -997,9 +1003,14 @@ const OfficerDashboard: React.FC = () => {
                       )}
                       {(officerConfig.type === "AE" ||
                         officerConfig.type === "EE" ||
-                        officerConfig.type === "CE") && <th>Position Type</th>}
-                      {(officerConfig.type === "EE" ||
-                        officerConfig.type === "CE") && <th>Approved by AE</th>}
+                        officerConfig.type === "CE" ||
+                        officerConfig.type === "Clerk") && (
+                        <th>Position Type</th>
+                      )}
+                      {(officerConfig.type === "AE" ||
+                        officerConfig.type === "EE" ||
+                        officerConfig.type === "CE" ||
+                        officerConfig.type === "Clerk") && <th>Approved by</th>}
                       <th>Actions</th>
                     </tr>
                   </thead>
@@ -1036,16 +1047,23 @@ const OfficerDashboard: React.FC = () => {
                           )}
                         {(officerConfig.type === "AE" ||
                           officerConfig.type === "EE" ||
-                          officerConfig.type === "CE") && (
+                          officerConfig.type === "CE" ||
+                          officerConfig.type === "Clerk") && (
                           <td>
                             {getPositionLabel(
                               app.positionType || app.position || ""
                             )}
                           </td>
                         )}
-                        {(officerConfig.type === "EE" ||
-                          officerConfig.type === "CE") && (
-                          <td>{app.assignedAEName || "N/A"}</td>
+                        {(officerConfig.type === "AE" ||
+                          officerConfig.type === "EE" ||
+                          officerConfig.type === "CE" ||
+                          officerConfig.type === "Clerk") && (
+                          <td>
+                            {app.assignedAEName ||
+                              app.assignedToAEName ||
+                              "N/A"}
+                          </td>
                         )}
                         <td>
                           <div

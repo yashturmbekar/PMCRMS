@@ -1,7 +1,12 @@
 import axios from "axios";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5086";
+
+// Ensure API_BASE_URL includes /api path
+const API_URL = API_BASE_URL.endsWith("/api")
+  ? API_BASE_URL
+  : `${API_BASE_URL}/api`;
 
 export interface ClerkApplicationDto {
   id: number;
@@ -9,11 +14,9 @@ export interface ClerkApplicationDto {
   applicantName: string;
   applicantEmail: string;
   applicantMobile: string;
-  applicationType: string;
-  propertyAddress: string;
-  paymentCompletedDate: string | null;
-  isPaymentComplete: boolean;
-  paymentAmount: number | null;
+  positionType: string; // Changed from applicationType to match backend
+  assignedAEName: string | null;
+  assignedToClerkDate: string | null;
   submittedDate: string;
   createdAt: string;
   updatedAt: string;
@@ -47,8 +50,8 @@ export const clerkWorkflowService = {
    * Get pending applications for clerk review (PaymentCompleted status)
    */
   getPendingApplications: async (): Promise<ClerkApplicationDto[]> => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(`${API_BASE_URL}/Clerk/Pending`, {
+    const token = localStorage.getItem("pmcrms_token");
+    const response = await axios.get(`${API_URL}/Clerk/pending`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -60,8 +63,8 @@ export const clerkWorkflowService = {
    * Get completed applications processed by clerk
    */
   getCompletedApplications: async (): Promise<ClerkApplicationDto[]> => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(`${API_BASE_URL}/Clerk/Completed`, {
+    const token = localStorage.getItem("pmcrms_token");
+    const response = await axios.get(`${API_URL}/Clerk/completed`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -75,15 +78,12 @@ export const clerkWorkflowService = {
   getApplicationDetails: async (
     id: number
   ): Promise<ClerkApplicationDetailDto> => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(
-      `${API_BASE_URL}/Clerk/Application/${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const token = localStorage.getItem("pmcrms_token");
+    const response = await axios.get(`${API_URL}/Clerk/application/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
     return response.data.data;
   },
 
@@ -94,9 +94,9 @@ export const clerkWorkflowService = {
     id: number,
     remarks?: string
   ): Promise<ClerkActionResult> => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("pmcrms_token");
     const response = await axios.post(
-      `${API_BASE_URL}/Clerk/Approve/${id}`,
+      `${API_URL}/Clerk/approve/${id}`,
       { remarks: remarks || "" },
       {
         headers: {
@@ -115,9 +115,9 @@ export const clerkWorkflowService = {
     id: number,
     reason: string
   ): Promise<ClerkActionResult> => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("pmcrms_token");
     const response = await axios.post(
-      `${API_BASE_URL}/Clerk/Reject/${id}`,
+      `${API_URL}/Clerk/reject/${id}`,
       { reason },
       {
         headers: {
@@ -133,8 +133,8 @@ export const clerkWorkflowService = {
    * Get statistics for clerk dashboard
    */
   getStatistics: async (): Promise<ClerkStatistics> => {
-    const token = localStorage.getItem("token");
-    const response = await axios.get(`${API_BASE_URL}/Clerk/Statistics`, {
+    const token = localStorage.getItem("pmcrms_token");
+    const response = await axios.get(`${API_URL}/Clerk/statistics`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

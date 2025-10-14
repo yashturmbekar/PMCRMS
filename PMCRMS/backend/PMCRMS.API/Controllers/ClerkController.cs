@@ -27,9 +27,9 @@ namespace PMCRMS.API.Controllers
 
         /// <summary>
         /// Get pending applications for clerk review (PaymentCompleted status)
-        /// GET /api/Clerk/Pending
+        /// GET /api/Clerk/pending
         /// </summary>
-        [HttpGet("Pending")]
+        [HttpGet("pending")]
         public async Task<IActionResult> GetPendingApplications()
         {
             try
@@ -70,9 +70,9 @@ namespace PMCRMS.API.Controllers
 
         /// <summary>
         /// Get completed applications processed by clerk
-        /// GET /api/Clerk/Completed
+        /// GET /api/Clerk/completed
         /// </summary>
-        [HttpGet("Completed")]
+        [HttpGet("completed")]
         public async Task<IActionResult> GetCompletedApplications()
         {
             try
@@ -113,9 +113,9 @@ namespace PMCRMS.API.Controllers
 
         /// <summary>
         /// Get application details for clerk review
-        /// GET /api/Clerk/Application/{id}
+        /// GET /api/Clerk/application/{id}
         /// </summary>
-        [HttpGet("Application/{id}")]
+        [HttpGet("application/{id}")]
         public async Task<IActionResult> GetApplicationDetails(int id)
         {
             try
@@ -164,9 +164,9 @@ namespace PMCRMS.API.Controllers
 
         /// <summary>
         /// Approve application and forward to EE Stage 2
-        /// POST /api/Clerk/Approve/{id}
+        /// POST /api/Clerk/approve/{id}
         /// </summary>
-        [HttpPost("Approve/{id}")]
+        [HttpPost("approve/{id}")]
         public async Task<IActionResult> ApproveApplication(int id, [FromBody] ClerkApproveRequest request)
         {
             try
@@ -219,9 +219,9 @@ namespace PMCRMS.API.Controllers
 
         /// <summary>
         /// Reject application with reason
-        /// POST /api/Clerk/Reject/{id}
+        /// POST /api/Clerk/reject/{id}
         /// </summary>
-        [HttpPost("Reject/{id}")]
+        [HttpPost("reject/{id}")]
         public async Task<IActionResult> RejectApplication(int id, [FromBody] ClerkRejectRequest request)
         {
             try
@@ -283,9 +283,9 @@ namespace PMCRMS.API.Controllers
 
         /// <summary>
         /// Get statistics for clerk dashboard
-        /// GET /api/Clerk/Statistics
+        /// GET /api/Clerk/statistics
         /// </summary>
-        [HttpGet("Statistics")]
+        [HttpGet("statistics")]
         public async Task<IActionResult> GetStatistics()
         {
             try

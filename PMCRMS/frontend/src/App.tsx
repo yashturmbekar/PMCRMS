@@ -79,6 +79,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
     return <Navigate to="/ce-dashboard" replace />;
   }
 
+  // Redirect Clerk to Clerk Dashboard
+  if (user.role === "Clerk" && window.location.pathname === "/dashboard") {
+    return <Navigate to="/clerk-dashboard" replace />;
+  }
+
   return <>{children}</>;
 };
 

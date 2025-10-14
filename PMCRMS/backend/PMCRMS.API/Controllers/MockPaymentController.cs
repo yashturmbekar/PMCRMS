@@ -103,6 +103,18 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation($"[MOCK PAYMENT] Challan generated successfully: {challanResult.ChallanNumber}");
 
                 // 5. Auto-assign to Clerk for processing
+                _logger.LogInformation($"[MOCK PAYMENT] Searching for active clerks...");
+                
+                var allClerks = await _context.Officers
+                    .Where(o => o.Role == Models.OfficerRole.Clerk)
+                    .ToListAsync();
+                
+                _logger.LogInformation($"[MOCK PAYMENT] Total clerks found: {allClerks.Count}");
+                foreach (var c in allClerks)
+                {
+                    _logger.LogInformation($"[MOCK PAYMENT] Clerk: Id={c.Id}, Name={c.Name}, IsActive={c.IsActive}, Role={c.Role}");
+                }
+                
                 var clerk = await _context.Officers
                     .Where(o => o.Role == Models.OfficerRole.Clerk && o.IsActive)
                     .OrderBy(o => Guid.NewGuid()) // Random assignment for now

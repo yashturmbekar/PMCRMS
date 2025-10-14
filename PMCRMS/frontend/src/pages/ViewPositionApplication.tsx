@@ -26,6 +26,7 @@ import { jeWorkflowService } from "../services/jeWorkflowService";
 import { aeWorkflowService } from "../services/aeWorkflowService";
 import { eeWorkflowService } from "../services/eeWorkflowService";
 import { ceWorkflowService } from "../services/ceWorkflowService";
+import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import type { PositionType } from "../types/aeWorkflow";
 import NotificationModal from "../components/common/NotificationModal";
 import type { NotificationType } from "../components/common/NotificationModal";
@@ -90,6 +91,9 @@ const ViewPositionApplication: React.FC = () => {
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showOTPModal, setShowOTPModal] = useState(false);
+  const [showClerkApprovalModal, setShowClerkApprovalModal] = useState(false);
+  const [clerkRemarks, setClerkRemarks] = useState("");
+  const [isApprovingClerk, setIsApprovingClerk] = useState(false);
 
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
@@ -353,6 +357,58 @@ const ViewPositionApplication: React.FC = () => {
     }
   };
 
+  const handleClerkApprove = async () => {
+    if (!application) return;
+    setShowClerkApprovalModal(true);
+  };
+
+  const handleClerkApprovalSubmit = async () => {
+    if (!application) return;
+
+    try {
+      setIsApprovingClerk(true);
+      const result = await clerkWorkflowService.approveApplication(
+        application.id,
+        clerkRemarks
+      );
+
+      if (result.success) {
+        setShowClerkApprovalModal(false);
+        setNotification({
+          isOpen: true,
+          message:
+            "Application approved successfully and forwarded to Executive Engineer (Stage 2)!",
+          type: "success",
+          title: "Approval Successful",
+          autoClose: true,
+        });
+
+        setTimeout(() => {
+          navigate(getDashboardRoute());
+        }, 2000);
+      } else {
+        setNotification({
+          isOpen: true,
+          message: result.message || "Failed to approve application",
+          type: "error",
+          title: "Approval Failed",
+          autoClose: false,
+        });
+      }
+    } catch (error) {
+      console.error("Error approving application:", error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to approve application. Please try again.",
+        type: "error",
+        title: "Approval Failed",
+        autoClose: false,
+      });
+    } finally {
+      setIsApprovingClerk(false);
+    }
+  };
+
   const handleRejectApplication = async () => {
     if (!application) return;
 
@@ -362,7 +418,40 @@ const ViewPositionApplication: React.FC = () => {
     }
 
     try {
-      // TODO: Implement reject API call
+      let result;
+
+      // Clerk rejection
+      if (user?.role.includes("Clerk")) {
+        result = await clerkWorkflowService.rejectApplication(
+          application.id,
+          remarks
+        );
+
+        if (result.success) {
+          setNotification({
+            isOpen: true,
+            message: "Application rejected successfully!",
+            type: "success",
+            title: "Rejection Successful",
+            autoClose: true,
+          });
+
+          setTimeout(() => {
+            navigate(getDashboardRoute());
+          }, 2000);
+        } else {
+          setNotification({
+            isOpen: true,
+            message: result.message || "Failed to reject application",
+            type: "error",
+            title: "Rejection Failed",
+            autoClose: false,
+          });
+        }
+        return;
+      }
+
+      // For other officers (JE, AE, EE, CE) - keep existing TODO logic
       console.log("🚫 Rejecting application:", {
         applicationId: application.id,
         remarks,
@@ -1147,22 +1236,22 @@ const ViewPositionApplication: React.FC = () => {
               <div className="pmc-card-body">
                 {!application.isPaymentComplete ? (
                   <>
-                    {/* Success Message */}
+                    {/* Payment Pending Notice */}
                     <div
                       style={{
                         background:
-                          "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                          "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
                         padding: "16px",
                         borderRadius: "8px",
-                        border: "1px solid #bbf7d0",
+                        border: "1px solid #fcd34d",
                         marginBottom: "20px",
                         display: "flex",
                         gap: "12px",
                       }}
                     >
-                      <CheckCircle
+                      <Info
                         size={24}
-                        color="#10b981"
+                        color="#d97706"
                         style={{ flexShrink: 0 }}
                       />
                       <div>
@@ -1170,21 +1259,22 @@ const ViewPositionApplication: React.FC = () => {
                           style={{
                             margin: 0,
                             fontWeight: 600,
-                            color: "#065f46",
+                            color: "#78350f",
                             marginBottom: "4px",
                           }}
                         >
-                          Application Approved by City Engineer (Stage 1)
+                          Application Under Review - Payment Required
                         </p>
                         <p
                           style={{
                             margin: 0,
                             fontSize: "14px",
-                            color: "#047857",
+                            color: "#92400e",
                           }}
                         >
-                          Congratulations! Your application has been
-                          successfully reviewed and approved.
+                          Your application has been reviewed by City Engineer
+                          (Stage 1). Please complete the payment to proceed with
+                          final processing.
                         </p>
                       </div>
                     </div>
@@ -1905,6 +1995,294 @@ const ViewPositionApplication: React.FC = () => {
               <CheckCircle size={18} />
               Verify & Approve
             </button>
+          </div>
+        )}
+
+        {/* Action Buttons for Clerk */}
+        {user?.role.includes("Clerk") && (
+          <div
+            style={{
+              marginTop: "24px",
+              display: "flex",
+              gap: "12px",
+              justifyContent: "flex-end",
+            }}
+          >
+            <button
+              className="pmc-button pmc-button-secondary"
+              onClick={() => navigate(getDashboardRoute())}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <ArrowLeft size={18} />
+              Back to Dashboard
+            </button>
+            <button
+              className="pmc-button pmc-button-danger"
+              onClick={handleRejectApplication}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Ban size={18} />
+              Reject
+            </button>
+            <button
+              className="pmc-button pmc-button-success"
+              onClick={handleClerkApprove}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <CheckCircle size={18} />
+              Approve
+            </button>
+          </div>
+        )}
+
+        {/* Clerk Approval Modal */}
+        {showClerkApprovalModal && (
+          <div
+            onClick={() => setShowClerkApprovalModal(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+          >
+            <div
+              className="pmc-modal pmc-slideInUp"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "12px",
+                maxWidth: "520px",
+                width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  padding: "24px 24px 20px",
+                  borderBottom: "1px solid #e5e7eb",
+                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  borderRadius: "12px 12px 0 0",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      background: "rgba(255, 255, 255, 0.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CheckCircle size={28} style={{ color: "white" }} />
+                  </div>
+                  <div>
+                    <h3
+                      style={{
+                        color: "white",
+                        margin: 0,
+                        fontSize: "20px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Approve Application
+                    </h3>
+                    <p
+                      style={{
+                        color: "rgba(255,255,255,0.9)",
+                        fontSize: "13px",
+                        margin: "4px 0 0 0",
+                      }}
+                    >
+                      Forward to Executive Engineer (Stage 2)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div style={{ padding: "24px" }}>
+                <div
+                  style={{
+                    marginBottom: "20px",
+                    padding: "14px 16px",
+                    background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                    borderRadius: "8px",
+                    border: "1px solid #3b82f6",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <Info size={20} style={{ color: "#1e40af", flexShrink: 0, marginTop: "2px" }} />
+                    <div>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "14px",
+                          color: "#1e3a8a",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        <strong>Application #{application?.applicationNumber}</strong>
+                      </p>
+                      <p
+                        style={{
+                          margin: "4px 0 0 0",
+                          fontSize: "13px",
+                          color: "#1e40af",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        This application will be forwarded to Executive Engineer for certificate signature (Stage 2).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "4px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: 600,
+                      fontSize: "14px",
+                      color: "#374151",
+                    }}
+                  >
+                    Remarks / Comments <span style={{ color: "#9ca3af" }}>(Optional)</span>
+                  </label>
+                  <textarea
+                    placeholder="Add any remarks or comments about this approval..."
+                    value={clerkRemarks}
+                    onChange={(e) => setClerkRemarks(e.target.value)}
+                    rows={4}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      fontFamily: "inherit",
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  padding: "16px 24px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  gap: "12px",
+                  justifyContent: "flex-end",
+                  background: "#f9fafb",
+                  borderRadius: "0 0 12px 12px",
+                }}
+              >
+                <button
+                  onClick={() => setShowClerkApprovalModal(false)}
+                  disabled={isApprovingClerk}
+                  style={{
+                    padding: "10px 20px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: "white",
+                    color: "#374151",
+                    border: "1.5px solid #d1d5db",
+                    borderRadius: "8px",
+                    cursor: isApprovingClerk ? "not-allowed" : "pointer",
+                    opacity: isApprovingClerk ? 0.6 : 1,
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClerkApprovalSubmit}
+                  disabled={isApprovingClerk}
+                  style={{
+                    padding: "10px 24px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background: isApprovingClerk
+                      ? "#9ca3af"
+                      : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: isApprovingClerk ? "not-allowed" : "pointer",
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  {isApprovingClerk ? (
+                    <>
+                      <div
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          border: "2px solid white",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.6s linear infinite",
+                        }}
+                      />
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={18} />
+                      Approve & Forward
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Spinner Animation */}
+              <style>
+                {`
+                  @keyframes spin {
+                    to { transform: rotate(360deg); }
+                  }
+                `}
+              </style>
+            </div>
           </div>
         )}
 

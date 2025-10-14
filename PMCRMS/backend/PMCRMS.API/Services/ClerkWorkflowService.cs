@@ -38,9 +38,14 @@ namespace PMCRMS.API.Services
                 var applications = await _context.PositionApplications
                     .Include(a => a.User)
                     .Include(a => a.AssignedClerk)
+                    .Include(a => a.AssignedCityEngineer)
                     .Where(a => a.Status == ApplicationCurrentStatus.CLERK_PENDING && a.AssignedClerkId == clerkId)
                     .OrderBy(a => a.AssignedToClerkDate)
-                    .Select(a => new ClerkApplicationDto
+                    .ToListAsync();
+
+                var result = applications.Select(a =>
+                {
+                    return new ClerkApplicationDto
                     {
                         Id = a.Id,
                         ApplicationNumber = a.ApplicationNumber ?? "",
@@ -48,16 +53,17 @@ namespace PMCRMS.API.Services
                         ApplicantEmail = a.EmailAddress,
                         ApplicantMobile = a.MobileNumber,
                         PositionType = a.PositionType.ToString(),
+                        AssignedAEName = a.AssignedCityEngineer?.Name, // City Engineer who approved before payment
                         AssignedToClerkDate = a.AssignedToClerkDate,
                         SubmittedDate = a.SubmittedDate ?? DateTime.UtcNow,
                         CreatedAt = a.CreatedDate,
                         UpdatedAt = a.UpdatedDate ?? a.CreatedDate
-                    })
-                    .ToListAsync();
+                    };
+                }).ToList();
 
-                _logger.LogInformation("[ClerkWorkflow] Found {Count} pending applications for Clerk {ClerkId}", applications.Count, clerkId);
+                _logger.LogInformation("[ClerkWorkflow] Found {Count} pending applications for Clerk {ClerkId}", result.Count, clerkId);
 
-                return applications;
+                return result;
             }
             catch (Exception ex)
             {
@@ -281,6 +287,7 @@ namespace PMCRMS.API.Services
         public string ApplicantEmail { get; set; } = string.Empty;
         public string ApplicantMobile { get; set; } = string.Empty;
         public string PositionType { get; set; } = string.Empty;
+        public string? AssignedAEName { get; set; }
         public DateTime? AssignedToClerkDate { get; set; }
         public DateTime SubmittedDate { get; set; }
         public DateTime CreatedAt { get; set; }

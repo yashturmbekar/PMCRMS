@@ -156,14 +156,14 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
           padding: "16px 24px",
           background: loading
             ? "#9ca3af"
-            : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+            : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
           color: "white",
           fontSize: "16px",
           fontWeight: 600,
           borderRadius: "8px",
           border: "none",
           cursor: loading ? "not-allowed" : "pointer",
-          boxShadow: loading ? "none" : "0 4px 12px rgba(245, 158, 11, 0.4)",
+          boxShadow: loading ? "none" : "0 4px 12px rgba(59, 130, 246, 0.4)",
           transition: "all 0.3s ease",
           marginBottom: "20px",
         }}
@@ -171,13 +171,13 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
           if (!loading) {
             e.currentTarget.style.transform = "translateY(-2px)";
             e.currentTarget.style.boxShadow =
-              "0 6px 16px rgba(245, 158, 11, 0.5)";
+              "0 6px 16px rgba(59, 130, 246, 0.5)";
           }
         }}
         onMouseOut={(e) => {
           e.currentTarget.style.transform = "translateY(0)";
           e.currentTarget.style.boxShadow =
-            "0 4px 12px rgba(245, 158, 11, 0.4)";
+            "0 4px 12px rgba(59, 130, 246, 0.4)";
         }}
       >
         {loading ? (
