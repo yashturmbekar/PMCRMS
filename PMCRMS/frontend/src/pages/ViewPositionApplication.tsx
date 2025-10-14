@@ -2073,7 +2073,8 @@ const ViewPositionApplication: React.FC = () => {
                 borderRadius: "12px",
                 maxWidth: "520px",
                 width: "100%",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                boxShadow:
+                  "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               }}
             >
               {/* Modal Header */}
@@ -2081,11 +2082,14 @@ const ViewPositionApplication: React.FC = () => {
                 style={{
                   padding: "24px 24px 20px",
                   borderBottom: "1px solid #e5e7eb",
-                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                   borderRadius: "12px 12px 0 0",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                >
                   <div
                     style={{
                       width: "48px",
@@ -2129,13 +2133,21 @@ const ViewPositionApplication: React.FC = () => {
                   style={{
                     marginBottom: "20px",
                     padding: "14px 16px",
-                    background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                    background:
+                      "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
                     borderRadius: "8px",
                     border: "1px solid #3b82f6",
                   }}
                 >
                   <div style={{ display: "flex", gap: "12px" }}>
-                    <Info size={20} style={{ color: "#1e40af", flexShrink: 0, marginTop: "2px" }} />
+                    <Info
+                      size={20}
+                      style={{
+                        color: "#1e40af",
+                        flexShrink: 0,
+                        marginTop: "2px",
+                      }}
+                    />
                     <div>
                       <p
                         style={{
@@ -2145,7 +2157,9 @@ const ViewPositionApplication: React.FC = () => {
                           lineHeight: "1.5",
                         }}
                       >
-                        <strong>Application #{application?.applicationNumber}</strong>
+                        <strong>
+                          Application #{application?.applicationNumber}
+                        </strong>
                       </p>
                       <p
                         style={{
@@ -2155,7 +2169,8 @@ const ViewPositionApplication: React.FC = () => {
                           lineHeight: "1.5",
                         }}
                       >
-                        This application will be forwarded to Executive Engineer for certificate signature (Stage 2).
+                        This application will be forwarded to Executive Engineer
+                        for certificate signature (Stage 2).
                       </p>
                     </div>
                   </div>
@@ -2171,7 +2186,8 @@ const ViewPositionApplication: React.FC = () => {
                       color: "#374151",
                     }}
                   >
-                    Remarks / Comments <span style={{ color: "#9ca3af" }}>(Optional)</span>
+                    Remarks / Comments{" "}
+                    <span style={{ color: "#9ca3af" }}>(Optional)</span>
                   </label>
                   <textarea
                     placeholder="Add any remarks or comments about this approval..."
@@ -2191,7 +2207,8 @@ const ViewPositionApplication: React.FC = () => {
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.1)";
+                      e.target.style.boxShadow =
+                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";

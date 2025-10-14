@@ -146,20 +146,22 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("[ClerkWorkflow] Application {ApplicationId} approved successfully by Clerk {ClerkId}", applicationId, clerkId);
 
-                try
-                {
-                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(applicationId, ApplicationCurrentStatus.ProcessedByClerk);
-                }
-                catch (Exception emailEx)
-                {
-                    _logger.LogError(emailEx, "[ClerkWorkflow] Failed to send approval email for application {ApplicationId}", applicationId);
-                }
-
+                // Progress to Executive Engineer Stage 2 first
                 var progressSuccess = await _workflowProgressionService.ProgressToExecutiveEngineerSignatureAsync(applicationId);
 
                 if (!progressSuccess)
                 {
                     _logger.LogWarning("[ClerkWorkflow] Application {ApplicationId} approved but failed to progress to EE Stage 2", applicationId);
+                }
+
+                // Send notification with the NEW status (EXECUTIVE_ENGINEER_SIGN_PENDING)
+                try
+                {
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(applicationId, ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING);
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError(emailEx, "[ClerkWorkflow] Failed to send approval email for application {ApplicationId}", applicationId);
                 }
 
                 return new ClerkActionResult

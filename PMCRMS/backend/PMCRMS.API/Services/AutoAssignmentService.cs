@@ -14,15 +14,18 @@ namespace PMCRMS.API.Services
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<AutoAssignmentService> _logger;
         private readonly INotificationService _notificationService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         public AutoAssignmentService(
             PMCRMSDbContext context,
             ILogger<AutoAssignmentService> logger,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _context = context;
             _logger = logger;
             _notificationService = notificationService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         public async Task<AssignmentHistory?> AssignApplicationAsync(int applicationId, string? assignedByAdminId = null)
@@ -121,19 +124,23 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Application {ApplicationId} assigned to officer {OfficerId} ({OfficerName}) using {Strategy} strategy",
                     applicationId, officer.Id, officer.FullName, rule.Strategy);
 
-                // Reload assignment history to include navigation properties
-                await _context.Entry(assignmentHistory).Reference(h => h.Application).LoadAsync();
+                // Capture the assignment ID for background notification
+                var assignmentId = assignmentHistory.Id;
 
-                // Send notification asynchronously
+                // Send notification asynchronously using a new scope
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await SendAssignmentNotificationAsync(assignmentHistory.Id);
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var scopedContext = scope.ServiceProvider.GetRequiredService<PMCRMSDbContext>();
+                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+                        
+                        await SendAssignmentNotificationAsync(scopedContext, scopedNotificationService, assignmentId);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to send assignment notification for assignment {AssignmentId}", assignmentHistory.Id);
+                        _logger.LogError(ex, "Failed to send assignment notification for assignment {AssignmentId}", assignmentId);
                     }
                 });
 
@@ -356,16 +363,23 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Application {ApplicationId} reassigned from officer {PreviousOfficerId} to officer {NewOfficerId}",
                     applicationId, assignmentHistory.PreviousOfficerId, newOfficerId);
 
-                // Send notification
+                // Capture the assignment ID for background notification
+                var assignmentId = assignmentHistory.Id;
+
+                // Send notification asynchronously using a new scope
                 _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await SendAssignmentNotificationAsync(assignmentHistory.Id);
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var scopedContext = scope.ServiceProvider.GetRequiredService<PMCRMSDbContext>();
+                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+                        
+                        await SendAssignmentNotificationAsync(scopedContext, scopedNotificationService, assignmentId);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Failed to send reassignment notification for assignment {AssignmentId}", assignmentHistory.Id);
+                        _logger.LogError(ex, "Failed to send reassignment notification for assignment {AssignmentId}", assignmentId);
                     }
                 });
 
@@ -631,9 +645,9 @@ namespace PMCRMS.API.Services
             return await GetOfficerByWorkloadAsync(eligibleOfficers);
         }
 
-        private async Task SendAssignmentNotificationAsync(int assignmentHistoryId)
+        private async Task SendAssignmentNotificationAsync(PMCRMSDbContext context, INotificationService notificationService, int assignmentHistoryId)
         {
-            var assignment = await _context.AssignmentHistories
+            var assignment = await context.AssignmentHistories
                 .Include(h => h.AssignedToOfficer)
                 .Include(h => h.Application)
                 .FirstOrDefaultAsync(h => h.Id == assignmentHistoryId);
@@ -651,7 +665,7 @@ namespace PMCRMS.API.Services
                 var applicantName = $"{application.FirstName} {application.LastName}";
                 
                 // Use existing notification service method
-                await _notificationService.NotifyOfficerAssignmentAsync(
+                await notificationService.NotifyOfficerAssignmentAsync(
                     officer.Id,
                     application.ApplicationNumber,
                     application.Id,
@@ -661,7 +675,7 @@ namespace PMCRMS.API.Services
 
                 assignment.NotificationSent = true;
                 assignment.NotificationSentAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -782,8 +796,25 @@ namespace PMCRMS.API.Services
                 _context.AssignmentHistories.Add(assignmentHistory);
                 await _context.SaveChangesAsync();
 
-                // Send notification
-                await SendAssignmentNotificationAsync(assignmentHistory.Id);
+                // Capture the assignment ID for background notification
+                var assignmentId = assignmentHistory.Id;
+
+                // Send notification asynchronously using a new scope
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var scopedContext = scope.ServiceProvider.GetRequiredService<PMCRMSDbContext>();
+                        var scopedNotificationService = scope.ServiceProvider.GetRequiredService<INotificationService>();
+                        
+                        await SendAssignmentNotificationAsync(scopedContext, scopedNotificationService, assignmentId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to send workflow assignment notification for assignment {AssignmentId}", assignmentId);
+                    }
+                });
 
                 _logger.LogInformation(
                     "Application {ApplicationId} auto-assigned to {Role} officer {OfficerId} for status {Status}",
