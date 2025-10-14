@@ -355,7 +355,7 @@ function App() {
                 element={<Navigate to="/ce-dashboard" replace />}
               />
 
-              {/* JE Officer - View Application */}
+              {/* All Officers - View Application */}
               <Route
                 path="/position-application/:id"
                 element={
@@ -366,6 +366,14 @@ function App() {
                       "JuniorStructuralEngineer",
                       "JuniorSupervisor1",
                       "JuniorSupervisor2",
+                      "AssistantArchitect",
+                      "AssistantLicenceEngineer",
+                      "AssistantStructuralEngineer",
+                      "AssistantSupervisor1",
+                      "AssistantSupervisor2",
+                      "ExecutiveEngineer",
+                      "CityEngineer",
+                      "Clerk",
                     ]}
                   >
                     <Layout>

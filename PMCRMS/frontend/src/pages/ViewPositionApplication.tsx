@@ -17,9 +17,16 @@ import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
 import { PageLoader } from "../components";
-import { DocumentApprovalModal } from "../components/workflow";
+import {
+  DocumentApprovalModal,
+  OTPVerificationModal,
+} from "../components/workflow";
 import AuthContext from "../contexts/AuthContext";
 import { jeWorkflowService } from "../services/jeWorkflowService";
+import { aeWorkflowService } from "../services/aeWorkflowService";
+import { eeWorkflowService } from "../services/eeWorkflowService";
+import { ceWorkflowService } from "../services/ceWorkflowService";
+import type { PositionType } from "../services/aeWorkflowService";
 import NotificationModal from "../components/common/NotificationModal";
 import type { NotificationType } from "../components/common/NotificationModal";
 import PaymentButton from "../components/PaymentButton";
@@ -82,6 +89,7 @@ const ViewPositionApplication: React.FC = () => {
   } | null>(null);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showOTPModal, setShowOTPModal] = useState(false);
 
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
@@ -365,6 +373,87 @@ const ViewPositionApplication: React.FC = () => {
         autoClose: false,
       });
     }
+  };
+
+  // OTP Verification Functions for AE, EE, CE Officers
+  const handleVerifyDocuments = () => {
+    setShowOTPModal(true);
+  };
+
+  const handleGenerateOtp = async (
+    applicationId: number
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      if (user?.role.includes("Assistant")) {
+        return await aeWorkflowService.generateOtpForSignature(applicationId);
+      } else if (user?.role.includes("Executive")) {
+        return await eeWorkflowService.generateOtpForSignature(applicationId);
+      } else if (user?.role.includes("City")) {
+        return await ceWorkflowService.generateOtpForSignature(applicationId);
+      }
+      return { success: false, message: "OTP generation not supported" };
+    } catch (error) {
+      console.error("Error generating OTP:", error);
+      return { success: false, message: "Failed to generate OTP" };
+    }
+  };
+
+  const handleVerifyAndSign = async (
+    applicationId: number,
+    otp: string,
+    comments?: string
+  ): Promise<{ success: boolean; message?: string }> => {
+    try {
+      if (user?.role.includes("Assistant")) {
+        const getDefaultPositionType = (role: string): PositionType => {
+          const roleToPositionType: Record<string, PositionType> = {
+            AssistantArchitect: 0 as PositionType,
+            AssistantStructuralEngineer: 2 as PositionType,
+            AssistantLicenceEngineer: 1 as PositionType,
+            AssistantSupervisor1: 3 as PositionType,
+            AssistantSupervisor2: 4 as PositionType,
+          };
+          return roleToPositionType[role] ?? (0 as PositionType);
+        };
+        const positionType = getDefaultPositionType(user!.role);
+        return await aeWorkflowService.verifyAndSignDocuments({
+          applicationId,
+          positionType,
+          otp,
+          comments,
+        });
+      } else if (user?.role.includes("Executive")) {
+        return await eeWorkflowService.verifyAndSignDocuments({
+          applicationId,
+          otp,
+          comments,
+        });
+      } else if (user?.role.includes("City")) {
+        return await ceWorkflowService.verifyAndSignDocuments({
+          applicationId,
+          otp,
+          comments,
+        });
+      }
+      return { success: false, message: "Verification not supported" };
+    } catch (error) {
+      console.error("Error verifying and signing:", error);
+      return { success: false, message: "Failed to verify and sign documents" };
+    }
+  };
+
+  const handleOTPVerificationComplete = async () => {
+    setShowOTPModal(false);
+    setNotification({
+      isOpen: true,
+      message: "Documents verified and signed successfully!",
+      type: "success",
+      title: "Verification Successful",
+      autoClose: true,
+    });
+    setTimeout(() => {
+      navigate(getDashboardRoute());
+    }, 2000);
   };
 
   if (loading) {
@@ -964,407 +1053,353 @@ const ViewPositionApplication: React.FC = () => {
           </div>
         )}
 
-        {/* Payment Section - Shows when payment is completed */}
-        {application.isPaymentComplete && (
-          <div
-            className="pmc-card"
-            style={{
-              marginBottom: "16px",
-              border: application.isPaymentComplete
-                ? "2px solid #10b981"
-                : "2px solid #f59e0b",
-              boxShadow: application.isPaymentComplete
-                ? "0 2px 8px rgba(16, 185, 129, 0.15)"
-                : "0 2px 8px rgba(245, 158, 11, 0.15)",
-            }}
-          >
+        {/* Payment Section - Only show for regular users after CE Stage 1, or for Stage 2 officers (EE/CE), Clerk */}
+        {!isJEOfficer &&
+          !user?.role.includes("Assistant") &&
+          !user?.role.includes("Executive") &&
+          !user?.role.includes("City") && (
             <div
-              className="pmc-card-header"
+              className="pmc-card"
               style={{
-                background: application.isPaymentComplete
-                  ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-                  : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                color: "white",
-                padding: "12px 16px",
-                borderBottom: application.isPaymentComplete
-                  ? "2px solid #059669"
-                  : "2px solid #d97706",
+                marginBottom: "16px",
+                border: application.isPaymentComplete
+                  ? "2px solid #10b981"
+                  : "2px solid #f59e0b",
+                boxShadow: application.isPaymentComplete
+                  ? "0 2px 8px rgba(16, 185, 129, 0.15)"
+                  : "0 2px 8px rgba(245, 158, 11, 0.15)",
               }}
             >
               <div
+                className="pmc-card-header"
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  background: application.isPaymentComplete
+                    ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                    : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderBottom: application.isPaymentComplete
+                    ? "2px solid #059669"
+                    : "2px solid #d97706",
                 }}
               >
-                <h2
-                  className="pmc-card-title"
+                <div
                   style={{
-                    color: "white",
-                    margin: 0,
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    justifyContent: "space-between",
                   }}
                 >
-                  {application.isPaymentComplete ? (
-                    <CheckCircle size={20} />
-                  ) : (
-                    <CreditCard size={20} />
-                  )}
-                  {application.isPaymentComplete
-                    ? "Payment Completed"
-                    : "Payment Required"}
-                </h2>
-                {application.isPaymentComplete && (
-                  <span
+                  <h2
+                    className="pmc-card-title"
                     style={{
-                      padding: "4px 12px",
-                      background: "rgba(255, 255, 255, 0.25)",
                       color: "white",
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      borderRadius: "9999px",
+                      margin: 0,
                       display: "flex",
                       alignItems: "center",
-                      gap: "4px",
+                      gap: "8px",
                     }}
                   >
-                    ✓ Verified
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="pmc-card-body">
-              {!application.isPaymentComplete ? (
-                <>
-                  {/* Success Message */}
-                  <div
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      border: "1px solid #bbf7d0",
-                      marginBottom: "20px",
-                      display: "flex",
-                      gap: "12px",
-                    }}
-                  >
-                    <CheckCircle
-                      size={24}
-                      color="#10b981"
-                      style={{ flexShrink: 0 }}
-                    />
-                    <div>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontWeight: 600,
-                          color: "#065f46",
-                          marginBottom: "4px",
-                        }}
-                      >
-                        Application Approved by City Engineer (Stage 1)
-                      </p>
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "14px",
-                          color: "#047857",
-                        }}
-                      >
-                        Congratulations! Your application has been successfully
-                        reviewed and approved.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Payment Info Card */}
-                  <div
-                    style={{
-                      background: "#fffbeb",
-                      padding: "20px",
-                      borderRadius: "8px",
-                      border: "2px solid #fcd34d",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    <div
+                    {application.isPaymentComplete ? (
+                      <CheckCircle size={20} />
+                    ) : (
+                      <CreditCard size={20} />
+                    )}
+                    {application.isPaymentComplete
+                      ? "Payment Completed"
+                      : "Payment Required"}
+                  </h2>
+                  {application.isPaymentComplete && (
+                    <span
                       style={{
+                        padding: "4px 12px",
+                        background: "rgba(255, 255, 255, 0.25)",
+                        color: "white",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        borderRadius: "9999px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "12px",
-                        marginBottom: "16px",
+                        gap: "4px",
                       }}
                     >
-                      <div
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "50%",
-                          background:
-                            "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                        }}
-                      >
-                        <CreditCard size={24} />
-                      </div>
+                      ✓ Verified
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="pmc-card-body">
+                {!application.isPaymentComplete ? (
+                  <>
+                    {/* Success Message */}
+                    <div
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                        padding: "16px",
+                        borderRadius: "8px",
+                        border: "1px solid #bbf7d0",
+                        marginBottom: "20px",
+                        display: "flex",
+                        gap: "12px",
+                      }}
+                    >
+                      <CheckCircle
+                        size={24}
+                        color="#10b981"
+                        style={{ flexShrink: 0 }}
+                      />
                       <div>
-                        <h3
+                        <p
                           style={{
                             margin: 0,
-                            fontSize: "18px",
-                            color: "#78350f",
+                            fontWeight: 600,
+                            color: "#065f46",
                             marginBottom: "4px",
                           }}
                         >
-                          Payment Details
-                        </h3>
+                          Application Approved by City Engineer (Stage 1)
+                        </p>
                         <p
                           style={{
                             margin: 0,
                             fontSize: "14px",
+                            color: "#047857",
+                          }}
+                        >
+                          Congratulations! Your application has been
+                          successfully reviewed and approved.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Payment Info Card */}
+                    <div
+                      style={{
+                        background: "#fffbeb",
+                        padding: "20px",
+                        borderRadius: "8px",
+                        border: "2px solid #fcd34d",
+                        marginBottom: "20px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "50%",
+                            background:
+                              "linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                          }}
+                        >
+                          <CreditCard size={24} />
+                        </div>
+                        <div>
+                          <h3
+                            style={{
+                              margin: 0,
+                              fontSize: "18px",
+                              color: "#78350f",
+                              marginBottom: "4px",
+                            }}
+                          >
+                            Payment Details
+                          </h3>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "14px",
+                              color: "#92400e",
+                            }}
+                          >
+                            Complete payment to proceed with application
+                            processing
+                          </p>
+                        </div>
+                      </div>
+
+                      <div
+                        className="pmc-form-grid pmc-form-grid-2"
+                        style={{ marginBottom: "16px" }}
+                      >
+                        <div
+                          style={{
+                            background: "white",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            border: "1px solid #fde68a",
+                          }}
+                        >
+                          <label
+                            className="pmc-label"
+                            style={{ color: "#92400e", marginBottom: "4px" }}
+                          >
+                            Payment Amount
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "24px",
+                              fontWeight: 700,
+                              color: "#78350f",
+                            }}
+                          >
+                            ₹3,000
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            background: "white",
+                            padding: "12px",
+                            borderRadius: "6px",
+                            border: "1px solid #fde68a",
+                          }}
+                        >
+                          <label
+                            className="pmc-label"
+                            style={{ color: "#92400e", marginBottom: "4px" }}
+                          >
+                            Payment Gateway
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "16px",
+                              fontWeight: 600,
+                              color: "#78350f",
+                            }}
+                          >
+                            BillDesk (Secure)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          background: "white",
+                          padding: "12px",
+                          borderRadius: "6px",
+                          border: "1px solid #fde68a",
+                        }}
+                      >
+                        <p
+                          style={{
+                            margin: 0,
+                            fontSize: "13px",
                             color: "#92400e",
-                          }}
-                        >
-                          Complete payment to proceed with application
-                          processing
-                        </p>
-                      </div>
-                    </div>
-
-                    <div
-                      className="pmc-form-grid pmc-form-grid-2"
-                      style={{ marginBottom: "16px" }}
-                    >
-                      <div
-                        style={{
-                          background: "white",
-                          padding: "12px",
-                          borderRadius: "6px",
-                          border: "1px solid #fde68a",
-                        }}
-                      >
-                        <label
-                          className="pmc-label"
-                          style={{ color: "#92400e", marginBottom: "4px" }}
-                        >
-                          Payment Amount
-                        </label>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "24px",
-                            fontWeight: 700,
-                            color: "#78350f",
-                          }}
-                        >
-                          ₹3,000
-                        </p>
-                      </div>
-                      <div
-                        style={{
-                          background: "white",
-                          padding: "12px",
-                          borderRadius: "6px",
-                          border: "1px solid #fde68a",
-                        }}
-                      >
-                        <label
-                          className="pmc-label"
-                          style={{ color: "#92400e", marginBottom: "4px" }}
-                        >
-                          Payment Gateway
-                        </label>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "16px",
-                            fontWeight: 600,
-                            color: "#78350f",
-                          }}
-                        >
-                          BillDesk (Secure)
-                        </p>
-                      </div>
-                    </div>
-
-                    <div
-                      style={{
-                        background: "white",
-                        padding: "12px",
-                        borderRadius: "6px",
-                        border: "1px solid #fde68a",
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: "13px",
-                          color: "#92400e",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                      >
-                        <Info size={16} />
-                        <strong>Next Step:</strong> After successful payment,
-                        your application will be automatically forwarded to the
-                        Clerk for verification and further processing.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Payment Button */}
-                  <PaymentButton
-                    applicationId={application.id}
-                    applicationStatus={application.status}
-                    isPaymentComplete={application.isPaymentComplete || false}
-                    onPaymentInitiated={() => {
-                      console.log(
-                        "Payment initiated for application:",
-                        application.id
-                      );
-                    }}
-                    onPaymentSuccess={async () => {
-                      // Refresh application data after payment success
-                      if (id) {
-                        const response =
-                          await positionRegistrationService.getApplication(
-                            parseInt(id)
-                          );
-                        setApplication(response);
-                      }
-                    }}
-                  />
-                </>
-              ) : (
-                <>
-                  {/* Payment Completed - Show Transaction Details */}
-                  <div
-                    style={{
-                      background:
-                        "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
-                      padding: "20px",
-                      borderRadius: "8px",
-                      border: "2px solid #10b981",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        marginBottom: "16px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "50%",
-                          background: "#10b981",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "white",
-                        }}
-                      >
-                        <CheckCircle size={28} />
-                      </div>
-                      <div>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "18px",
-                            fontWeight: 700,
-                            color: "#065f46",
-                            marginBottom: "2px",
-                          }}
-                        >
-                          Payment Completed Successfully
-                        </p>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "14px",
-                            color: "#059669",
-                          }}
-                        >
-                          Your application has been forwarded to the Clerk for
-                          verification
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Transaction & Challan Details Grid */}
-                    <div
-                      className="pmc-form-grid pmc-form-grid-3"
-                      style={{ marginBottom: "16px" }}
-                    >
-                      <div
-                        style={{
-                          background: "white",
-                          padding: "14px",
-                          borderRadius: "6px",
-                          border: "1px solid #bbf7d0",
-                        }}
-                      >
-                        <label
-                          className="pmc-label"
-                          style={{ color: "#065f46", marginBottom: "4px" }}
-                        >
-                          Payment Amount
-                        </label>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "20px",
-                            fontWeight: 700,
-                            color: "#047857",
-                          }}
-                        >
-                          ₹3,000
-                        </p>
-                      </div>
-
-                      <div
-                        style={{
-                          background: "white",
-                          padding: "14px",
-                          borderRadius: "6px",
-                          border: "1px solid #bbf7d0",
-                        }}
-                      >
-                        <label
-                          className="pmc-label"
-                          style={{ color: "#065f46", marginBottom: "4px" }}
-                        >
-                          Payment Status
-                        </label>
-                        <p
-                          style={{
-                            margin: 0,
-                            fontSize: "15px",
-                            fontWeight: 700,
-                            color: "#047857",
                             display: "flex",
                             alignItems: "center",
                             gap: "6px",
                           }}
                         >
-                          <CheckCircle size={18} />
-                          Success
+                          <Info size={16} />
+                          <strong>Next Step:</strong> After successful payment,
+                          your application will be automatically forwarded to
+                          the Clerk for verification and further processing.
                         </p>
                       </div>
+                    </div>
 
-                      {application.paymentCompletedDate && (
+                    {/* Payment Button */}
+                    <PaymentButton
+                      applicationId={application.id}
+                      applicationStatus={application.status}
+                      isPaymentComplete={application.isPaymentComplete || false}
+                      onPaymentInitiated={() => {
+                        console.log(
+                          "Payment initiated for application:",
+                          application.id
+                        );
+                      }}
+                      onPaymentSuccess={async () => {
+                        // Refresh application data after payment success
+                        if (id) {
+                          const response =
+                            await positionRegistrationService.getApplication(
+                              parseInt(id)
+                            );
+                          setApplication(response);
+                        }
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Payment Completed - Show Transaction Details */}
+                    <div
+                      style={{
+                        background:
+                          "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                        padding: "20px",
+                        borderRadius: "8px",
+                        border: "2px solid #10b981",
+                        marginBottom: "20px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "48px",
+                            height: "48px",
+                            borderRadius: "50%",
+                            background: "#10b981",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "white",
+                          }}
+                        >
+                          <CheckCircle size={28} />
+                        </div>
+                        <div>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "18px",
+                              fontWeight: 700,
+                              color: "#065f46",
+                              marginBottom: "2px",
+                            }}
+                          >
+                            Payment Completed Successfully
+                          </p>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "14px",
+                              color: "#059669",
+                            }}
+                          >
+                            Your application has been forwarded to the Clerk for
+                            verification
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Transaction & Challan Details Grid */}
+                      <div
+                        className="pmc-form-grid pmc-form-grid-3"
+                        style={{ marginBottom: "16px" }}
+                      >
                         <div
                           style={{
                             background: "white",
@@ -1377,119 +1412,184 @@ const ViewPositionApplication: React.FC = () => {
                             className="pmc-label"
                             style={{ color: "#065f46", marginBottom: "4px" }}
                           >
-                            Completed On
+                            Payment Amount
                           </label>
                           <p
                             style={{
                               margin: 0,
-                              fontSize: "13px",
-                              fontWeight: 600,
+                              fontSize: "20px",
+                              fontWeight: 700,
                               color: "#047857",
                             }}
                           >
-                            {new Date(
-                              application.paymentCompletedDate
-                            ).toLocaleString("en-IN", {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })}
+                            ₹3,000
                           </p>
                         </div>
-                      )}
-                    </div>
 
-                    {/* Action Buttons */}
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <button
-                        className="pmc-button pmc-button-primary"
-                        onClick={() => setShowPaymentModal(true)}
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <Eye size={16} />
-                        View Transaction Details
-                      </button>
+                        <div
+                          style={{
+                            background: "white",
+                            padding: "14px",
+                            borderRadius: "6px",
+                            border: "1px solid #bbf7d0",
+                          }}
+                        >
+                          <label
+                            className="pmc-label"
+                            style={{ color: "#065f46", marginBottom: "4px" }}
+                          >
+                            Payment Status
+                          </label>
+                          <p
+                            style={{
+                              margin: 0,
+                              fontSize: "15px",
+                              fontWeight: 700,
+                              color: "#047857",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <CheckCircle size={18} />
+                            Success
+                          </p>
+                        </div>
 
-                      {/* Download Challan Button */}
-                      <button
-                        className="pmc-button pmc-button-success"
-                        onClick={async () => {
-                          try {
-                            // Find the challan document in the documents array
-                            const challanDoc = application.documents.find(
-                              (doc) => doc.documentTypeName === "PaymentChallan"
-                            );
+                        {application.paymentCompletedDate && (
+                          <div
+                            style={{
+                              background: "white",
+                              padding: "14px",
+                              borderRadius: "6px",
+                              border: "1px solid #bbf7d0",
+                            }}
+                          >
+                            <label
+                              className="pmc-label"
+                              style={{ color: "#065f46", marginBottom: "4px" }}
+                            >
+                              Completed On
+                            </label>
+                            <p
+                              style={{
+                                margin: 0,
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                color: "#047857",
+                              }}
+                            >
+                              {new Date(
+                                application.paymentCompletedDate
+                              ).toLocaleString("en-IN", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
+                            </p>
+                          </div>
+                        )}
+                      </div>
 
-                            if (challanDoc && challanDoc.fileBase64) {
-                              // Download from base64 data
-                              const byteCharacters = atob(
-                                challanDoc.fileBase64
+                      {/* Action Buttons */}
+                      <div style={{ display: "flex", gap: "12px" }}>
+                        <button
+                          className="pmc-button pmc-button-primary"
+                          onClick={() => setShowPaymentModal(true)}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <Eye size={16} />
+                          View Transaction Details
+                        </button>
+
+                        {/* Download Challan Button */}
+                        <button
+                          className="pmc-button pmc-button-success"
+                          onClick={async () => {
+                            try {
+                              // Find the challan document in the documents array
+                              const challanDoc = application.documents.find(
+                                (doc) =>
+                                  doc.documentTypeName === "PaymentChallan"
                               );
-                              const byteNumbers = new Array(
-                                byteCharacters.length
-                              );
-                              for (let i = 0; i < byteCharacters.length; i++) {
-                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+
+                              if (challanDoc && challanDoc.fileBase64) {
+                                // Download from base64 data
+                                const byteCharacters = atob(
+                                  challanDoc.fileBase64
+                                );
+                                const byteNumbers = new Array(
+                                  byteCharacters.length
+                                );
+                                for (
+                                  let i = 0;
+                                  i < byteCharacters.length;
+                                  i++
+                                ) {
+                                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                }
+                                const byteArray = new Uint8Array(byteNumbers);
+                                const blob = new Blob([byteArray], {
+                                  type: "application/pdf",
+                                });
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement("a");
+                                link.href = url;
+                                link.download = challanDoc.fileName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                              } else {
+                                setNotification({
+                                  isOpen: true,
+                                  message:
+                                    "Challan not found. Please contact support.",
+                                  type: "error",
+                                  title: "Download Failed",
+                                  autoClose: false,
+                                });
                               }
-                              const byteArray = new Uint8Array(byteNumbers);
-                              const blob = new Blob([byteArray], {
-                                type: "application/pdf",
-                              });
-                              const url = URL.createObjectURL(blob);
-                              const link = document.createElement("a");
-                              link.href = url;
-                              link.download = challanDoc.fileName;
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                              URL.revokeObjectURL(url);
-                            } else {
+                            } catch (error) {
+                              console.error(
+                                "Error downloading challan:",
+                                error
+                              );
                               setNotification({
                                 isOpen: true,
                                 message:
-                                  "Challan not found. Please contact support.",
+                                  "Failed to download challan. Please try again.",
                                 type: "error",
                                 title: "Download Failed",
                                 autoClose: false,
                               });
                             }
-                          } catch (error) {
-                            console.error("Error downloading challan:", error);
-                            setNotification({
-                              isOpen: true,
-                              message:
-                                "Failed to download challan. Please try again.",
-                              type: "error",
-                              title: "Download Failed",
-                              autoClose: false,
-                            });
-                          }
-                        }}
-                        style={{
-                          flex: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: "8px",
-                          background:
-                            "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                        }}
-                      >
-                        <Download size={16} />
-                        Download Challan
-                      </button>
+                          }}
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "8px",
+                            background:
+                              "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                          }}
+                        >
+                          <Download size={16} />
+                          Download Challan
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Application Timeline */}
         <div className="pmc-card">
@@ -1687,6 +1787,18 @@ const ViewPositionApplication: React.FC = () => {
             }}
           >
             <button
+              className="pmc-button pmc-button-secondary"
+              onClick={() => navigate(getDashboardRoute())}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <ArrowLeft size={18} />
+              Back to Dashboard
+            </button>
+            <button
               className="pmc-button pmc-button-danger"
               onClick={handleRejectApplication}
               style={{
@@ -1726,6 +1838,57 @@ const ViewPositionApplication: React.FC = () => {
                 Schedule Appointment
               </button>
             )}
+          </div>
+        )}
+
+        {/* Action Buttons for AE, EE, CE Officers */}
+        {(user?.role.includes("Assistant") ||
+          user?.role.includes("Executive") ||
+          user?.role.includes("City")) && (
+          <div
+            style={{
+              marginTop: "24px",
+              display: "flex",
+              gap: "12px",
+              justifyContent: "flex-end",
+            }}
+          >
+            <button
+              className="pmc-button pmc-button-secondary"
+              onClick={() => navigate(getDashboardRoute())}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <ArrowLeft size={18} />
+              Back to Dashboard
+            </button>
+            <button
+              className="pmc-button pmc-button-danger"
+              onClick={handleRejectApplication}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Ban size={18} />
+              Reject
+            </button>
+            <button
+              className="pmc-button pmc-button-success"
+              onClick={handleVerifyDocuments}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <CheckCircle size={18} />
+              Verify & Approve
+            </button>
           </div>
         )}
 
@@ -3130,6 +3293,18 @@ const ViewPositionApplication: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* OTP Verification Modal for AE, EE, CE Officers */}
+        {application && (
+          <OTPVerificationModal
+            isOpen={showOTPModal}
+            onClose={() => setShowOTPModal(false)}
+            applicationId={application.id}
+            onGenerateOtp={handleGenerateOtp}
+            onVerifyAndSign={handleVerifyAndSign}
+            onSuccess={handleOTPVerificationComplete}
+          />
         )}
 
         {/* Payment Status Modal */}

@@ -423,6 +423,7 @@ const OfficerDashboard: React.FC = () => {
   };
 
   const handleViewApplication = (applicationId: number) => {
+    // All officers use the same officer view page
     navigate(`/position-application/${applicationId}`);
   };
 
