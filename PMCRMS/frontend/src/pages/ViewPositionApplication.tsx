@@ -16,7 +16,7 @@ import {
 import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
-import { PageLoader, SectionLoader } from "../components";
+import { PageLoader } from "../components";
 import { DocumentApprovalModal } from "../components/workflow";
 import AuthContext from "../contexts/AuthContext";
 import { jeWorkflowService } from "../services/jeWorkflowService";
@@ -24,6 +24,8 @@ import NotificationModal from "../components/common/NotificationModal";
 import type { NotificationType } from "../components/common/NotificationModal";
 import PaymentButton from "../components/PaymentButton";
 import PaymentStatusModal from "../components/PaymentStatusModal";
+import DateTimePicker from "../components/DateTimePicker";
+import ModalLoader from "../components/ModalLoader";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -176,17 +178,9 @@ const ViewPositionApplication: React.FC = () => {
   }, [selectedDocument]);
 
   const handleDocumentApprovalComplete = async () => {
-    // Reload application data
-    if (id) {
-      try {
-        const response = await positionRegistrationService.getApplication(
-          parseInt(id)
-        );
-        setApplication(response);
-      } catch (err) {
-        console.error("Error reloading application:", err);
-      }
-    }
+    // Navigate to dashboard after successful document verification
+    // The form will be removed from the officer's list after digital signature is added
+    navigate("/officer-dashboard");
   };
 
   const handleScheduleAppointment = () => {
@@ -1945,6 +1939,7 @@ const ViewPositionApplication: React.FC = () => {
                 <button
                   className="pmc-button pmc-button-secondary"
                   onClick={() => setShowScheduleModal(false)}
+                  disabled={isScheduling}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
@@ -1959,17 +1954,17 @@ const ViewPositionApplication: React.FC = () => {
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
                   }}
                 >
-                  {isScheduling && (
-                    <SectionLoader variant="minimal" size="small" inline />
-                  )}
-                  {isScheduling ? "Scheduling..." : "Schedule Appointment"}
+                  Schedule Appointment
                 </button>
               </div>
+
+              {/* Modal Loader Overlay */}
+              <ModalLoader
+                isVisible={isScheduling}
+                message="Scheduling appointment..."
+              />
             </div>
           </div>
         )}
@@ -1999,7 +1994,7 @@ const ViewPositionApplication: React.FC = () => {
               style={{
                 background: "white",
                 borderRadius: "8px",
-                maxWidth: "500px",
+                maxWidth: "600px",
                 width: "100%",
                 boxShadow:
                   "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
@@ -2084,37 +2079,16 @@ const ViewPositionApplication: React.FC = () => {
                   >
                     Review Date <span style={{ color: "#dc2626" }}>*</span>
                   </label>
-                  <input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={rescheduleForm.newReviewDate}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setRescheduleForm({
                         ...rescheduleForm,
-                        newReviewDate: e.target.value,
+                        newReviewDate: value,
                       })
                     }
-                    min={new Date().toISOString().slice(0, 16)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      outline: "none",
-                      transition: "all 0.2s",
-                      cursor: "pointer",
-                      backgroundColor: "white",
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = "#10b981";
-                      e.target.style.boxShadow =
-                        "0 0 0 3px rgba(16, 185, 129, 0.1)";
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
-                    required
+                    minDate={new Date()}
+                    placeholder="Select appointment date & time"
                   />
                 </div>
 
@@ -2325,6 +2299,7 @@ const ViewPositionApplication: React.FC = () => {
                     padding: "8px 20px",
                     fontSize: "14px",
                   }}
+                  disabled={isRescheduling}
                 >
                   Cancel
                 </button>
@@ -2335,19 +2310,17 @@ const ViewPositionApplication: React.FC = () => {
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
                   }}
                 >
-                  {isRescheduling && (
-                    <SectionLoader variant="minimal" size="small" inline />
-                  )}
-                  {isRescheduling
-                    ? "Rescheduling..."
-                    : "Reschedule Appointment"}
+                  Reschedule Appointment
                 </button>
               </div>
+
+              {/* Modal Loader Overlay */}
+              <ModalLoader
+                isVisible={isRescheduling}
+                message="Rescheduling appointment..."
+              />
             </div>
           </div>
         )}
@@ -2692,6 +2665,7 @@ const ViewPositionApplication: React.FC = () => {
                 <button
                   className="pmc-button pmc-button-secondary"
                   onClick={() => setShowScheduleModal(false)}
+                  disabled={isScheduling}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
@@ -2706,17 +2680,17 @@ const ViewPositionApplication: React.FC = () => {
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
                   }}
                 >
-                  {isScheduling && (
-                    <SectionLoader variant="minimal" size="small" inline />
-                  )}
-                  {isScheduling ? "Scheduling..." : "Schedule Appointment"}
+                  Schedule Appointment
                 </button>
               </div>
+
+              {/* Modal Loader Overlay */}
+              <ModalLoader
+                isVisible={isScheduling}
+                message="Scheduling appointment..."
+              />
             </div>
           </div>
         )}

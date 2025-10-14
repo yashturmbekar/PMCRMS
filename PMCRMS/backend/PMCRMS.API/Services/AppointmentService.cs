@@ -56,9 +56,10 @@ namespace PMCRMS.API.Services
                 // All validation removed - frontend handles validation
                 _logger.LogInformation("Creating appointment entity for application {ApplicationId}", applicationId);
 
-                // Convert reviewDate to UTC if needed (PostgreSQL requires UTC timestamps)
+                // Convert reviewDate to UTC - frontend sends local time (IST) without timezone info
+                // We need to treat the incoming datetime as local time, not UTC
                 var utcReviewDate = reviewDate.Kind == DateTimeKind.Unspecified 
-                    ? DateTime.SpecifyKind(reviewDate, DateTimeKind.Utc)
+                    ? DateTime.SpecifyKind(reviewDate, DateTimeKind.Local).ToUniversalTime()
                     : reviewDate.ToUniversalTime();
 
                 var appointment = new Appointment
@@ -258,9 +259,10 @@ namespace PMCRMS.API.Services
 
                 // All date and availability validation removed - frontend handles validation
 
-                // Convert newReviewDate to UTC if needed (PostgreSQL requires UTC timestamps)
+                // Convert newReviewDate to UTC - frontend sends local time (IST) without timezone info
+                // We need to treat the incoming datetime as local time, not UTC
                 var utcNewReviewDate = newReviewDate.Kind == DateTimeKind.Unspecified 
-                    ? DateTime.SpecifyKind(newReviewDate, DateTimeKind.Utc)
+                    ? DateTime.SpecifyKind(newReviewDate, DateTimeKind.Local).ToUniversalTime()
                     : newReviewDate.ToUniversalTime();
 
                 var newAppointment = new Appointment

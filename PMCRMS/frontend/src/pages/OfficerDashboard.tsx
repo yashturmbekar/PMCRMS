@@ -8,7 +8,7 @@ import { ceWorkflowService } from "../services/ceWorkflowService";
 import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import positionRegistrationService from "../services/positionRegistrationService";
 import { Calendar, Clock, Eye, CheckCircle, XCircle } from "lucide-react";
-import { PageLoader } from "../components";
+import { PageLoader, ModalLoader } from "../components";
 import {
   DocumentApprovalModal,
   OTPVerificationModal,
@@ -62,6 +62,7 @@ const OfficerDashboard: React.FC = () => {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [scheduleError, setScheduleError] = useState("");
+  const [isScheduling, setIsScheduling] = useState(false);
   const [selectedApplication, setSelectedApplication] =
     useState<Application | null>(null);
   const [scheduleForm, setScheduleForm] = useState({
@@ -385,6 +386,7 @@ const OfficerDashboard: React.FC = () => {
     }
 
     try {
+      setIsScheduling(true);
       await jeWorkflowService.scheduleAppointment({
         applicationId: selectedApplication.applicationId,
         reviewDate: scheduleForm.reviewDate,
@@ -404,6 +406,8 @@ const OfficerDashboard: React.FC = () => {
     } catch (error) {
       console.error("Error scheduling appointment:", error);
       setScheduleError("Failed to schedule appointment. Please try again.");
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -1439,6 +1443,7 @@ const OfficerDashboard: React.FC = () => {
                 <button
                   className="pmc-button pmc-button-secondary"
                   onClick={() => setShowScheduleModal(false)}
+                  disabled={isScheduling}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
@@ -1449,6 +1454,7 @@ const OfficerDashboard: React.FC = () => {
                 <button
                   className="pmc-button pmc-button-success"
                   onClick={handleSubmitSchedule}
+                  disabled={isScheduling}
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
@@ -1457,6 +1463,12 @@ const OfficerDashboard: React.FC = () => {
                   Schedule Appointment
                 </button>
               </div>
+
+              {/* Modal Loader Overlay */}
+              <ModalLoader
+                isVisible={isScheduling}
+                message="Scheduling appointment..."
+              />
             </div>
           </div>
         )}

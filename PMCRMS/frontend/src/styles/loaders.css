@@ -545,6 +545,133 @@
 }
 
 /* ========================================
+   MODAL LOADER - Popup/Modal Loading Overlay
+   ======================================== */
+
+.pmc-modal-loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  border-radius: 8px;
+  animation: pmc-fade-in 0.3s ease-out;
+}
+
+.pmc-modal-loader-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  z-index: 2;
+}
+
+/* Modal Logo Container - Slightly Smaller */
+.pmc-logo-container-modal {
+  width: 120px;
+  height: 120px;
+}
+
+.pmc-logo-container-modal .pmc-loader-ring-outer {
+  width: 120px;
+  height: 120px;
+}
+
+.pmc-logo-container-modal .pmc-loader-ring-middle {
+  width: 90px;
+  height: 90px;
+}
+
+.pmc-logo-container-modal .pmc-loader-ring-inner {
+  width: 65px;
+  height: 65px;
+}
+
+.pmc-logo-container-modal .pmc-logo-wrapper {
+  width: 55px;
+  height: 55px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.pmc-logo-container-modal .pmc-logo-animated {
+  width: 40px;
+  height: 40px;
+  filter: brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+}
+
+/* Modal Loader Text - Styled for Modals */
+.pmc-loader-title-modal {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Modal Progress Container */
+.pmc-loader-progress-container-modal {
+  width: 200px;
+  height: 3px;
+}
+
+/* Modal Particles - Fewer and Subtler */
+.pmc-loader-particles-modal .pmc-particle {
+  background: rgba(102, 126, 234, 0.3);
+  width: 4px;
+  height: 4px;
+}
+
+.pmc-loader-particles-modal .pmc-particle:nth-child(1) {
+  top: 15%;
+  left: 25%;
+}
+
+.pmc-loader-particles-modal .pmc-particle:nth-child(2) {
+  top: 35%;
+  left: 75%;
+}
+
+.pmc-loader-particles-modal .pmc-particle:nth-child(3) {
+  top: 65%;
+  left: 20%;
+}
+
+.pmc-loader-particles-modal .pmc-particle:nth-child(4) {
+  top: 85%;
+  left: 80%;
+}
+
+@keyframes pmc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Dark background variant for modals with dark backgrounds */
+.pmc-modal-loader-overlay.dark {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.pmc-modal-loader-overlay.dark .pmc-loader-title-modal {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========================================
    RESPONSIVE DESIGN
    ======================================== */
 

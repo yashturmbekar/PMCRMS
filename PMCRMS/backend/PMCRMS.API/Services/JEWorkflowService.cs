@@ -260,10 +260,13 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("Appointment rescheduled successfully. New appointment ID: {AppointmentId}", result.AppointmentId);
 
+                // Convert UTC to local time (IST) for display - frontend sends local time but ASP.NET treats it as UTC
+                var localReviewDate = DateTime.SpecifyKind(request.NewReviewDate, DateTimeKind.Unspecified);
+
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = $"Appointment rescheduled successfully to {request.NewReviewDate:MMMM dd, yyyy 'at' hh:mm tt}",
+                    Message = $"Appointment rescheduled successfully to {localReviewDate:MMMM dd, yyyy 'at' hh:mm tt}",
                     NewStatus = newAppointment.Application?.Status ?? ApplicationCurrentStatus.APPOINTMENT_SCHEDULED,
                     NextAction = "Complete Appointment"
                 };

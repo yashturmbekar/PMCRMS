@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import { jeWorkflowService } from "../../services/jeWorkflowService";
 import NotificationModal from "../common/NotificationModal";
+import ModalLoader from "../ModalLoader";
 import type { NotificationType } from "../common/NotificationModal";
 
 interface Document {
@@ -456,7 +457,7 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                   border: "none",
                 }}
               >
-                {isSubmitting ? "Processing..." : "VERIFY DOCUMENT (TESTING)"}
+                VERIFY DOCUMENT (TESTING)
               </button>
             ) : !otpGenerated ? (
               <button
@@ -490,11 +491,17 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                   border: "none",
                 }}
               >
-                {isSubmitting ? "Processing..." : "ADD DIGITAL SIGNATURE"}
+                ADD DIGITAL SIGNATURE
               </button>
             )}
             {/* ========== END TESTING MODE ========== */}
           </div>
+
+          {/* Modal Loader Overlay */}
+          <ModalLoader
+            isVisible={isSubmitting}
+            message="Adding digital signature..."
+          />
         </div>
       </div>
     </>
