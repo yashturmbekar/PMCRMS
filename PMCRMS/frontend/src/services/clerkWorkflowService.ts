@@ -97,7 +97,7 @@ export const clerkWorkflowService = {
     const token = localStorage.getItem("pmcrms_token");
     const response = await axios.post(
       `${API_URL}/Clerk/approve/${id}`,
-      { remarks: remarks || "" },
+      { Remarks: remarks || "" }, // Capital R to match C# property
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -105,7 +105,8 @@ export const clerkWorkflowService = {
         },
       }
     );
-    return response.data.data;
+    // Return the full response data which includes success, message, data
+    return response.data;
   },
 
   /**
@@ -118,7 +119,7 @@ export const clerkWorkflowService = {
     const token = localStorage.getItem("pmcrms_token");
     const response = await axios.post(
       `${API_URL}/Clerk/reject/${id}`,
-      { reason },
+      { Reason: reason }, // Capital R to match C# property
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -126,7 +127,7 @@ export const clerkWorkflowService = {
         },
       }
     );
-    return response.data.data;
+    return response.data; // Return full response data
   },
 
   /**
