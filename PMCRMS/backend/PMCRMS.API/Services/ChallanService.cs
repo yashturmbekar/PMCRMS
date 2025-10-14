@@ -12,8 +12,6 @@ namespace PMCRMS.API.Services
     {
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<ChallanService> _logger;
-        private readonly IConfiguration _configuration;
-        private readonly string _challanStoragePath;
 
         static ChallanService()
         {
@@ -29,19 +27,12 @@ namespace PMCRMS.API.Services
 
         public ChallanService(
             PMCRMSDbContext context,
-            ILogger<ChallanService> logger,
-            IConfiguration configuration)
+            ILogger<ChallanService> logger)
         {
             _context = context;
             _logger = logger;
-            _configuration = configuration;
 
-            // Get storage path from configuration or use default (for backward compatibility)
-            _challanStoragePath = _configuration["ChallanStoragePath"] 
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "MediaStorage", "Challans");
-
-            // Note: Challans are now stored in database only, physical storage is for backward compatibility
-            _logger.LogInformation("ChallanService initialized - using database binary storage");
+            _logger.LogInformation("ChallanService initialized - Database-only storage (no physical files)");
         }
 
         public async Task<ChallanGenerationResponse> GenerateChallanAsync(ChallanGenerationRequest request)
@@ -67,9 +58,8 @@ namespace PMCRMS.API.Services
                 // Generate unique challan number
                 var challanNumber = GenerateChallanNumber();
                 var fileName = $"{challanNumber}.pdf";
-                var filePath = $"Database/Challans/{fileName}"; // Virtual path for reference only
 
-                // Generate PDF
+                // Generate PDF in memory only (NO physical file storage)
                 byte[] pdfContent;
                 try
                 {
@@ -82,10 +72,9 @@ namespace PMCRMS.API.Services
                     pdfContent = GenerateChallanPdfEnglishOnly(request, challanNumber);
                 }
 
-                // No longer saving to physical file - storing in database only
-                _logger.LogInformation("Challan PDF generated in memory, size: {Size} KB", pdfContent.Length / 1024.0);
+                _logger.LogInformation("Challan PDF generated in memory (database-only storage), size: {Size} KB", pdfContent.Length / 1024.0);
 
-                // Save/Update challan record in database
+                // Save/Update challan record in database (NO physical file storage)
                 if (existingChallan != null)
                 {
                     existingChallan.ChallanNumber = challanNumber;
@@ -94,8 +83,8 @@ namespace PMCRMS.API.Services
                     existingChallan.Amount = request.Amount;
                     existingChallan.AmountInWords = request.AmountInWords;
                     existingChallan.ChallanDate = request.Date.ToUniversalTime();
-                    existingChallan.FilePath = filePath;
-                    existingChallan.PdfContent = pdfContent; // Store PDF content
+                    existingChallan.FilePath = string.Empty; // No physical file - database storage only
+                    existingChallan.PdfContent = pdfContent; // Store PDF binary in database
                     existingChallan.IsGenerated = true;
                     existingChallan.LastModifiedAt = DateTime.UtcNow;
                     _context.Challans.Update(existingChallan);
@@ -111,15 +100,15 @@ namespace PMCRMS.API.Services
                         Amount = request.Amount,
                         AmountInWords = request.AmountInWords,
                         ChallanDate = request.Date.ToUniversalTime(),
-                        FilePath = filePath,
-                        PdfContent = pdfContent, // Store PDF content
+                        FilePath = string.Empty, // No physical file - database storage only
+                        PdfContent = pdfContent, // Store PDF binary in database
                         IsGenerated = true,
                         CreatedAt = DateTime.UtcNow
                     };
                     _context.Challans.Add(challan);
                 }
 
-                // Save challan PDF to SEDocuments table (primary storage)
+                // Save challan PDF to SEDocuments table (primary binary storage)
                 var existingDocument = await _context.SEDocuments
                     .FirstOrDefaultAsync(d => d.ApplicationId == request.ApplicationId 
                                            && d.DocumentType == SEDocumentType.PaymentChallan);
@@ -127,8 +116,8 @@ namespace PMCRMS.API.Services
                 if (existingDocument != null)
                 {
                     existingDocument.FileName = fileName;
-                    existingDocument.FilePath = filePath;
-                    existingDocument.FileContent = pdfContent;
+                    existingDocument.FilePath = string.Empty; // No physical file - database storage only
+                    existingDocument.FileContent = pdfContent; // Store PDF binary in database
                     existingDocument.FileSize = (decimal)(pdfContent.Length / 1024.0); // Size in KB
                     existingDocument.ContentType = "application/pdf";
                     existingDocument.UpdatedDate = DateTime.UtcNow;
@@ -142,8 +131,8 @@ namespace PMCRMS.API.Services
                         DocumentType = SEDocumentType.PaymentChallan,
                         FileName = fileName,
                         FileId = challanNumber,
-                        FilePath = filePath,
-                        FileContent = pdfContent,
+                        FilePath = string.Empty, // No physical file - database storage only
+                        FileContent = pdfContent, // Store PDF binary in database
                         FileSize = (decimal)(pdfContent.Length / 1024.0), // Size in KB
                         ContentType = "application/pdf",
                         IsVerified = true, // Auto-verify payment challans
@@ -153,13 +142,13 @@ namespace PMCRMS.API.Services
                 }
 
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Challan saved to database (Challans + SEDocuments tables) for application {ApplicationId}", request.ApplicationId);
+                _logger.LogInformation("Challan saved to database only (Challans + SEDocuments tables) for application {ApplicationId}", request.ApplicationId);
 
                 return new ChallanGenerationResponse
                 {
                     Success = true,
-                    Message = "Challan generated successfully",
-                    ChallanPath = filePath,
+                    Message = "Challan generated successfully (stored in database)",
+                    ChallanPath = string.Empty, // No physical file - database storage only
                     ChallanNumber = challanNumber,
                     PdfContent = pdfContent
                 };

@@ -1313,13 +1313,13 @@ namespace PMCRMS.API.Services
                         _logger.LogInformation("Removed existing incomplete recommendation form for application {ApplicationId}", applicationId);
                     }
 
-                    // Create document record - Store PDF content in database
+                    // Create document record - Store PDF content in database ONLY (no physical file storage)
                     var document = new SEDocument
                     {
                         ApplicationId = applicationId,
                         DocumentType = SEDocumentType.RecommendedForm,
                         FileName = pdfResult.FileName ?? $"RecommendedForm_{applicationId}.pdf",
-                        FilePath = null, // No physical file path needed
+                        FilePath = string.Empty, // No physical file - database storage only
                         FileId = Guid.NewGuid().ToString(),
                         FileSize = (decimal)(pdfResult.FileContent.Length / 1024.0), // Size in KB
                         ContentType = "application/pdf",
@@ -1337,7 +1337,7 @@ namespace PMCRMS.API.Services
 
                     await _context.SaveChangesAsync();
 
-                    _logger.LogInformation("✅ Recommendation form generated and saved successfully for application {ApplicationId} on attempt {Attempt}", 
+                    _logger.LogInformation("✅ Recommendation form generated and saved to database only for application {ApplicationId} on attempt {Attempt}", 
                         applicationId, attempt);
                     
                     success = true;

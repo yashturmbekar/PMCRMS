@@ -58,17 +58,17 @@ namespace PMCRMS.API.Services
                 }
 
                 var pdfBytes = GeneratePdf(applicationData);
-                var fileName = $"Application_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
-                var filePath = await SavePdfFileAsync(pdfBytes, fileName);
+                var fileName = $"RecommendedForm_{applicationId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
 
-                // Update application with PDF path
-                await UpdateApplicationPdfPathAsync(applicationId, filePath);
+                // NO physical file storage - return PDF bytes only for database storage
+                _logger.LogInformation("Recommendation form PDF generated in memory (database-only storage) for application {ApplicationId}, size: {Size} KB", 
+                    applicationId, pdfBytes.Length / 1024.0);
 
                 return new PdfGenerationResponse
                 {
                     IsSuccess = true,
-                    Message = "PDF generated successfully",
-                    FilePath = filePath,
+                    Message = "PDF generated successfully (stored in database)",
+                    FilePath = string.Empty, // No physical file - database storage only
                     FileContent = pdfBytes,
                     FileName = fileName
                 };
@@ -199,30 +199,9 @@ namespace PMCRMS.API.Services
             }
         }
 
-        private async Task<string> SavePdfFileAsync(byte[] pdfBytes, string fileName)
-        {
-            var uploadsDirectory = Path.Combine(_environment.WebRootPath ?? "wwwroot", "generated-pdfs");
-
-            if (!Directory.Exists(uploadsDirectory))
-            {
-                Directory.CreateDirectory(uploadsDirectory);
-            }
-
-            var filePath = Path.Combine(uploadsDirectory, fileName);
-            await File.WriteAllBytesAsync(filePath, pdfBytes);
-
-            return Path.Combine("generated-pdfs", fileName); // Return relative path for storage
-        }
-
-        private async Task UpdateApplicationPdfPathAsync(int applicationId, string filePath)
-        {
-            var application = await _context.PositionApplications.FindAsync(applicationId);
-            if (application != null)
-            {
-                application.Remarks = $"PDF generated: {filePath}"; // Store PDF path in Remarks for now
-                await _context.SaveChangesAsync();
-            }
-        }
+        // REMOVED: SavePdfFileAsync and UpdateApplicationPdfPathAsync methods
+        // Recommendation forms are now stored ONLY in database (SEDocuments table)
+        // No physical file storage is used
 
         /// <summary>
         /// Generates payment challan (receipt) PDF
