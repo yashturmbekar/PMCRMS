@@ -205,7 +205,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               <div
                 className="pmc-header-brand"
-                style={{ display: "flex", alignItems: "center", gap: "12px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  cursor: "pointer",
+                  transition: "opacity 0.2s ease",
+                }}
+                onClick={() => navigate("/dashboard")}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.opacity = "0.85";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = "1";
+                }}
               >
                 <div
                   className="pmc-header-logo"
