@@ -5,8 +5,12 @@ using System.Security.Claims;
 
 namespace PMCRMS.API.Controllers
 {
+    /// <summary>
+    /// Controller for City Engineer Stage 2 workflow for Position Applications (Licensing)
+    /// Handles final digital signature on license certificates
+    /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/position/ce-stage2")]
     [Authorize(Roles = "CityEngineer,Admin")]
     public class CEStage2Controller : ControllerBase
     {
@@ -22,18 +26,30 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Get pending applications for CE Stage 2 final signature (status 20)
+        /// Get pending position applications for CE Stage 2 final signature
         /// </summary>
         [HttpGet("Pending")]
         public async Task<IActionResult> GetPendingApplications()
         {
             try
             {
-                var applications = await _workflowService.GetPendingApplicationsAsync();
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                int? ceUserId = null;
+                
+                // Filter by CE user ID if not admin
+                if (roleClaim != "Admin" && int.TryParse(userIdClaim, out var userId))
+                {
+                    ceUserId = userId;
+                }
+
+                var applications = await _workflowService.GetPendingApplicationsAsync(ceUserId);
+                
                 return Ok(new
                 {
                     success = true,
-                    message = $"Retrieved {applications.Count} pending applications for CE final signature",
+                    message = $"Retrieved {applications.Count} pending position applications for CE final signature",
                     data = applications
                 });
             }
@@ -50,18 +66,29 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Get completed applications by CE Stage 2
+        /// Get completed position applications by CE Stage 2
         /// </summary>
         [HttpGet("Completed")]
         public async Task<IActionResult> GetCompletedApplications()
         {
             try
             {
-                var applications = await _workflowService.GetCompletedApplicationsAsync();
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                int? ceUserId = null;
+                
+                if (roleClaim != "Admin" && int.TryParse(userIdClaim, out var userId))
+                {
+                    ceUserId = userId;
+                }
+
+                var applications = await _workflowService.GetCompletedApplicationsAsync(ceUserId);
+                
                 return Ok(new
                 {
                     success = true,
-                    message = $"Retrieved {applications.Count} completed applications",
+                    message = $"Retrieved {applications.Count} completed position applications",
                     data = applications
                 });
             }
@@ -78,27 +105,28 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Get application details for CE review
+        /// Get detailed information for a specific position application
         /// </summary>
-        [HttpGet("Application/{id}")]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetApplicationDetails(int id)
         {
             try
             {
                 var application = await _workflowService.GetApplicationDetailsAsync(id);
+                
                 if (application == null)
                 {
                     return NotFound(new
                     {
                         success = false,
-                        message = "Application not found"
+                        message = $"Position application with ID {id} not found"
                     });
                 }
 
                 return Ok(new
                 {
                     success = true,
-                    message = "Application details retrieved successfully",
+                    message = "Position application details retrieved successfully",
                     data = application
                 });
             }
@@ -115,35 +143,27 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Generate OTP for CE final digital signature
+        /// Generate OTP for CE digital signature
         /// </summary>
-        [HttpPost("GenerateOtp/{id}")]
+        [HttpPost("{id}/GenerateOtp")]
         public async Task<IActionResult> GenerateOtp(int id)
         {
             try
             {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int ceUserId))
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var ceUserId))
                 {
                     return Unauthorized(new
                     {
                         success = false,
-                        message = "Invalid user authentication"
+                        message = "Invalid user credentials"
                     });
                 }
 
                 var result = await _workflowService.GenerateOtpAsync(id, ceUserId);
                 
-                if (result.Success)
-                {
-                    return Ok(new
-                    {
-                        success = true,
-                        message = result.Message,
-                        data = result
-                    });
-                }
-                else
+                if (!result.Success)
                 {
                     return BadRequest(new
                     {
@@ -151,6 +171,13 @@ namespace PMCRMS.API.Controllers
                         message = result.Message
                     });
                 }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = result.Message,
+                    data = new { otpReference = result.OtpReference }
+                });
             }
             catch (Exception ex)
             {
@@ -165,24 +192,14 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Apply CE final digital signature with OTP verification
+        /// Apply CE final digital signature to license certificate
         /// </summary>
-        [HttpPost("Sign/{id}")]
+        [HttpPost("{id}/ApplySignature")]
         public async Task<IActionResult> ApplyFinalSignature(int id, [FromBody] CEStage2SignRequest request)
         {
             try
             {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId) || !int.TryParse(userId, out int ceUserId))
-                {
-                    return Unauthorized(new
-                    {
-                        success = false,
-                        message = "Invalid user authentication"
-                    });
-                }
-
-                if (string.IsNullOrWhiteSpace(request.OtpCode))
+                if (string.IsNullOrEmpty(request.OtpCode))
                 {
                     return BadRequest(new
                     {
@@ -191,18 +208,20 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                var result = await _workflowService.ApplyFinalSignatureAsync(id, ceUserId, request.OtpCode);
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 
-                if (result.Success)
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var ceUserId))
                 {
-                    return Ok(new
+                    return Unauthorized(new
                     {
-                        success = true,
-                        message = result.Message,
-                        data = result
+                        success = false,
+                        message = "Invalid user credentials"
                     });
                 }
-                else
+
+                var result = await _workflowService.ApplyFinalSignatureAsync(id, ceUserId, request.OtpCode);
+                
+                if (!result.Success)
                 {
                     return BadRequest(new
                     {
@@ -210,6 +229,18 @@ namespace PMCRMS.API.Controllers
                         message = result.Message
                     });
                 }
+
+                return Ok(new
+                {
+                    success = true,
+                    message = result.Message,
+                    data = new
+                    {
+                        applicationId = result.ApplicationId,
+                        newStatus = result.NewStatus,
+                        signedCertificateUrl = result.SignedCertificateUrl
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -224,38 +255,36 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Get statistics for CE Stage 2 dashboard
+        /// Get CE Stage 2 dashboard statistics
         /// </summary>
         [HttpGet("Statistics")]
         public async Task<IActionResult> GetStatistics()
         {
             try
             {
-                var pendingApplications = await _workflowService.GetPendingApplicationsAsync();
-                var completedApplications = await _workflowService.GetCompletedApplicationsAsync();
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var roleClaim = User.FindFirst(ClaimTypes.Role)?.Value;
 
-                var today = DateTime.UtcNow.Date;
-                var weekAgo = today.AddDays(-7);
-                var monthStart = new DateTime(today.Year, today.Month, 1);
-
-                var todayProcessed = completedApplications.Count(a => a.EE2SignedDate.HasValue && a.EE2SignedDate.Value.Date == today);
-                var weekProcessed = completedApplications.Count(a => a.EE2SignedDate.HasValue && a.EE2SignedDate.Value >= weekAgo);
-                var monthProcessed = completedApplications.Count(a => a.EE2SignedDate.HasValue && a.EE2SignedDate.Value >= monthStart);
-
-                var statistics = new
+                int? ceUserId = null;
+                
+                if (roleClaim != "Admin" && int.TryParse(userIdClaim, out var userId))
                 {
-                    pendingCount = pendingApplications.Count,
-                    completedCount = completedApplications.Count,
-                    todayProcessed,
-                    weekProcessed,
-                    monthProcessed
-                };
+                    ceUserId = userId;
+                }
+
+                var pending = await _workflowService.GetPendingApplicationsAsync(ceUserId);
+                var completed = await _workflowService.GetCompletedApplicationsAsync(ceUserId);
 
                 return Ok(new
                 {
                     success = true,
                     message = "Statistics retrieved successfully",
-                    data = statistics
+                    data = new
+                    {
+                        pendingCount = pending.Count,
+                        completedCount = completed.Count,
+                        totalProcessed = completed.Count
+                    }
                 });
             }
             catch (Exception ex)
@@ -271,3 +300,4 @@ namespace PMCRMS.API.Controllers
         }
     }
 }
+

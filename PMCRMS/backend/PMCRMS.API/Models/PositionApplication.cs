@@ -341,6 +341,22 @@ namespace PMCRMS.API.Models
         public DateTime? AssignedToEEStage2Date { get; set; }
         
         /// <summary>
+        /// EE Stage 2 approval status (true = approved, false/null = pending)
+        /// </summary>
+        public bool? EEStage2ApprovalStatus { get; set; }
+        
+        /// <summary>
+        /// Comments provided by EE Stage 2 during approval
+        /// </summary>
+        [MaxLength(2000)]
+        public string? EEStage2ApprovalComments { get; set; }
+        
+        /// <summary>
+        /// Date when EE Stage 2 approved the application
+        /// </summary>
+        public DateTime? EEStage2ApprovalDate { get; set; }
+        
+        /// <summary>
         /// EE Stage 2 digital signature applied status
         /// </summary>
         public bool EEStage2DigitalSignatureApplied { get; set; } = false;
@@ -360,6 +376,22 @@ namespace PMCRMS.API.Models
         /// Date when assigned to CE Stage 2 for final signature
         /// </summary>
         public DateTime? AssignedToCEStage2Date { get; set; }
+        
+        /// <summary>
+        /// CE Stage 2 approval status (true = approved, false/null = pending)
+        /// </summary>
+        public bool? CEStage2ApprovalStatus { get; set; }
+        
+        /// <summary>
+        /// Comments provided by CE Stage 2 during approval
+        /// </summary>
+        [MaxLength(2000)]
+        public string? CEStage2ApprovalComments { get; set; }
+        
+        /// <summary>
+        /// Date when CE Stage 2 approved the application
+        /// </summary>
+        public DateTime? CEStage2ApprovalDate { get; set; }
         
         /// <summary>
         /// CE Stage 2 digital signature applied status

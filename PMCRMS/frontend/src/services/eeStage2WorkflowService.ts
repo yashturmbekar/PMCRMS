@@ -10,17 +10,24 @@ const API_BASE_URL =
 
 // DTOs matching backend
 export interface EEStage2ApplicationDto {
-  applicationId: number;
+  id: number; // Backend uses 'id'
+  applicationId?: number; // For compatibility
   applicationNumber: string;
   applicantName: string;
-  buildingType: string;
-  plotArea: number;
-  district: string;
-  clerkProcessedDate?: string;
+  applicantEmail: string;
+  positionType: string; // Backend property name
+  buildingType?: string; // Legacy/alternative property
+  propertyAddress: string;
+  paymentAmount?: number;
+  processedByClerkDate?: string; // Backend property name
+  clerkProcessedDate?: string; // Legacy/alternative property
+  plotArea?: number; // Legacy property
+  district?: string; // Legacy property
   clerkRemarks?: string;
-  paymentAmount: number;
   paymentDate?: string;
-  paymentReference: string;
+  paymentReference?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface EEStage2ApplicationDetailDto {

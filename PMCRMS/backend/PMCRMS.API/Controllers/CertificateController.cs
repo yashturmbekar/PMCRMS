@@ -50,8 +50,11 @@ namespace PMCRMS.API.Controllers
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                // Check if user is admin or the application owner
-                var isAdmin = User.IsInRole("Admin") || User.IsInRole("Officer");
+                // Check if user is authorized to download (Admin, Officer roles, or application owner)
+                var isAuthorizedOfficer = User.IsInRole("Admin") 
+                    || User.IsInRole("Clerk") 
+                    || User.IsInRole("ExecutiveEngineer") 
+                    || User.IsInRole("CityEngineer");
                 
                 var application = await _context.PositionApplications
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
@@ -61,8 +64,8 @@ namespace PMCRMS.API.Controllers
                     return NotFound(new { message = "Application not found" });
                 }
 
-                // Authorization: User must own the application or be admin
-                if (!isAdmin && application.UserId != userId)
+                // Authorization: User must own the application or be an authorized officer
+                if (!isAuthorizedOfficer && application.UserId != userId)
                 {
                     return Forbid();
                 }
@@ -111,8 +114,11 @@ namespace PMCRMS.API.Controllers
 
                 int userId = int.Parse(userIdClaim.Value);
 
-                // Check if user is admin or the application owner
-                var isAdmin = User.IsInRole("Admin") || User.IsInRole("Officer");
+                // Check if user is authorized to view status (Admin, Officer roles, or application owner)
+                var isAuthorizedOfficer = User.IsInRole("Admin") 
+                    || User.IsInRole("Clerk") 
+                    || User.IsInRole("ExecutiveEngineer") 
+                    || User.IsInRole("CityEngineer");
                 
                 var application = await _context.PositionApplications
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
@@ -122,8 +128,8 @@ namespace PMCRMS.API.Controllers
                     return NotFound(new { message = "Application not found" });
                 }
 
-                // Authorization: User must own the application or be admin
-                if (!isAdmin && application.UserId != userId)
+                // Authorization: User must own the application or be an authorized officer
+                if (!isAuthorizedOfficer && application.UserId != userId)
                 {
                     return Forbid();
                 }

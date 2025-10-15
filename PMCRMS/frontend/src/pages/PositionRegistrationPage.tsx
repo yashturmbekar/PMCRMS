@@ -351,8 +351,6 @@ export const PositionRegistrationPage = () => {
     const mappedValue =
       positionMap[positionParam.toLowerCase()] ??
       PositionType.StructuralEngineer;
-    console.log("[DEBUG] Position param from URL:", positionParam);
-    console.log("[DEBUG] Mapped position type:", mappedValue);
 
     return mappedValue;
   };
@@ -664,12 +662,6 @@ export const PositionRegistrationPage = () => {
     data: FormData,
     status: number
   ): Promise<PositionRegistrationRequest> => {
-    // Debug logging for position type tracking
-    console.log("[DEBUG] mapFormDataToRequest called");
-    console.log("[DEBUG] data.positionType:", data.positionType);
-    console.log("[DEBUG] selectedPositionType:", selectedPositionType);
-    console.log("[DEBUG] positionParam from URL:", positionParam);
-
     // Helper function to convert date strings to ISO 8601 UTC format
     const toUTCDate = (dateStr: string) => {
       if (!dateStr) return dateStr;
@@ -940,8 +932,6 @@ export const PositionRegistrationPage = () => {
       const request = await mapFormDataToRequest(formData, 2);
 
       // Debug logging before API call
-      console.log("[DEBUG] Final request object:", request);
-      console.log("[DEBUG] Final request.positionType:", request.positionType);
 
       let response;
       // If in edit mode, update existing application; otherwise create new

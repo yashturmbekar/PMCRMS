@@ -292,22 +292,23 @@ const OfficerDashboard: React.FC = () => {
           }));
 
           // Map Stage 2 applications
-          const stage2Apps = stage2Pending.map((app) => ({
-            applicationId: app.applicationId,
+          const stage2Apps = stage2Pending.map((app: any) => ({
+            applicationId: app.id || app.applicationId, // Backend uses 'id', frontend expects 'applicationId'
             applicationNumber: app.applicationNumber,
             applicantName: app.applicantName,
             firstName: app.applicantName?.split(" ")[0] || "",
             lastName: app.applicantName?.split(" ").slice(1).join(" ") || "",
             status: "EXECUTIVE_ENGINEER_SIGN_PENDING",
-            createdDate: app.clerkProcessedDate || new Date().toISOString(),
-            positionType: app.buildingType,
-            position: app.buildingType,
+            createdDate:
+              app.processedByClerkDate ||
+              app.clerkProcessedDate ||
+              new Date().toISOString(),
+            positionType: app.positionType || app.buildingType,
+            position: app.positionType || app.buildingType,
             assignedAEName: "Clerk",
             isStage2: true,
             stage2Data: app,
-          }));
-
-          // Combine both stages
+          })); // Combine both stages
           fetchedApplications = [...stage1Apps, ...stage2Apps];
         } else if (officerConfig.type === "CE") {
           // Fetch both Stage 1 and Stage 2 applications
@@ -610,6 +611,8 @@ const OfficerDashboard: React.FC = () => {
       if (officerConfig.type === "AE") {
         return await aeWorkflowService.generateOtpForSignature(applicationId);
       } else if (officerConfig.type === "EE") {
+        // Both Stage 1 and Stage 2 use the same EE workflow service
+        // Backend determines which document to sign based on workflow status
         return await eeWorkflowService.generateOtpForSignature(applicationId);
       } else if (officerConfig.type === "CE") {
         return await ceWorkflowService.generateOtpForSignature(applicationId);
@@ -646,6 +649,8 @@ const OfficerDashboard: React.FC = () => {
           comments,
         });
       } else if (officerConfig.type === "EE") {
+        // Both Stage 1 and Stage 2 use the same EE workflow service
+        // Backend determines which document to sign based on workflow status
         return await eeWorkflowService.verifyAndSignDocuments({
           applicationId,
           otp,

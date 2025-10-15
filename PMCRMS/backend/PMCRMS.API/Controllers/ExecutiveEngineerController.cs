@@ -111,7 +111,23 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
+                _logger.LogInformation("VerifyAndSign called with ApplicationId: {ApplicationId}, OTP: {OTP}, Comments: {Comments}", 
+                    request.ApplicationId, request.Otp, request.Comments);
+
+                if (request.ApplicationId <= 0)
+                {
+                    return BadRequest(new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "Invalid application ID. Application ID must be greater than 0." 
+                    });
+                }
+
                 var officerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                
+                _logger.LogInformation("Officer ID: {OfficerId}, Processing application {ApplicationId}", 
+                    officerId, request.ApplicationId);
+
                 var result = await _workflowService.VerifyAndSignDocumentsAsync(
                     request.ApplicationId, 
                     officerId, 

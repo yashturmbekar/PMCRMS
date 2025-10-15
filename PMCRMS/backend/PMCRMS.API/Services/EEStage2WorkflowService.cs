@@ -15,17 +15,20 @@ namespace PMCRMS.API.Services
         private readonly ILogger<EEStage2WorkflowService> _logger;
         private readonly IEmailService _emailService;
         private readonly IDigitalSignatureService _digitalSignatureService;
+        private readonly IAutoAssignmentService _autoAssignmentService;
 
         public EEStage2WorkflowService(
             PMCRMSDbContext context,
             ILogger<EEStage2WorkflowService> logger,
             IEmailService emailService,
-            IDigitalSignatureService digitalSignatureService)
+            IDigitalSignatureService digitalSignatureService,
+            IAutoAssignmentService autoAssignmentService)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
             _digitalSignatureService = digitalSignatureService;
+            _autoAssignmentService = autoAssignmentService;
         }
 
         /// <summary>
@@ -291,11 +294,44 @@ namespace PMCRMS.API.Services
                 application.Status = ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING;
                 application.EEStage2DigitalSignatureApplied = true;
                 application.EEStage2DigitalSignatureDate = DateTime.UtcNow;
+                application.EEStage2ApprovalStatus = true;
+                application.EEStage2ApprovalDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation($"[EEStage2Workflow] Digital signature applied successfully for application {applicationId}");
+
+                // Auto-assign to City Engineer for final signature
+                try
+                {
+                    var assignmentResult = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
+                        applicationId,
+                        ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING,
+                        eeUserId
+                    );
+
+                    if (assignmentResult != null)
+                    {
+                        _logger.LogInformation(
+                            "[EEStage2Workflow] Application {ApplicationId} auto-assigned to City Engineer {OfficerId} for final signature",
+                            applicationId,
+                            assignmentResult.AssignedToOfficerId
+                        );
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "[EEStage2Workflow] Application {ApplicationId} status updated to CITY_ENGINEER_SIGN_PENDING but no City Engineer available for auto-assignment",
+                            applicationId
+                        );
+                    }
+                }
+                catch (Exception assignEx)
+                {
+                    _logger.LogError(assignEx, "[EEStage2Workflow] Failed to auto-assign to City Engineer for application {ApplicationId}", applicationId);
+                    // Don't fail the signature operation if assignment fails
+                }
 
                 // Send email notification (non-blocking)
                 try
