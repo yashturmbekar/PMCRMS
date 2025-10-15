@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
@@ -95,6 +95,19 @@ const ViewPositionApplication: React.FC = () => {
   const [clerkRemarks, setClerkRemarks] = useState("");
   const [isApprovingClerk, setIsApprovingClerk] = useState(false);
 
+  // Certificate state
+  const [certificateStatus, setCertificateStatus] = useState<{
+    exists: boolean;
+    certificateId?: number;
+    generatedDate?: string;
+    fileName?: string;
+    fileSize?: number;
+  } | null>(null);
+  const [loadingCertificate, setLoadingCertificate] = useState(false);
+
+  // Track if certificate was previously unavailable (for notification)
+  const certificateWasPendingRef = useRef(false);
+
   // Determine if accessed from admin context
   const isAdminView = user?.role === "Admin" || location.state?.fromAdmin;
   const isJEOfficer = user?.role && user.role.includes("Junior");
@@ -168,6 +181,140 @@ const ViewPositionApplication: React.FC = () => {
     fetchApplication();
   }, [id]);
 
+  // Fetch certificate status after application loads and poll if pending
+  useEffect(() => {
+    let pollCount = 0;
+    const MAX_POLL_ATTEMPTS = 40; // Poll for max 2 minutes (40 * 3 seconds)
+
+    const fetchCertificateStatus = async () => {
+      if (!id || !application || !application.isPaymentComplete) {
+        return;
+      }
+
+      try {
+        setLoadingCertificate(true);
+        const token = localStorage.getItem("pmcrms_token");
+        const userStr = localStorage.getItem("pmcrms_user");
+        const user = userStr ? JSON.parse(userStr) : null;
+
+        console.log("🔐 Certificate Status Request:");
+        console.log(
+          "  App ID:",
+          id,
+          "| Token:",
+          !!token,
+          "| User:",
+          user?.id,
+          user?.role
+        );
+
+        if (!token) {
+          console.error("❌ No token - Please login!");
+          return;
+        }
+
+        const response = await fetch(
+          `http://localhost:5086/api/Certificate/status/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setCertificateStatus(data);
+          console.log("✅ Certificate status:", data);
+        } else if (response.status === 401) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("❌ 401 UNAUTHORIZED");
+          console.error(
+            "  Logged in:",
+            user?.fullName,
+            `(ID: ${user?.id}, Role: ${user?.role})`
+          );
+          console.error("  Trying to access Application ID:", id);
+          console.error(
+            "  Server says:",
+            errorData.message || "User not authenticated"
+          );
+          console.error(
+            "  Fix: Logout and login again, or check if you own this application"
+          );
+          return;
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("❌ HTTP", response.status, errorData);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching certificate status:", error);
+      } finally {
+        setLoadingCertificate(false);
+      }
+    };
+
+    // Initial fetch
+    fetchCertificateStatus();
+
+    // Poll every 3 seconds if certificate doesn't exist yet, but stop after max attempts
+    const pollInterval = setInterval(() => {
+      pollCount++;
+
+      if (certificateStatus?.exists) {
+        // Certificate found - stop polling
+        console.log("✅ Certificate found - stopping poll");
+        clearInterval(pollInterval);
+        return;
+      }
+
+      if (pollCount >= MAX_POLL_ATTEMPTS) {
+        // Max attempts reached - stop polling
+        console.log("⏱️ Max poll attempts reached (2 minutes) - stopping poll");
+        clearInterval(pollInterval);
+        return;
+      }
+
+      if (!certificateStatus?.exists && application?.isPaymentComplete) {
+        console.log(
+          `Polling for certificate status... (${pollCount}/${MAX_POLL_ATTEMPTS})`
+        );
+        fetchCertificateStatus();
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Cleanup interval on unmount or when certificate is found
+    return () => {
+      clearInterval(pollInterval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, application?.isPaymentComplete, certificateStatus?.exists]);
+
+  // Show notification when certificate becomes available
+  useEffect(() => {
+    // If certificate just became available (was pending, now exists)
+    if (certificateStatus?.exists && certificateWasPendingRef.current) {
+      setNotification({
+        isOpen: true,
+        message:
+          "Your license certificate has been generated successfully. You can now view and download it.",
+        type: "success",
+        title: "Certificate Ready! 🎉",
+        autoClose: true,
+      });
+      certificateWasPendingRef.current = false; // Reset tracking
+    }
+
+    // Track that certificate was pending if it doesn't exist yet and payment is complete
+    if (
+      certificateStatus !== null &&
+      !certificateStatus.exists &&
+      application?.isPaymentComplete
+    ) {
+      certificateWasPendingRef.current = true;
+    }
+  }, [certificateStatus, application?.isPaymentComplete]);
+
   // Create blob URL from base64 when selectedDocument changes
   useEffect(() => {
     // Cleanup previous blob URL
@@ -227,6 +374,87 @@ const ViewPositionApplication: React.FC = () => {
     // The form will be removed from the officer's list after digital signature is added
     const dashboardRoute = getDashboardRoute();
     navigate(dashboardRoute);
+  };
+
+  const handleDownloadCertificate = async () => {
+    if (!id) return;
+
+    try {
+      const token = localStorage.getItem("pmcrms_token");
+      const response = await fetch(
+        `http://localhost:5086/api/Certificate/download/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to download certificate");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `LicenceCertificate_${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading certificate:", error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to download certificate. Please try again.",
+        type: "error",
+        title: "Download Failed",
+      });
+    }
+  };
+
+  const handleViewCertificate = async () => {
+    if (!id) return;
+
+    try {
+      const token = localStorage.getItem("pmcrms_token");
+      const response = await fetch(
+        `http://localhost:5086/api/Certificate/download/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to load certificate");
+      }
+
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = btoa(
+        new Uint8Array(arrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ""
+        )
+      );
+
+      setSelectedDocument({
+        fileName: certificateStatus?.fileName || "LicenceCertificate.pdf",
+        documentTypeName: "Licence Certificate",
+        pdfBase64: base64,
+      });
+    } catch (error) {
+      console.error("Error viewing certificate:", error);
+      setNotification({
+        isOpen: true,
+        message: "Failed to load certificate. Please try again.",
+        type: "error",
+        title: "View Failed",
+      });
+    }
   };
 
   const handleScheduleAppointment = () => {
@@ -986,35 +1214,59 @@ const ViewPositionApplication: React.FC = () => {
                           className="pmc-button pmc-button-secondary pmc-button-sm"
                           onClick={() => {
                             if (doc.fileBase64) {
-                              // Download from base64 data
-                              const byteCharacters = atob(doc.fileBase64);
-                              const byteNumbers = new Array(
-                                byteCharacters.length
-                              );
-                              for (let i = 0; i < byteCharacters.length; i++) {
-                                byteNumbers[i] = byteCharacters.charCodeAt(i);
+                              try {
+                                // Download from base64 binary data stored in database
+                                const byteCharacters = atob(doc.fileBase64);
+                                const byteNumbers = new Array(
+                                  byteCharacters.length
+                                );
+                                for (
+                                  let i = 0;
+                                  i < byteCharacters.length;
+                                  i++
+                                ) {
+                                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                }
+                                const byteArray = new Uint8Array(byteNumbers);
+                                const blob = new Blob([byteArray], {
+                                  type:
+                                    doc.contentType ||
+                                    "application/octet-stream",
+                                });
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement("a");
+                                link.href = url;
+                                link.download = doc.fileName;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                URL.revokeObjectURL(url);
+                              } catch (error) {
+                                console.error(
+                                  "Error downloading document:",
+                                  error
+                                );
+                                setNotification({
+                                  isOpen: true,
+                                  message:
+                                    "Failed to download document. Please try again.",
+                                  type: "error",
+                                  title: "Download Failed",
+                                });
                               }
-                              const byteArray = new Uint8Array(byteNumbers);
-                              const blob = new Blob([byteArray], {
-                                type:
-                                  doc.contentType || "application/octet-stream",
-                              });
-                              const url = URL.createObjectURL(blob);
-                              const link = document.createElement("a");
-                              link.href = url;
-                              link.download = doc.fileName;
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                              URL.revokeObjectURL(url);
                             } else {
-                              // Fallback to file path
-                              const link = document.createElement("a");
-                              link.href = `http://localhost:5062/${doc.filePath}`;
-                              link.download = doc.fileName;
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
+                              // No binary data available
+                              console.error(
+                                "Document binary data not available:",
+                                doc.fileName
+                              );
+                              setNotification({
+                                isOpen: true,
+                                message:
+                                  "Document data not available. Please contact support.",
+                                type: "error",
+                                title: "Download Failed",
+                              });
                             }
                           }}
                           style={{
@@ -1153,6 +1405,152 @@ const ViewPositionApplication: React.FC = () => {
                     </button>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* License Certificate - Separate Section (only after payment) */}
+        {application.isPaymentComplete && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                color: "white",
+                padding: "12px 16px",
+                borderBottom: "2px solid #059669",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "white", margin: 0 }}
+              >
+                License Certificate
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <div className="pmc-form-grid pmc-form-grid-2">
+                {loadingCertificate ? (
+                  <div
+                    style={{
+                      padding: "16px",
+                      background: "#f8fafc",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      textAlign: "center",
+                    }}
+                  >
+                    <p style={{ color: "#64748b" }}>
+                      Loading certificate status...
+                    </p>
+                  </div>
+                ) : certificateStatus?.exists ? (
+                  <div
+                    style={{
+                      padding: "16px",
+                      background: "#f0fdf4",
+                      borderRadius: "8px",
+                      border: "1px solid #86efac",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
+                    >
+                      <CheckCircle size={24} color="#10b981" />
+                      <div>
+                        <p
+                          className="pmc-value"
+                          style={{ marginBottom: "4px", color: "#059669" }}
+                        >
+                          License Certificate Generated
+                        </p>
+                        <p style={{ fontSize: "12px", color: "#64748b" }}>
+                          {certificateStatus.fileName ||
+                            "LicenceCertificate.pdf"}
+                        </p>
+                        {certificateStatus.fileSize && (
+                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            {(certificateStatus.fileSize / 1024).toFixed(2)} KB
+                          </p>
+                        )}
+                        {certificateStatus.generatedDate && (
+                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                            Generated on:{" "}
+                            {new Date(
+                              certificateStatus.generatedDate
+                            ).toLocaleDateString("en-IN")}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <button
+                        className="pmc-button pmc-button-success pmc-button-sm"
+                        onClick={handleViewCertificate}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Eye size={14} />
+                        View
+                      </button>
+                      <button
+                        className="pmc-button pmc-button-secondary pmc-button-sm"
+                        onClick={handleDownloadCertificate}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px",
+                        }}
+                      >
+                        <Download size={14} />
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      padding: "16px",
+                      background: "#fef3c7",
+                      borderRadius: "8px",
+                      border: "1px solid #fbbf24",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <Info size={24} color="#f59e0b" />
+                    <div>
+                      <p
+                        className="pmc-value"
+                        style={{ marginBottom: "4px", color: "#d97706" }}
+                      >
+                        Certificate Generation Pending
+                      </p>
+                      <p style={{ fontSize: "12px", color: "#92400e" }}>
+                        Your license certificate is being generated. This may
+                        take a few moments after payment completion.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -3584,15 +3982,18 @@ const ViewPositionApplication: React.FC = () => {
                         document.body.removeChild(link);
                         URL.revokeObjectURL(url);
                       } else {
-                        // Use API endpoint or file path
-                        const link = document.createElement("a");
-                        link.href = selectedDocument.id
-                          ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                          : `http://localhost:5062/${selectedDocument.filePath}`;
-                        link.download = selectedDocument.fileName;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
+                        // No binary data available - this should not happen as all documents are stored in database
+                        console.error(
+                          "Document binary data not available:",
+                          selectedDocument.fileName
+                        );
+                        setNotification({
+                          isOpen: true,
+                          message:
+                            "Document data not available. Please contact support.",
+                          type: "error",
+                          title: "Download Failed",
+                        });
                       }
                     }}
                     style={{
@@ -3634,37 +4035,65 @@ const ViewPositionApplication: React.FC = () => {
                 }}
               >
                 {selectedDocument.fileName.toLowerCase().endsWith(".pdf") ? (
-                  <iframe
-                    src={
-                      pdfBlobUrl ||
-                      (selectedDocument.id
-                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                        : `http://localhost:5062/${selectedDocument.filePath}`)
-                    }
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      border: "none",
-                    }}
-                    title={selectedDocument.fileName}
-                  />
+                  pdfBlobUrl ? (
+                    <iframe
+                      src={pdfBlobUrl}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        border: "none",
+                      }}
+                      title={selectedDocument.fileName}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "40px",
+                        color: "#dc2626",
+                      }}
+                    >
+                      <FileText size={64} style={{ margin: "0 auto 16px" }} />
+                      <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+                        Document data not available
+                      </p>
+                      <p style={{ fontSize: "14px", color: "#64748b" }}>
+                        The document binary data could not be loaded. Please
+                        contact support.
+                      </p>
+                    </div>
+                  )
                 ) : selectedDocument.fileName.match(
                     /\.(jpg|jpeg|png|gif|webp)$/i
                   ) ? (
-                  <img
-                    src={
-                      pdfBlobUrl ||
-                      (selectedDocument.id
-                        ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                        : `http://localhost:5062/${selectedDocument.filePath}`)
-                    }
-                    alt={selectedDocument.fileName}
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
+                  pdfBlobUrl ? (
+                    <img
+                      src={pdfBlobUrl}
+                      alt={selectedDocument.fileName}
+                      style={{
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        objectFit: "contain",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "40px",
+                        color: "#dc2626",
+                      }}
+                    >
+                      <FileText size={64} style={{ margin: "0 auto 16px" }} />
+                      <p style={{ fontSize: "16px", marginBottom: "8px" }}>
+                        Image data not available
+                      </p>
+                      <p style={{ fontSize: "14px", color: "#64748b" }}>
+                        The image binary data could not be loaded. Please
+                        contact support.
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <div
                     style={{
@@ -3678,27 +4107,8 @@ const ViewPositionApplication: React.FC = () => {
                       Preview not available for this file type
                     </p>
                     <p style={{ fontSize: "14px", marginBottom: "16px" }}>
-                      Click the download button to view the file
+                      Click the download button in the header to save the file
                     </p>
-                    <button
-                      className="pmc-button pmc-button-primary"
-                      onClick={() => {
-                        const link = document.createElement("a");
-                        link.href = selectedDocument.id
-                          ? `http://localhost:5062/api/StructuralEngineer/documents/${selectedDocument.id}/download`
-                          : `http://localhost:5062/${selectedDocument.filePath}`;
-                        link.download = selectedDocument.fileName;
-                        link.click();
-                      }}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <Download size={16} />
-                      Download File
-                    </button>
                   </div>
                 )}
               </div>

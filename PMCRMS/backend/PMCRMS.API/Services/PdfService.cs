@@ -581,6 +581,272 @@ namespace PMCRMS.API.Services
 
             return words;
         }
+
+        /// <summary>
+        /// Generate Licence Certificate PDF with Marathi content, logo, profile photo, and QR code
+        /// Based on the old SECertificateGenerationService template
+        /// </summary>
+        public async Task<byte[]> GenerateLicenceCertificatePdfAsync(int applicationId)
+        {
+            try
+            {
+                _logger.LogInformation("Generating licence certificate PDF for application {ApplicationId}", applicationId);
+
+                // Get application details
+                var application = await _context.PositionApplications
+                    .Include(a => a.Addresses)
+                    .Include(a => a.User)
+                    .FirstOrDefaultAsync(a => a.Id == applicationId);
+
+                if (application == null)
+                {
+                    throw new Exception($"Application {applicationId} not found");
+                }
+
+                // Get challan information for payment details
+                var challan = await _context.Challans
+                    .Where(c => c.ApplicationId == applicationId)
+                    .OrderByDescending(c => c.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (challan == null)
+                {
+                    throw new Exception($"Challan not found for application {applicationId}");
+                }
+
+                // Generate certificate number
+                string certificatePrefix = GetCertificatePrefix(application.PositionType);
+                int count = await _context.PositionApplications
+                    .CountAsync(a => a.ApplicationNumber != null &&
+                                a.ApplicationNumber.Contains(certificatePrefix) &&
+                                a.CreatedDate.Year == DateTime.Now.Year) + 1;
+
+                string certificateNumber = $"PMC/{certificatePrefix}/{count}/{DateTime.Now.Year}-{DateTime.Now.Year + 3}";
+
+                // Get current address
+                var currentAddress = application.Addresses.FirstOrDefault(a => a.AddressType == "Current");
+                string fullAddress = currentAddress != null
+                    ? $"{currentAddress.AddressLine1}, {currentAddress.City} {currentAddress.State} {currentAddress.PinCode}"
+                    : "";
+
+                // Get position in Marathi
+                string marathiPosition = GetMarathiPosition(application.PositionType);
+                string englishPosition = GetEnglishPosition(application.PositionType);
+
+                // Generate QR Code data
+                string qrData = $"{certificateNumber}|{application.FirstName} {application.LastName}|{DateTime.Now:dd/MM/yyyy}";
+
+                // Get applicant name
+                string applicantName = $"{application.FirstName} {(string.IsNullOrEmpty(application.MiddleName) ? "" : application.MiddleName + " ")}{application.LastName}".Trim();
+
+                // Load logo and profile photo from wwwroot/Images/Certificate
+                var logoPath = Path.Combine(_environment.WebRootPath, "Images", "Certificate", "logo.png");
+                var profilePhotoPath = Path.Combine(_environment.WebRootPath, "Images", "Certificate", "profile.png");
+
+                byte[]? logoBytes = File.Exists(logoPath) ? File.ReadAllBytes(logoPath) : null;
+                byte[]? profilePhotoBytes = File.Exists(profilePhotoPath) ? File.ReadAllBytes(profilePhotoPath) : null;
+
+                if (logoBytes == null || profilePhotoBytes == null)
+                {
+                    throw new Exception("Required images not found. Please ensure logo.png and profile.png exist in wwwroot/Images/Certificate");
+                }
+
+                DateTime fromDate = DateTime.Now;
+                int toYear = DateTime.Now.Year + 3;
+
+                // Generate PDF using QuestPDF
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4.Landscape()); // Legal size landscape for certificate
+                        page.Margin(30);
+                        page.PageColor(Colors.White);
+
+                        page.Content().Column(column =>
+                        {
+                            // Header section
+                            column.Item().Row(row =>
+                            {
+                                // Logo (Left)
+                                row.RelativeItem(1).AlignCenter().PaddingTop(10).Height(80).Width(100)
+                                    .Image(logoBytes);
+
+                                // Title (Center)
+                                row.RelativeItem(2).AlignCenter().Column(col =>
+                                {
+                                    col.Item().Text("पुणे महानगरपालिका")
+                                        .FontSize(16)
+                                        .Bold();
+
+                                    col.Item().Text($"{marathiPosition} च्या कामासाठी परवाना")
+                                        .FontSize(12);
+                                });
+
+                                // Profile Photo (Right)
+                                row.RelativeItem(1).AlignCenter().PaddingTop(10).Height(80).Width(100)
+                                    .Border(1)
+                                    .Image(profilePhotoBytes);
+                            });
+
+                            column.Item().Height(10);
+
+                            // Legal reference paragraph
+                            column.Item().Text($"महाराष्ट्र प्रादेशिक अधिनियम १९६६ चे कलम ३७ (१ कक )(ग) कलम २० (४)/ नवि-१३ दि.२/१२/२०२० अन्वये पुणे शहरासाठी मान्य झालेल्या एकत्रिकृत विकास नियंत्रण व प्रोत्साहन नियमावली (यूडीसीपीआर -२०२०) नियम क्र.अपेंडिक्स 'सी' अन्वये आणि महाराष्ट्र महानगरपालिका अधिनियम १९४९ चे कलम ३७२ अन्वये {marathiPosition} काम करण्यास परवाना देण्यात येत आहे.")
+                                .FontSize(10)
+                                .LineHeight(1.2f);
+
+                            column.Item().Height(10);
+
+                            // Certificate number and validity
+                            column.Item().Text(text =>
+                            {
+                                text.Span($"परवाना क्र. :- ").FontSize(10);
+                                text.Span($"{certificateNumber}    From {fromDate:dd/MM/yyyy} to 31/12/{toYear}    ({englishPosition})")
+                                    .Bold()
+                                    .FontSize(10);
+                            });
+
+                            column.Item().Height(10);
+
+                            // Name
+                            column.Item().Text(text =>
+                            {
+                                text.Span($"नाव :- ").FontSize(10);
+                                text.Span(applicantName).Bold().FontSize(10);
+                            });
+
+                            // Address and Date Row
+                            column.Item().Row(row =>
+                            {
+                                row.RelativeItem().Text(text =>
+                                {
+                                    text.Span("पत्ता :- ").FontSize(10);
+                                    text.Span(fullAddress).Bold().FontSize(10);
+                                });
+
+                                row.ConstantItem(150).AlignRight().Text(text =>
+                                {
+                                    text.Span("दिनांक :- ").FontSize(10);
+                                    text.Span($"{fromDate:dd/MM/yyyy}").FontSize(10);
+                                });
+                            });
+
+                            column.Item().Height(10);
+
+                            // Terms paragraph 1
+                            column.Item().Text($"महाराष्ट्र प्रादेशिक अधिनियम १९६६ चे कलम ३७ (१ कक )(ग) कलम २० (४)/ नवि-१३ दि.२/१२/२०२० अन्वये पुणे शहरासाठी मान्य झालेल्या एकत्रिकृत विकास नियंत्रण व प्रोत्साहन नियमावली (यूडीसीपीआर -२०२०) नियम क्र.अपेंडिक्स 'सी' अन्वये आणि महाराष्ट्र महानगरपालिका अधिनियम, १९४९ चे कलम ३७२ अन्वये मी तुम्हांस वर निर्देश केलेल्या कायदा व नियमानुसार ३ वर्षांकरीता दि. {fromDate:dd/MM/yyyy} ते 31/12/{toYear} अखेर {marathiPosition} म्हणून 'खालील मर्यादा व अटी यांचे पालन करणार' या अटीवर परवाना देत आहे.")
+                                .FontSize(10)
+                                .LineHeight(1.2f);
+
+                            column.Item().Height(5);
+
+                            // Terms paragraph 2
+                            column.Item().Text("'मा. महापालिका आयुक्त, यांनी वेळोवेळी स्थायी समितीच्या संमतीने वरील कायद्याचे कलम ३७३ परवानाधारण करणार यांच्या माहितीसाठी काढण्यात आलेल्या आज्ञेचे आणि विकास (बांधकाम) नियंत्रण व प्रोत्साहन नियमावलीतील अपेंडिक्स 'सी' मधील कर्तव्ये व जबाबदारी यांचे पालन करणार' ही परवानगीची अट राहील आणि धंद्याच्या प्रत्येक बाबतीत परवान्याच्या मुदतीत ज्यावेळी तुमचा सल्ला घेण्यात येईल त्यावेळी तुम्ही आतापावेतो निघालेल्या आज्ञांचे पालन करून त्याप्रमाणे काम करावयाचे आहे.")
+                                .FontSize(10)
+                                .LineHeight(1.2f);
+
+                            column.Item().Height(5);
+
+                            // Terms paragraphs 3-4
+                            column.Item().Text("जी आज्ञापत्रक वेळोवेळी काढण्यात आलेली आहेत, ती मुख्य कार्यालयाकडे माहितीसाठी ठेवण्यात आलेली असून, जरूर त्यावेळी कार्यालयाच्या वेळेमध्ये त्यांची पाहणी करता येईल.")
+                                .FontSize(10)
+                                .LineHeight(1.2f);
+
+                            column.Item().Height(5);
+
+                            column.Item().Text("मात्र हे लक्षात घेणे जरूर आहे की, मा. महापालिका आयुक्त सदरचा परवाना महाराष्ट्र महानगरपालिका अधिनियम, कलम ३८६ अनुसार जरूर तेव्हा तात्पुरता बंद अगर रद्द करू शकतात जर वर निर्दिष्ट केलेली बंधने अगर शर्थी यांचा भंग झाला अगर टाळल्या गेल्या अथवा तुम्ही सदर कायद्याच्या नियमांचे अगर वेळोवेळी काढण्यात आलेल्या आज्ञापत्रकाचे उल्लंघन केल्याचे दृष्टोपतीस आल्यास आणि जर सदरचा परवाना तात्पुरता तहकूब अगर रद्द झाल्यास अथवा सदरच्या परवान्याची मुदत संपल्यावर तुम्हास परवाना नसल्याचे समजले जाईल आणि महानगरपालिका अधिनियमाचे कलम ६९ अन्वये मा.महापालिका आयुक्त, अगर त्यांनी अधिकार दिलेल्या अधिका-यांनी सदर परवान्याची मागणी केल्यास सदरचा परवाना तुम्हास त्या त्या वेळी हजर करावा लागेल.")
+                                .FontSize(10)
+                                .LineHeight(1.2f);
+
+                            column.Item().Height(5);
+
+                            // Payment information
+                            column.Item().Text(text =>
+                            {
+                                text.Span("महाराष्ट्र शासनाने पुणे शहरासाठी मान्य केलेल्या विकास (बांधकाम) नियंत्रण व प्रोत्साहन नियमावलीनुसार परवाना शुल्क म्हणून रु. ")
+                                    .FontSize(10);
+                                text.Span(challan.Amount.ToString()).Bold().FontSize(10);
+                                text.Span(" चलन क्र. ").FontSize(10);
+                                text.Span(challan.ChallanNumber).Bold().FontSize(10);
+                                text.Span(" दि. ").FontSize(10);
+                                text.Span(challan.ChallanDate.ToString("dd/MM/yyyy")).Bold().FontSize(10);
+                                text.Span(" अन्वये भरले आहे.").FontSize(10);
+                            });
+
+                            column.Item().Height(30);
+
+                            // Signatures
+                            var engg = marathiPosition == "स्ट्रक्चरल इंजिनिअर" ? "कार्यकारी" : "उप";
+
+                            column.Item().Row(row =>
+                            {
+                                row.RelativeItem(1).AlignCenter().Text($"{engg} अभियंता, (बांधकाम विकास विभाग) पुणे महानगरपालिका")
+                                    .FontSize(10);
+
+                                row.RelativeItem(1).AlignCenter().Text("शहर अभियंता पुणे महानगरपालिका")
+                                    .FontSize(10);
+                            });
+
+                            column.Item().Height(10);
+
+                            // Note
+                            column.Item().Text($"टीप – प्रस्तुत परवान्याची मुदत ३१ डिसेंबर रोजी संपते जर पुढील वर्षासाठी त्याचे नूतनीकरण करणे असेल तर यासाठी कमीत कमी १५ दिवस परवाना मुदत संपण्या अगोदर परवाना शुल्कासहित अर्ज सादर केला पाहिजे. परवान्याचे नूतनीकरण करून घेण्याबद्दल तुम्हास वेगळी समज दली जाणार नाही जोपर्यंत परवान्याच्या नूतनीकरणासाठी परवाना शुल्कासहित अर्ज दिलेला नाही तोपर्यंत {marathiPosition} म्हणून काम करता येणार नाही. तसेच परवाना नाकारल्यासही तुम्हास {marathiPosition} म्हणून काम करता येणार नाही.")
+                                .FontSize(10)
+                                .LineHeight(1.2f);
+                        });
+                    });
+                });
+
+                var pdfBytes = document.GeneratePdf();
+                _logger.LogInformation("✅ Successfully generated licence certificate PDF for application {ApplicationId}", applicationId);
+                return pdfBytes;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error generating licence certificate PDF for application {ApplicationId}", applicationId);
+                throw;
+            }
+        }
+
+        private string GetCertificatePrefix(PositionType positionType)
+        {
+            return positionType switch
+            {
+                PositionType.Architect => "ARCH",
+                PositionType.StructuralEngineer => "STR.ENGG",
+                PositionType.LicenceEngineer => "LIC.ENGG",
+                PositionType.Supervisor1 => "SUPER1",
+                PositionType.Supervisor2 => "SUPER2",
+                _ => "ENGG"
+            };
+        }
+
+        private string GetMarathiPosition(PositionType positionType)
+        {
+            return positionType switch
+            {
+                PositionType.Architect => "आर्किटेक्ट",
+                PositionType.StructuralEngineer => "स्ट्रक्चरल इंजिनिअर",
+                PositionType.LicenceEngineer => "लायसन्स इंजिनिअर",
+                PositionType.Supervisor1 => "सुपरवायझर१",
+                PositionType.Supervisor2 => "सुपरवायझर२",
+                _ => "इंजिनिअर"
+            };
+        }
+
+        private string GetEnglishPosition(PositionType positionType)
+        {
+            return positionType switch
+            {
+                PositionType.Architect => "Architect",
+                PositionType.StructuralEngineer => "Structural Engineer",
+                PositionType.LicenceEngineer => "Licence Engineer",
+                PositionType.Supervisor1 => "Supervisor1",
+                PositionType.Supervisor2 => "Supervisor2",
+                _ => "Engineer"
+            };
+        }
     }
 
     public class ApplicationPdfDocument : IDocument

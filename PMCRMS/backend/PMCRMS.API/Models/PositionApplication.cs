@@ -42,7 +42,8 @@ namespace PMCRMS.API.Models
         COACertificate = 10,
         AdditionalDocument = 11,
         RecommendedForm = 12,
-        PaymentChallan = 13
+        PaymentChallan = 13,
+        LicenceCertificate = 14
     }
 
     public class PositionApplication : BaseEntity

@@ -18,6 +18,7 @@ namespace PMCRMS.API.Services
         private readonly IBillDeskPaymentService _billDeskPaymentService;
         private readonly IWorkflowNotificationService _workflowNotificationService;
         private readonly IWorkflowProgressionService _workflowProgressionService;
+        private readonly ISECertificateGenerationService _certificateGenerationService;
 
         public PaymentService(
             PMCRMSDbContext context,
@@ -25,7 +26,8 @@ namespace PMCRMS.API.Services
             IHttpClientFactory httpClientFactory,
             IBillDeskPaymentService billDeskPaymentService,
             IWorkflowNotificationService workflowNotificationService,
-            IWorkflowProgressionService workflowProgressionService)
+            IWorkflowProgressionService workflowProgressionService,
+            ISECertificateGenerationService certificateGenerationService)
         {
             _context = context;
             _logger = logger;
@@ -33,6 +35,7 @@ namespace PMCRMS.API.Services
             _billDeskPaymentService = billDeskPaymentService;
             _workflowNotificationService = workflowNotificationService;
             _workflowProgressionService = workflowProgressionService;
+            _certificateGenerationService = certificateGenerationService;
         }
 
         /// <summary>
@@ -189,6 +192,32 @@ namespace PMCRMS.API.Services
                 {
                     _logger.LogWarning($"[PaymentService] Application {request.ApplicationId} payment complete but Clerk assignment failed - may need manual assignment");
                 }
+
+                // Generate Licence Certificate after successful payment (async, non-blocking)
+                // This runs in background with retry logic - failure won't block payment success flow
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        _logger.LogInformation($"[PaymentService] Starting licence certificate generation for application: {request.ApplicationId}");
+                        
+                        var certificateGenerated = await _certificateGenerationService.GenerateAndSaveLicenceCertificateAsync(request.ApplicationId);
+                        
+                        if (certificateGenerated)
+                        {
+                            _logger.LogInformation($"[PaymentService] ✅ Licence certificate successfully generated for application: {request.ApplicationId}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"[PaymentService] ⚠️ Licence certificate generation failed for application: {request.ApplicationId}");
+                        }
+                    }
+                    catch (Exception certEx)
+                    {
+                        _logger.LogError(certEx, $"[PaymentService] ❌ Error during licence certificate generation for application: {request.ApplicationId}");
+                        // Don't throw - certificate generation failure shouldn't affect payment success
+                    }
+                });
 
                 return new PaymentSuccessResponse
                 {

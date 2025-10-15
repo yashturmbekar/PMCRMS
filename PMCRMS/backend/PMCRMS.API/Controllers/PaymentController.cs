@@ -24,6 +24,8 @@ namespace PMCRMS.API.Controllers
         private readonly IChallanService _challanService;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
+        private readonly ISECertificateGenerationService _certificateGenerationService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly string _baseUrl;
 
         public PaymentController(
@@ -33,7 +35,9 @@ namespace PMCRMS.API.Controllers
             PMCRMSDbContext context,
             IChallanService challanService,
             IEmailService emailService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ISECertificateGenerationService certificateGenerationService,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _paymentService = paymentService;
             _billDeskPaymentService = billDeskPaymentService;
@@ -42,6 +46,8 @@ namespace PMCRMS.API.Controllers
             _challanService = challanService;
             _emailService = emailService;
             _configuration = configuration;
+            _certificateGenerationService = certificateGenerationService;
+            _serviceScopeFactory = serviceScopeFactory;
             _baseUrl = _configuration["AppSettings:BaseUrl"] ?? "http://localhost:5173";
         }
 
@@ -194,7 +200,37 @@ namespace PMCRMS.API.Controllers
 
                 _logger.LogInformation($"[PaymentController] Mock payment completed successfully");
 
-                // 7. Send email notification
+                // 7. Generate Licence Certificate (background task with retry logic)
+                // Create new scope to avoid DbContext disposal issues
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        _logger.LogInformation($"[PaymentController] Starting licence certificate generation for application: {request.ApplicationId}");
+                        
+                        // Create a new scope to get a fresh DbContext
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var certificateService = scope.ServiceProvider.GetRequiredService<ISECertificateGenerationService>();
+                        
+                        var certificateGenerated = await certificateService.GenerateAndSaveLicenceCertificateAsync(request.ApplicationId);
+                        
+                        if (certificateGenerated)
+                        {
+                            _logger.LogInformation($"[PaymentController] ✅ Licence certificate successfully generated for application: {request.ApplicationId}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"[PaymentController] ⚠️ Licence certificate generation failed for application: {request.ApplicationId}");
+                        }
+                    }
+                    catch (Exception certEx)
+                    {
+                        _logger.LogError(certEx, $"[PaymentController] ❌ Error during licence certificate generation for application: {request.ApplicationId}");
+                        // Don't throw - certificate generation failure shouldn't affect payment success
+                    }
+                });
+
+                // 8. Send email notification
                 try
                 {
                     var emailBody = $@"
@@ -385,7 +421,7 @@ namespace PMCRMS.API.Controllers
                     _logger.LogError(emailEx, "[PaymentController] Error sending email");
                 }
 
-                // 8. Return response (same structure as BillDesk but payment already complete)
+                // 9. Return response (same structure as BillDesk but payment already complete)
                 return Ok(new
                 {
                     success = true,

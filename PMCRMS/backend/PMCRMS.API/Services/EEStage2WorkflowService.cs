@@ -63,7 +63,7 @@ namespace PMCRMS.API.Services
                         ApplicationNumber = a.ApplicationNumber ?? "",
                         ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
                         ApplicantEmail = a.EmailAddress,
-                        ApplicationType = a.PositionType.ToString(),
+                        PositionType = a.PositionType.ToString(),
                         PropertyAddress = addressText,
                         PaymentAmount = challans.TryGetValue(a.Id, out var amount) ? amount : null,
                         ProcessedByClerkDate = a.ClerkApprovalDate ?? a.UpdatedDate ?? a.CreatedDate,
@@ -116,7 +116,7 @@ namespace PMCRMS.API.Services
                     ApplicationNumber = application.ApplicationNumber ?? "",
                     ApplicantName = $"{application.FirstName} {(string.IsNullOrEmpty(application.MiddleName) ? "" : application.MiddleName + " ")}{application.LastName}".Trim(),
                     ApplicantEmail = application.EmailAddress,
-                    ApplicationType = application.PositionType.ToString(),
+                    PositionType = application.PositionType.ToString(),
                     PropertyAddress = addressText,
                     CurrentStatus = application.Status.ToString(),
                     PaymentAmount = challan?.Amount,
@@ -369,7 +369,7 @@ namespace PMCRMS.API.Services
                         ApplicationNumber = a.ApplicationNumber ?? "",
                         ApplicantName = $"{a.FirstName} {(string.IsNullOrEmpty(a.MiddleName) ? "" : a.MiddleName + " ")}{a.LastName}".Trim(),
                         ApplicantEmail = a.EmailAddress,
-                        ApplicationType = a.PositionType.ToString(),
+                        PositionType = a.PositionType.ToString(),
                         PropertyAddress = addressText,
                         PaymentAmount = challans.TryGetValue(a.Id, out var amount) ? amount : null,
                         ProcessedByClerkDate = a.ClerkApprovalDate ?? a.UpdatedDate ?? a.CreatedDate,
@@ -402,7 +402,7 @@ namespace PMCRMS.API.Services
         public string ApplicationNumber { get; set; } = string.Empty;
         public string ApplicantName { get; set; } = string.Empty;
         public string ApplicantEmail { get; set; } = string.Empty;
-        public string ApplicationType { get; set; } = string.Empty;
+        public string PositionType { get; set; } = string.Empty; // Changed from ApplicationType to match frontend
         public string PropertyAddress { get; set; } = string.Empty;
         public decimal? PaymentAmount { get; set; }
         public DateTime ProcessedByClerkDate { get; set; }
