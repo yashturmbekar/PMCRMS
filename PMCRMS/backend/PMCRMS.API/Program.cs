@@ -346,6 +346,16 @@ app.MapGet("/api/info", () => Results.Ok(new
    .WithTags("Info")
    .AllowAnonymous();
 
+// Register custom fonts for Marathi PDF support
+using (var scope = app.Services.CreateScope())
+{
+    var environment = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    Log.Information("Registering custom fonts for PDF generation...");
+    FontService.RegisterFonts(environment, logger);
+}
+
 // Database migration and seeding
 using (var scope = app.Services.CreateScope())
 {

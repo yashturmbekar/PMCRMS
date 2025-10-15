@@ -297,14 +297,14 @@ namespace PMCRMS.API.Services
             // Header
             column.Item().AlignCenter().Text(text =>
             {
-                text.Span("PUNE MUNICIPAL CORPORATION").FontFamily("Arial").FontSize(12).Bold();
+                text.Span("PUNE MUNICIPAL CORPORATION").FontFamily(FontService.EnglishFontFamily).FontSize(12).Bold();
             });
 
             if (includeMarathi)
             {
                 column.Item().AlignCenter().Text(text =>
                 {
-                    text.Span("पुणे महानगरपालिका").FontFamily("Nirmala UI").FontSize(12).Bold();
+                    text.Span("पुणे महानगरपालिका").FontFamily(FontService.MarathiFontFamily).FontSize(12).Bold();
                 });
             }
 
@@ -313,14 +313,14 @@ namespace PMCRMS.API.Services
             // Challan Title
             column.Item().AlignCenter().Text(text =>
             {
-                text.Span("CHALLAN RECEIPT").FontFamily("Arial").FontSize(10).Bold();
+                text.Span("CHALLAN RECEIPT").FontFamily(FontService.EnglishFontFamily).FontSize(10).Bold();
             });
 
             if (includeMarathi)
             {
                 column.Item().AlignCenter().Text(text =>
                 {
-                    text.Span("चलन पावती").FontFamily("Nirmala UI").FontSize(10).Bold();
+                    text.Span("चलन पावती").FontFamily(FontService.MarathiFontFamily).FontSize(10).Bold();
                 });
             }
 
@@ -329,19 +329,19 @@ namespace PMCRMS.API.Services
             // Challan Number
             column.Item().PaddingVertical(3).Text(text =>
             {
-                text.Span("Challan No. / ").FontFamily("Arial").FontSize(9);
+                text.Span("Challan No. / ").FontFamily(FontService.EnglishFontFamily).FontSize(9);
                 if (includeMarathi)
-                    text.Span("चलन क्र.: ").FontFamily("Nirmala UI").FontSize(9);
-                text.Span(challanNumber).FontFamily("Arial").FontSize(9).Bold();
+                    text.Span("चलन क्र.: ").FontFamily(FontService.MarathiFontFamily).FontSize(9);
+                text.Span(challanNumber).FontFamily(FontService.EnglishFontFamily).FontSize(9).Bold();
             });
 
             // Date
             column.Item().PaddingVertical(3).Text(text =>
             {
-                text.Span("Date / ").FontFamily("Arial").FontSize(9);
+                text.Span("Date / ").FontFamily(FontService.EnglishFontFamily).FontSize(9);
                 if (includeMarathi)
-                    text.Span("दिनांक: ").FontFamily("Nirmala UI").FontSize(9);
-                text.Span(request.Date.ToString("dd/MM/yyyy")).FontFamily("Arial").FontSize(9).Bold();
+                    text.Span("दिनांक: ").FontFamily(FontService.MarathiFontFamily).FontSize(9);
+                text.Span(request.Date.ToString("dd/MM/yyyy")).FontFamily(FontService.EnglishFontFamily).FontSize(9).Bold();
             });
 
             column.Item().PaddingVertical(2).LineHorizontal(1);
@@ -349,19 +349,19 @@ namespace PMCRMS.API.Services
             // Name
             column.Item().PaddingVertical(3).Text(text =>
             {
-                text.Span("Name / ").FontFamily("Arial").FontSize(9);
+                text.Span("Name / ").FontFamily(FontService.EnglishFontFamily).FontSize(9);
                 if (includeMarathi)
-                    text.Span("नाव: ").FontFamily("Nirmala UI").FontSize(9);
-                text.Span(request.Name).FontFamily("Arial").FontSize(9);
+                    text.Span("नाव: ").FontFamily(FontService.MarathiFontFamily).FontSize(9);
+                text.Span(request.Name).FontFamily(FontService.EnglishFontFamily).FontSize(9);
             });
 
             // Position
             column.Item().PaddingVertical(3).Text(text =>
             {
-                text.Span("Position / ").FontFamily("Arial").FontSize(9);
+                text.Span("Position / ").FontFamily(FontService.EnglishFontFamily).FontSize(9);
                 if (includeMarathi)
-                    text.Span("पद: ").FontFamily("Nirmala UI").FontSize(9);
-                text.Span(request.Position).FontFamily("Arial").FontSize(9);
+                    text.Span("पद: ").FontFamily(FontService.MarathiFontFamily).FontSize(9);
+                text.Span(request.Position).FontFamily(FontService.EnglishFontFamily).FontSize(9);
             });
 
             column.Item().PaddingVertical(2).LineHorizontal(1);
@@ -369,19 +369,19 @@ namespace PMCRMS.API.Services
             // Amount
             column.Item().PaddingVertical(3).Text(text =>
             {
-                text.Span("Amount / ").FontFamily("Arial").FontSize(9);
+                text.Span("Amount / ").FontFamily(FontService.EnglishFontFamily).FontSize(9);
                 if (includeMarathi)
-                    text.Span("रक्कम: ").FontFamily("Nirmala UI").FontSize(9);
-                text.Span($"₹ {request.Amount:N2}").FontFamily("Arial").FontSize(9).Bold();
+                    text.Span("रक्कम: ").FontFamily(FontService.MarathiFontFamily).FontSize(9);
+                text.Span($"₹ {request.Amount:N2}").FontFamily(FontService.EnglishFontFamily).FontSize(9).Bold();
             });
 
             // Amount in Words
             column.Item().PaddingVertical(3).Text(text =>
             {
-                text.Span("In Words / ").FontFamily("Arial").FontSize(9);
+                text.Span("In Words / ").FontFamily(FontService.EnglishFontFamily).FontSize(9);
                 if (includeMarathi)
-                    text.Span("शब्दांत: ").FontFamily("Nirmala UI").FontSize(9);
-                text.Span(request.AmountInWords).FontFamily("Arial").FontSize(9).Italic();
+                    text.Span("शब्दांत: ").FontFamily(FontService.MarathiFontFamily).FontSize(9);
+                text.Span(request.AmountInWords).FontFamily(FontService.EnglishFontFamily).FontSize(9).Italic();
             });
 
             column.Item().PaddingVertical(5).LineHorizontal(1);
@@ -389,14 +389,14 @@ namespace PMCRMS.API.Services
             // Footer
             column.Item().AlignCenter().PaddingTop(10).Text(text =>
             {
-                text.Span("*** Official Challan ***").FontFamily("Arial").FontSize(8).Italic();
+                text.Span("*** Official Challan ***").FontFamily(FontService.EnglishFontFamily).FontSize(8).Italic();
             });
 
             if (includeMarathi)
             {
                 column.Item().AlignCenter().Text(text =>
                 {
-                    text.Span("*** अधिकृत चलन ***").FontFamily("Nirmala UI").FontSize(8).Italic();
+                    text.Span("*** अधिकृत चलन ***").FontFamily(FontService.MarathiFontFamily).FontSize(8).Italic();
                 });
             }
         }

@@ -18,6 +18,15 @@ RUN dotnet publish "./PMCRMS.API/PMCRMS.API.csproj" -c Release -o /app/publish /
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 
+# Install fontconfig and Devanagari fonts for PDF generation
+RUN apt-get update && apt-get install -y \
+    fontconfig \
+    fonts-noto-core \
+    fonts-noto-ui-core \
+    fonts-indic \
+    && fc-cache -f -v \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create directories for logs and uploads
 RUN mkdir -p /app/logs /app/uploads
 

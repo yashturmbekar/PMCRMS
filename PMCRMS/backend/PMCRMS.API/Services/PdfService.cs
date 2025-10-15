@@ -28,19 +28,9 @@ namespace PMCRMS.API.Services
         {
             if (_fontsRegistered) return;
 
-            try
-            {
-                // Using system fonts available on Windows
-                // Nirmala UI: Excellent Devanagari support
-                // Segoe UI: Standard Windows UI font
-                // These fonts are available on Windows 10+ by default
-                _fontsRegistered = true;
-            }
-            catch (Exception ex)
-            {
-                // Log the exception but don't fail the service initialization
-                Console.WriteLine($"Failed to register fonts: {ex.Message}");
-            }
+            // Font registration is now handled by FontService in Program.cs startup
+            // This ensures fonts are registered once globally for all PDF services
+            _fontsRegistered = true;
         }
 
         public async Task<PdfGenerationResponse> GenerateApplicationPdfAsync(int applicationId)
@@ -853,11 +843,9 @@ namespace PMCRMS.API.Services
     {
         private readonly ApplicationPdfModel _model;
 
-        // Font names - use available system fonts that support Unicode characters
-        // Nirmala UI: Excellent Devanagari support (Windows 8+)
-        // Fallbacks: Microsoft Sans Serif, Arial, Tahoma
-        private const string MarathiFont = "Nirmala UI";
-        private const string EnglishFont = "Segoe UI";
+        // Use FontService for consistent font naming across the application
+        private static string MarathiFont => FontService.MarathiFontFamily;
+        private static string EnglishFont => FontService.EnglishFontFamily;
 
         public ApplicationPdfDocument(ApplicationPdfModel model)
         {
