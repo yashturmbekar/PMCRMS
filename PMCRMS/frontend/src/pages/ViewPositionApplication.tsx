@@ -35,6 +35,7 @@ import PaymentStatusModal from "../components/PaymentStatusModal";
 import DateTimePicker from "../components/DateTimePicker";
 import ModalLoader from "../components/ModalLoader";
 import { getApiUrl, getToken } from "../services/apiClient";
+import { parseLocalDateTime } from "../utils/dateUtils";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -2200,7 +2201,7 @@ const ViewPositionApplication: React.FC = () => {
                       className="pmc-value"
                       style={{ fontWeight: 600, color: "#1e40af" }}
                     >
-                      {new Date(
+                      {parseLocalDateTime(
                         application.workflowInfo.appointmentDate
                       ).toLocaleString("en-IN", {
                         dateStyle: "full",

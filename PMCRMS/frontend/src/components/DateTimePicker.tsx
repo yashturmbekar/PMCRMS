@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { parseLocalDateTime } from "../utils/dateUtils";
 
 interface DateTimePickerProps {
   value: string;
@@ -18,10 +19,10 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(
-    value ? new Date(value) : new Date()
+    value ? parseLocalDateTime(value) : new Date()
   );
   const [currentMonth, setCurrentMonth] = useState(
-    value ? new Date(value) : new Date()
+    value ? parseLocalDateTime(value) : new Date()
   );
   const [validationError, setValidationError] = useState<string>("");
   // Convert 24-hour to 12-hour format for display
@@ -33,15 +34,15 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   const [hours, setHours] = useState(
     value
-      ? getDisplayHour(new Date(value).getHours())
+      ? getDisplayHour(parseLocalDateTime(value).getHours())
       : getDisplayHour(new Date().getHours())
   );
   const [minutes, setMinutes] = useState(
-    value ? new Date(value).getMinutes() : new Date().getMinutes()
+    value ? parseLocalDateTime(value).getMinutes() : new Date().getMinutes()
   );
   const [period, setPeriod] = useState<"AM" | "PM">(
     value
-      ? new Date(value).getHours() >= 12
+      ? parseLocalDateTime(value).getHours() >= 12
         ? "PM"
         : "AM"
       : new Date().getHours() >= 12
@@ -51,7 +52,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   useEffect(() => {
     if (value) {
-      const date = new Date(value);
+      const date = parseLocalDateTime(value);
       setSelectedDate(date);
       setCurrentMonth(date);
       const hour24 = date.getHours();
@@ -86,7 +87,30 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   const formatDisplayValue = () => {
     if (!value) return "";
-    const date = new Date(value);
+
+    // Parse the date string without timezone conversion
+    // Handle both ISO format (YYYY-MM-DDTHH:mm:ss) and (YYYY-MM-DDTHH:mm)
+    let date: Date;
+
+    if (value.includes("T")) {
+      // Parse as local datetime without timezone conversion
+      const parts = value.split("T");
+      const dateParts = parts[0].split("-");
+      const timeParts = parts[1].split(":");
+
+      date = new Date(
+        parseInt(dateParts[0]), // year
+        parseInt(dateParts[1]) - 1, // month (0-indexed)
+        parseInt(dateParts[2]), // day
+        parseInt(timeParts[0]), // hours
+        parseInt(timeParts[1]), // minutes
+        parseInt(timeParts[2] || "0") // seconds
+      );
+    } else {
+      // Fallback to standard parsing
+      date = new Date(value);
+    }
+
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
@@ -145,14 +169,17 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
     // Clear any previous validation errors
     setValidationError("");
 
-    // Format to datetime-local format (YYYY-MM-DDTHH:mm)
+    // Format to ISO string without timezone conversion
+    // This ensures the exact date/time selected is sent to the backend
     const year = finalDate.getFullYear();
     const month = String(finalDate.getMonth() + 1).padStart(2, "0");
     const day = String(finalDate.getDate()).padStart(2, "0");
-    const hrs = String(finalDate.getHours()).padStart(2, "0");
-    const mins = String(finalDate.getMinutes()).padStart(2, "0");
+    const hrs = String(hour24).padStart(2, "0");
+    const mins = String(minutes).padStart(2, "0");
 
-    onChange(`${year}-${month}-${day}T${hrs}:${mins}`);
+    // Send in ISO 8601 format with local timezone indicator
+    // Format: YYYY-MM-DDTHH:mm:ss (no timezone, treated as local time by backend)
+    onChange(`${year}-${month}-${day}T${hrs}:${mins}:00`);
     setShowPicker(false);
   };
 
@@ -343,7 +370,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                 "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
               border: "1px solid #e5e7eb",
               overflow: "visible",
-              width: "320px",
+              width: "580px",
               animation: "slideDown 0.2s ease-out",
             }}
           >
@@ -425,49 +452,61 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
               </div>
             </div>
 
-            {/* Calendar Body */}
-            <div style={{ padding: "12px 16px" }}>
-              {/* Day Labels */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(7, 1fr)",
-                  marginBottom: "6px",
-                }}
-              >
-                {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                  <div
-                    key={day}
-                    style={{
-                      padding: "6px",
-                      textAlign: "center",
-                      fontSize: "11px",
-                      fontWeight: "600",
-                      color: "#6b7280",
-                    }}
-                  >
-                    {day}
-                  </div>
-                ))}
+            {/* Main Content Container - Side by Side Layout */}
+            <div style={{ display: "flex", padding: "12px 16px" }}>
+              {/* Calendar Body - Left Side */}
+              <div style={{ flex: "1", paddingRight: "16px" }}>
+                {/* Day Labels */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    marginBottom: "6px",
+                  }}
+                >
+                  {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
+                    <div
+                      key={day}
+                      style={{
+                        padding: "6px",
+                        textAlign: "center",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                        color: "#6b7280",
+                      }}
+                    >
+                      {day}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar Grid */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: "2px",
+                  }}
+                >
+                  {renderCalendar()}
+                </div>
               </div>
 
-              {/* Calendar Grid */}
+              {/* Divider */}
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(7, 1fr)",
-                  gap: "2px",
+                  width: "1px",
+                  backgroundColor: "#e5e7eb",
+                  marginRight: "16px",
                 }}
-              >
-                {renderCalendar()}
-              </div>
+              />
 
-              {/* Time Picker */}
+              {/* Time Picker - Right Side */}
               <div
                 style={{
-                  marginTop: "16px",
-                  paddingTop: "16px",
-                  borderTop: "1px solid #e5e7eb",
+                  width: "180px",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
                 <div
@@ -475,7 +514,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
-                    marginBottom: "10px",
+                    marginBottom: "16px",
                   }}
                 >
                   <Clock size={14} style={{ color: "#10b981" }} />
@@ -525,250 +564,230 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
                   </div>
                 )}
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  }}
-                >
-                  {/* Hours */}
-                  <div style={{ flex: 1 }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "10px",
-                        color: "#6b7280",
-                        marginBottom: "4px",
-                        fontWeight: "500",
-                      }}
-                    >
-                      Hour
-                    </label>
-                    <select
-                      value={hours}
-                      onChange={(e) => handleHourChange(Number(e.target.value))}
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        width: "100%",
-                        padding: "8px 10px",
-                        border: "1.5px solid #d1d5db",
-                        borderRadius: "6px",
-                        fontSize: "13px",
-                        cursor: "pointer",
-                        outline: "none",
-                        backgroundColor: "white",
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = "#10b981";
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = "#d1d5db";
-                      }}
-                    >
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const hour = i + 1; // 1 to 12
-                        return (
-                          <option key={hour} value={hour}>
-                            {String(hour).padStart(2, "0")}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-
-                  <div
+                {/* Hours */}
+                <div style={{ marginBottom: "12px" }}>
+                  <label
                     style={{
-                      fontSize: "18px",
-                      fontWeight: "600",
+                      display: "block",
+                      fontSize: "10px",
                       color: "#6b7280",
-                      paddingTop: "14px",
+                      marginBottom: "4px",
+                      fontWeight: "500",
                     }}
                   >
-                    :
-                  </div>
+                    Hour
+                  </label>
+                  <select
+                    value={hours}
+                    onChange={(e) => handleHourChange(Number(e.target.value))}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      outline: "none",
+                      backgroundColor: "white",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                    }}
+                  >
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const hour = i + 1; // 1 to 12
+                      return (
+                        <option key={hour} value={hour}>
+                          {String(hour).padStart(2, "0")}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
 
-                  {/* Minutes */}
-                  <div style={{ flex: 1 }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: "10px",
-                        color: "#6b7280",
-                        marginBottom: "4px",
-                        fontWeight: "500",
+                {/* Minutes */}
+                <div style={{ marginBottom: "12px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "10px",
+                      color: "#6b7280",
+                      marginBottom: "4px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Minute
+                  </label>
+                  <select
+                    value={minutes}
+                    onChange={(e) => handleMinuteChange(Number(e.target.value))}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      width: "100%",
+                      padding: "8px 10px",
+                      border: "1.5px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      outline: "none",
+                      backgroundColor: "white",
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#10b981";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#d1d5db";
+                    }}
+                  >
+                    {Array.from({ length: 60 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {String(i).padStart(2, "0")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Period */}
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "10px",
+                      color: "#6b7280",
+                      marginBottom: "4px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Period
+                  </label>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPeriod("AM");
+                        setValidationError("");
                       }}
-                    >
-                      Minute
-                    </label>
-                    <select
-                      value={minutes}
-                      onChange={(e) =>
-                        handleMinuteChange(Number(e.target.value))
-                      }
-                      onClick={(e) => e.stopPropagation()}
                       style={{
-                        width: "100%",
-                        padding: "8px 10px",
+                        flex: 1,
+                        padding: "10px",
                         border: "1.5px solid #d1d5db",
                         borderRadius: "6px",
                         fontSize: "13px",
+                        fontWeight: "600",
                         cursor: "pointer",
-                        outline: "none",
-                        backgroundColor: "white",
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = "#10b981";
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = "#d1d5db";
+                        backgroundColor: period === "AM" ? "#10b981" : "white",
+                        color: period === "AM" ? "white" : "#374151",
+                        transition: "all 0.2s",
                       }}
                     >
-                      {Array.from({ length: 60 }, (_, i) => (
-                        <option key={i} value={i}>
-                          {String(i).padStart(2, "0")}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ flex: 1 }}>
-                    <label
+                      AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPeriod("PM");
+                        setValidationError("");
+                      }}
                       style={{
-                        display: "block",
-                        fontSize: "10px",
-                        color: "#6b7280",
-                        marginBottom: "4px",
-                        fontWeight: "500",
+                        flex: 1,
+                        padding: "10px",
+                        border: "1.5px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        backgroundColor: period === "PM" ? "#10b981" : "white",
+                        color: period === "PM" ? "white" : "#374151",
+                        transition: "all 0.2s",
                       }}
                     >
-                      Period
-                    </label>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "4px",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPeriod("AM");
-                          setValidationError("");
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "8px",
-                          border: "1.5px solid #d1d5db",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                          backgroundColor:
-                            period === "AM" ? "#10b981" : "white",
-                          color: period === "AM" ? "white" : "#374151",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        AM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPeriod("PM");
-                          setValidationError("");
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "8px",
-                          border: "1.5px solid #d1d5db",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          cursor: "pointer",
-                          backgroundColor:
-                            period === "PM" ? "#10b981" : "white",
-                          color: period === "PM" ? "white" : "#374151",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        PM
-                      </button>
-                    </div>
+                      PM
+                    </button>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div
+            {/* Action Buttons */}
+            <div
+              style={{
+                padding: "0 16px 16px 16px",
+                display: "flex",
+                gap: "8px",
+                justifyContent: "flex-end",
+                borderTop: "1px solid #e5e7eb",
+                paddingTop: "16px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPicker(false);
+                }}
                 style={{
-                  marginTop: "16px",
-                  display: "flex",
-                  gap: "8px",
-                  justifyContent: "flex-end",
+                  padding: "8px 16px",
+                  border: "1.5px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  backgroundColor: "white",
+                  color: "#374151",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "white";
                 }}
               >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPicker(false);
-                  }}
-                  style={{
-                    padding: "8px 16px",
-                    border: "1.5px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    backgroundColor: "white",
-                    color: "#374151",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f3f4f6";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "white";
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleApply();
-                  }}
-                  style={{
-                    padding: "8px 20px",
-                    border: "none",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    background:
-                      "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                    color: "white",
-                    transition: "all 0.2s",
-                    boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow =
-                      "0 4px 8px rgba(16, 185, 129, 0.3)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow =
-                      "0 2px 4px rgba(16, 185, 129, 0.2)";
-                  }}
-                >
-                  Apply
-                </button>
-              </div>
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleApply();
+                }}
+                style={{
+                  padding: "8px 20px",
+                  border: "none",
+                  borderRadius: "6px",
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  cursor: "pointer",
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  color: "white",
+                  transition: "all 0.2s",
+                  boxShadow: "0 2px 4px rgba(16, 185, 129, 0.2)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 8px rgba(16, 185, 129, 0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 4px rgba(16, 185, 129, 0.2)";
+                }}
+              >
+                Apply
+              </button>
             </div>
           </div>
 
