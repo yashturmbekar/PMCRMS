@@ -1338,13 +1338,13 @@ const OfficerDashboard: React.FC = () => {
               left: 0,
               right: 0,
               bottom: 0,
-              background: "rgba(0, 0, 0, 0.5)",
+              background: "rgba(0, 0, 0, 0.6)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               zIndex: 1000,
               padding: "20px",
-              overflow: "auto",
+              backdropFilter: "blur(4px)",
             }}
           >
             <div
@@ -1352,81 +1352,87 @@ const OfficerDashboard: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               style={{
                 background: "white",
-                borderRadius: "8px",
-                maxWidth: "600px",
+                borderRadius: "12px",
+                maxWidth: "900px",
                 width: "100%",
                 boxShadow:
-                  "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+                  "0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)",
                 position: "relative",
-                maxHeight: "95vh",
+                maxHeight: "90vh",
                 display: "flex",
                 flexDirection: "column",
               }}
             >
+              {/* Header */}
               <div
                 className="pmc-modal-header"
                 style={{
-                  padding: "16px 20px",
+                  padding: "20px 24px",
                   borderBottom: "1px solid #e5e7eb",
                   background:
                     "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  borderRadius: "12px 12px 0 0",
                   flexShrink: 0,
                 }}
               >
                 <h3
                   style={{
                     color: "white",
-                    marginBottom: "2px",
-                    fontSize: "18px",
-                    fontWeight: "600",
+                    marginBottom: "4px",
+                    fontSize: "20px",
+                    fontWeight: "700",
+                    letterSpacing: "-0.01em",
                   }}
                 >
                   Schedule Appointment
                 </h3>
                 <p
                   style={{
-                    color: "rgba(255,255,255,0.9)",
-                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.95)",
+                    fontSize: "14px",
                     margin: 0,
+                    fontWeight: "500",
                   }}
                 >
                   Application: {selectedApplication.applicationNumber}
                 </p>
               </div>
 
+              {/* Error Message */}
               {scheduleError && (
                 <div
                   style={{
-                    margin: "16px 20px 0",
-                    padding: "12px 16px",
-                    background:
-                      "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-                    border: "1.5px solid #ef4444",
-                    borderRadius: "6px",
+                    margin: "20px 24px 0",
+                    padding: "14px 16px",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: "8px",
                     color: "#991b1b",
-                    fontSize: "13px",
+                    fontSize: "14px",
                     fontWeight: "500",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "10px",
                   }}
                 >
-                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  <span style={{ fontSize: "18px" }}>⚠️</span>
                   {scheduleError}
                 </div>
               )}
 
+              {/* Modal Body - No Scroll */}
               <div
                 className="pmc-modal-body"
                 style={{
-                  padding: "20px",
-                  overflowY: "auto",
+                  padding: "24px",
                   flexGrow: 1,
+                  overflow: "visible",
                 }}
               >
-                <div style={{ marginBottom: "16px" }}>
+                {/* Date/Time Picker */}
+                <div style={{ marginBottom: "20px" }}>
                   <DateTimePicker
-                    label="Review Date"
+                    label="Select Date & Time"
                     value={scheduleForm.reviewDate}
                     onChange={(value) =>
                       setScheduleForm({
@@ -1439,12 +1445,13 @@ const OfficerDashboard: React.FC = () => {
                   />
                 </div>
 
+                {/* Form Fields Grid */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
-                    marginBottom: "16px",
+                    gap: "16px",
+                    marginBottom: "20px",
                   }}
                 >
                   <div>
@@ -1452,9 +1459,9 @@ const OfficerDashboard: React.FC = () => {
                       className="pmc-label"
                       style={{
                         display: "block",
-                        marginBottom: "6px",
-                        fontWeight: 500,
-                        fontSize: "13px",
+                        marginBottom: "8px",
+                        fontWeight: 600,
+                        fontSize: "14px",
                         color: "#374151",
                       }}
                     >
@@ -1462,7 +1469,7 @@ const OfficerDashboard: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      placeholder="Contact Person"
+                      placeholder="Enter contact person name"
                       value={scheduleForm.contactPerson}
                       onChange={(e) =>
                         setScheduleForm({
@@ -1472,9 +1479,9 @@ const OfficerDashboard: React.FC = () => {
                       }
                       style={{
                         width: "100%",
-                        padding: "10px 12px",
+                        padding: "12px 14px",
                         border: "1.5px solid #d1d5db",
-                        borderRadius: "6px",
+                        borderRadius: "8px",
                         fontSize: "14px",
                         outline: "none",
                         transition: "all 0.2s",
@@ -1496,9 +1503,9 @@ const OfficerDashboard: React.FC = () => {
                       className="pmc-label"
                       style={{
                         display: "block",
-                        marginBottom: "6px",
-                        fontWeight: 500,
-                        fontSize: "13px",
+                        marginBottom: "8px",
+                        fontWeight: 600,
+                        fontSize: "14px",
                         color: "#374151",
                       }}
                     >
@@ -1506,7 +1513,7 @@ const OfficerDashboard: React.FC = () => {
                     </label>
                     <input
                       type="text"
-                      placeholder="Room Number"
+                      placeholder="Enter room number"
                       value={scheduleForm.roomNumber}
                       onChange={(e) =>
                         setScheduleForm({
@@ -1516,9 +1523,9 @@ const OfficerDashboard: React.FC = () => {
                       }
                       style={{
                         width: "100%",
-                        padding: "10px 12px",
+                        padding: "12px 14px",
                         border: "1.5px solid #d1d5db",
-                        borderRadius: "6px",
+                        borderRadius: "8px",
                         fontSize: "14px",
                         outline: "none",
                         transition: "all 0.2s",
@@ -1536,14 +1543,14 @@ const OfficerDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: "16px" }}>
+                <div style={{ marginBottom: "20px" }}>
                   <label
                     className="pmc-label"
                     style={{
                       display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
+                      marginBottom: "8px",
+                      fontWeight: 600,
+                      fontSize: "14px",
                       color: "#374151",
                     }}
                   >
@@ -1551,7 +1558,7 @@ const OfficerDashboard: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Place"
+                    placeholder="Enter location/place"
                     value={scheduleForm.place}
                     onChange={(e) =>
                       setScheduleForm({
@@ -1561,9 +1568,9 @@ const OfficerDashboard: React.FC = () => {
                     }
                     style={{
                       width: "100%",
-                      padding: "10px 12px",
+                      padding: "12px 14px",
                       border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
+                      borderRadius: "8px",
                       fontSize: "14px",
                       outline: "none",
                       transition: "all 0.2s",
@@ -1585,16 +1592,16 @@ const OfficerDashboard: React.FC = () => {
                     className="pmc-label"
                     style={{
                       display: "block",
-                      marginBottom: "6px",
-                      fontWeight: 500,
-                      fontSize: "13px",
+                      marginBottom: "8px",
+                      fontWeight: 600,
+                      fontSize: "14px",
                       color: "#374151",
                     }}
                   >
                     Comments
                   </label>
                   <textarea
-                    placeholder="Additional comments or instructions"
+                    placeholder="Additional comments or instructions (optional)"
                     value={scheduleForm.comments}
                     onChange={(e) =>
                       setScheduleForm({
@@ -1605,9 +1612,9 @@ const OfficerDashboard: React.FC = () => {
                     rows={3}
                     style={{
                       width: "100%",
-                      padding: "10px 12px",
+                      padding: "12px 14px",
                       border: "1.5px solid #d1d5db",
-                      borderRadius: "6px",
+                      borderRadius: "8px",
                       fontSize: "14px",
                       resize: "vertical",
                       outline: "none",
@@ -1627,15 +1634,17 @@ const OfficerDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* Footer */}
               <div
                 className="pmc-modal-footer"
                 style={{
-                  padding: "12px 20px",
+                  padding: "16px 24px",
                   borderTop: "1px solid #e5e7eb",
                   display: "flex",
-                  gap: "10px",
+                  gap: "12px",
                   justifyContent: "flex-end",
                   background: "#f9fafb",
+                  borderRadius: "0 0 12px 12px",
                   flexShrink: 0,
                 }}
               >
@@ -1644,8 +1653,10 @@ const OfficerDashboard: React.FC = () => {
                   onClick={() => setShowScheduleModal(false)}
                   disabled={isScheduling}
                   style={{
-                    padding: "8px 20px",
+                    padding: "10px 24px",
                     fontSize: "14px",
+                    fontWeight: "600",
+                    borderRadius: "8px",
                   }}
                 >
                   Cancel
@@ -1655,8 +1666,11 @@ const OfficerDashboard: React.FC = () => {
                   onClick={handleSubmitSchedule}
                   disabled={isScheduling}
                   style={{
-                    padding: "8px 20px",
+                    padding: "10px 28px",
                     fontSize: "14px",
+                    fontWeight: "600",
+                    borderRadius: "8px",
+                    boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)",
                   }}
                 >
                   Schedule Appointment
