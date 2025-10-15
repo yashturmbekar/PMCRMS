@@ -14,6 +14,9 @@ namespace PMCRMS.API.Data
         public DbSet<Officer> Officers { get; set; }
         public DbSet<User> Users { get; set; } // Regular applicants/citizens
         
+        // System Configuration
+        public DbSet<SystemSettings> SystemSettings { get; set; }
+        
         // Core Application Management
         public DbSet<Application> Applications { get; set; }
         public DbSet<ApplicationDocument> ApplicationDocuments { get; set; }
@@ -512,6 +515,9 @@ namespace PMCRMS.API.Data
 
         private void SeedData(ModelBuilder modelBuilder)
         {
+            // Seed PMC Logo
+            SeedPmcLogo(modelBuilder);
+            
             // Seed default system administrator
             modelBuilder.Entity<SystemAdmin>().HasData(
                 new SystemAdmin
@@ -630,6 +636,44 @@ namespace PMCRMS.API.Data
                         entry.Entity.UpdatedDate = DateTime.UtcNow;
                         break;
                 }
+            }
+        }
+
+        private void SeedPmcLogo(ModelBuilder modelBuilder)
+        {
+            try
+            {
+                // Path to the logo file
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                
+                if (File.Exists(logoPath))
+                {
+                    var logoBytes = File.ReadAllBytes(logoPath);
+                    
+                    modelBuilder.Entity<SystemSettings>().HasData(
+                        new SystemSettings
+                        {
+                            Id = 1,
+                            SettingKey = "PMC_LOGO",
+                            Description = "Pune Municipal Corporation official logo for certificates",
+                            BinaryData = logoBytes,
+                            ContentType = "image/png",
+                            IsActive = true,
+                            CreatedDate = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedBy = "System"
+                        }
+                    );
+                    
+                    Console.WriteLine($"✅ PMC Logo seeded successfully from {logoPath} ({logoBytes.Length} bytes)");
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ PMC Logo file not found at {logoPath}. Skipping seed.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error seeding PMC Logo: {ex.Message}");
             }
         }
     }
