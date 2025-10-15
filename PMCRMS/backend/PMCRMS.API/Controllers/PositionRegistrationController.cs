@@ -582,6 +582,263 @@ namespace PMCRMS.API.Controllers
             }
         }
 
+        // POST: api/PositionRegistration/5/resubmit
+        /// <summary>
+        /// Resubmit a rejected application with updated data
+        /// This endpoint allows users to edit and resubmit their rejected applications
+        /// The application will re-enter the workflow at the Junior Engineer stage
+        /// </summary>
+        [HttpPost("{id}/resubmit")]
+        public async Task<ActionResult<PositionRegistrationResponseDTO>> ResubmitApplication(
+            int id, 
+            [FromBody] PositionRegistrationRequestDTO request)
+        {
+            try
+            {
+                _logger.LogInformation("[Resubmit] Starting resubmission for application {Id}", id);
+                
+                var application = await _context.PositionApplications
+                    .Include(a => a.Addresses)
+                    .Include(a => a.Qualifications)
+                    .Include(a => a.Experiences)
+                    .Include(a => a.Documents)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+
+                if (application == null)
+                {
+                    return NotFound(new { error = "Application not found" });
+                }
+
+                // Only allow resubmission of rejected applications
+                if (application.Status != ApplicationCurrentStatus.REJECTED)
+                {
+                    return BadRequest(new { 
+                        error = "Only rejected applications can be resubmitted", 
+                        currentStatus = application.Status.ToString() 
+                    });
+                }
+
+                // Validate the updated request
+                var validationErrors = ValidateRequest(request);
+                if (validationErrors.Any())
+                {
+                    return BadRequest(new { errors = validationErrors });
+                }
+
+                // Store rejection history in Remarks for audit trail
+                var previousRemarks = application.Remarks ?? "";
+                var rejectionHistory = $"[PREVIOUS REJECTION - {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {previousRemarks}";
+
+                // Update basic fields with new data from user
+                application.PositionType = request.PositionType;
+                application.FirstName = request.FirstName.Trim();
+                application.MiddleName = request.MiddleName?.Trim();
+                application.LastName = request.LastName.Trim();
+                application.MotherName = request.MotherName.Trim();
+                application.MobileNumber = request.MobileNumber;
+                application.EmailAddress = request.EmailAddress.ToLower().Trim();
+                application.BloodGroup = request.BloodGroup?.ToUpper().Trim();
+                application.Height = request.Height ?? 0;
+                application.Gender = request.Gender;
+                application.DateOfBirth = request.DateOfBirth.Date;
+                application.PanCardNumber = request.PanCardNumber.ToUpper().Trim();
+                application.AadharCardNumber = request.AadharCardNumber;
+                application.CoaCardNumber = request.CoaCardNumber?.Trim();
+                
+                // Reset status to Junior Engineer Pending to restart workflow
+                application.Status = ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING;
+                application.Remarks = $"Resubmitted on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. {rejectionHistory}";
+                application.UpdatedBy = "User_Resubmission";
+                application.UpdatedDate = DateTime.UtcNow;
+                application.SubmittedDate = DateTime.UtcNow; // Update submission date
+                
+                // Clear all rejection flags to allow fresh review
+                application.JERejectionStatus = null;
+                application.JERejectionComments = null;
+                application.JERejectionDate = null;
+                
+                application.AEArchitectRejectionStatus = null;
+                application.AEArchitectRejectionComments = null;
+                application.AEArchitectRejectionDate = null;
+                
+                application.AEStructuralRejectionStatus = null;
+                application.AEStructuralRejectionComments = null;
+                application.AEStructuralRejectionDate = null;
+                
+                application.AELicenceRejectionStatus = null;
+                application.AELicenceRejectionComments = null;
+                application.AELicenceRejectionDate = null;
+                
+                application.AESupervisor1RejectionStatus = null;
+                application.AESupervisor1RejectionComments = null;
+                application.AESupervisor1RejectionDate = null;
+                
+                application.AESupervisor2RejectionStatus = null;
+                application.AESupervisor2RejectionComments = null;
+                application.AESupervisor2RejectionDate = null;
+                
+                application.ExecutiveEngineerRejectionStatus = null;
+                application.ExecutiveEngineerRejectionComments = null;
+                application.ExecutiveEngineerRejectionDate = null;
+                
+                application.CityEngineerRejectionStatus = null;
+                application.CityEngineerRejectionComments = null;
+                application.CityEngineerRejectionDate = null;
+                
+                application.ClerkRejectionStatus = null;
+                application.ClerkRejectionComments = null;
+                application.ClerkRejectionDate = null;
+                
+                // Reset recommendation form status - it will need to be regenerated after review
+                application.IsRecommendationFormGenerated = false;
+                application.RecommendationFormGeneratedDate = null;
+                application.RecommendationFormGenerationAttempts = 0;
+                application.RecommendationFormGenerationError = null;
+
+                // Update addresses
+                _context.SEAddresses.RemoveRange(application.Addresses);
+                
+                application.Addresses.Add(new SEAddress
+                {
+                    AddressType = "Local",
+                    AddressLine1 = request.LocalAddress.AddressLine1.Trim(),
+                    AddressLine2 = request.LocalAddress.AddressLine2?.Trim(),
+                    AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
+                    City = request.LocalAddress.City.Trim(),
+                    State = request.LocalAddress.State.Trim(),
+                    Country = request.LocalAddress.Country.Trim(),
+                    PinCode = request.LocalAddress.PinCode,
+                    CreatedBy = "User_Resubmission",
+                    CreatedDate = DateTime.UtcNow
+                });
+
+                application.Addresses.Add(new SEAddress
+                {
+                    AddressType = "Permanent",
+                    AddressLine1 = request.PermanentAddress.AddressLine1.Trim(),
+                    AddressLine2 = request.PermanentAddress.AddressLine2?.Trim(),
+                    AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
+                    City = request.PermanentAddress.City.Trim(),
+                    State = request.PermanentAddress.State.Trim(),
+                    Country = request.PermanentAddress.Country.Trim(),
+                    PinCode = request.PermanentAddress.PinCode,
+                    CreatedBy = "User_Resubmission",
+                    CreatedDate = DateTime.UtcNow
+                });
+
+                // Update qualifications
+                _context.SEQualifications.RemoveRange(application.Qualifications);
+                
+                foreach (var qual in request.Qualifications)
+                {
+                    application.Qualifications.Add(new SEQualification
+                    {
+                        FileId = qual.FileId,
+                        InstituteName = qual.InstituteName.Trim(),
+                        UniversityName = qual.UniversityName.Trim(),
+                        Specialization = qual.Specialization,
+                        DegreeName = qual.DegreeName.Trim(),
+                        PassingMonth = qual.PassingMonth,
+                        YearOfPassing = new DateTime(qual.YearOfPassing, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                        CreatedBy = "User_Resubmission",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // Update experiences
+                _context.SEExperiences.RemoveRange(application.Experiences);
+                
+                foreach (var exp in request.Experiences)
+                {
+                    var yearsOfExperience = CalculateYearsOfExperience(exp.FromDate, exp.ToDate);
+                    
+                    application.Experiences.Add(new SEExperience
+                    {
+                        FileId = exp.FileId,
+                        CompanyName = exp.CompanyName.Trim(),
+                        Position = exp.Position.Trim(),
+                        FromDate = DateTime.SpecifyKind(exp.FromDate.Date, DateTimeKind.Utc),
+                        ToDate = DateTime.SpecifyKind(exp.ToDate.Date, DateTimeKind.Utc),
+                        YearsOfExperience = yearsOfExperience,
+                        CreatedBy = "User_Resubmission",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // Update documents - convert base64 to binary and store in database
+                // IMPORTANT: Only remove user-submitted documents, preserve system-generated ones
+                var systemGeneratedDocTypes = new[] 
+                { 
+                    SEDocumentType.RecommendedForm,      // Generated by officers
+                    SEDocumentType.PaymentChallan,       // Generated by payment system
+                    SEDocumentType.LicenceCertificate    // Generated after approval
+                };
+                
+                var userDocuments = application.Documents
+                    .Where(d => !systemGeneratedDocTypes.Contains(d.DocumentType))
+                    .ToList();
+                    
+                _context.SEDocuments.RemoveRange(userDocuments);
+                
+                _logger.LogInformation("[Resubmit] Removed {Count} user documents, preserved system-generated documents", userDocuments.Count);
+                
+                foreach (var doc in request.Documents)
+                {
+                    byte[]? fileContent = null;
+                    if (!string.IsNullOrEmpty(doc.FileBase64))
+                    {
+                        try
+                        {
+                            fileContent = Convert.FromBase64String(doc.FileBase64);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error converting base64 to binary for document {FileId}", doc.FileId);
+                            return BadRequest(new { error = $"Invalid file data for document {doc.FileName}" });
+                        }
+                    }
+
+                    application.Documents.Add(new SEDocument
+                    {
+                        FileId = doc.FileId,
+                        DocumentType = doc.DocumentType,
+                        FileName = doc.FileName,
+                        FileContent = fileContent,
+                        FileSize = doc.FileSize,
+                        ContentType = doc.ContentType,
+                        FilePath = null, // Deprecated
+                        IsVerified = false, // Reset verification status
+                        CreatedBy = "User_Resubmission",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("[Resubmit] Application {Id} resubmitted successfully, status reset to JUNIOR_ENGINEER_PENDING", id);
+
+                // Trigger auto-assignment to JE
+                try
+                {
+                    await _autoAssignmentService.AssignApplicationAsync(application.Id);
+                    _logger.LogInformation("[Resubmit] Auto-assignment triggered for application {Id}", id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "[Resubmit] Error during auto-assignment for application {Id}", id);
+                    // Continue even if auto-assignment fails - it can be done manually
+                }
+
+                var response = MapToResponse(application);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[Resubmit] Error resubmitting application {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while processing your request" });
+            }
+        }
+
         // GET: api/PositionRegistration
         [HttpGet]
         public async Task<ActionResult<IEnumerable<PositionRegistrationResponseDTO>>> GetAllApplications(

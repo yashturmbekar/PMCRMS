@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import positionRegistrationService, {
   type PositionRegistrationRequest,
   type Qualification as ApiQualification,
@@ -306,6 +306,7 @@ interface FormData {
 
 export const PositionRegistrationPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { positionType: positionParam, applicationId } = useParams<{
     positionType: string;
     applicationId?: string;
@@ -330,6 +331,8 @@ export const PositionRegistrationPage = () => {
   const [editingApplicationId, setEditingApplicationId] = useState<
     number | null
   >(null);
+  const [isResubmitMode, setIsResubmitMode] = useState(false);
+  const [rejectionComments, setRejectionComments] = useState("");
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
@@ -934,13 +937,22 @@ export const PositionRegistrationPage = () => {
       // Debug logging before API call
 
       let response;
-      // If in edit mode, update existing application; otherwise create new
-      if (isEditMode && editingApplicationId) {
+      // If in resubmit mode, call resubmit endpoint
+      if (isResubmitMode && editingApplicationId) {
+        response = await positionRegistrationService.resubmitApplication(
+          editingApplicationId,
+          request
+        );
+      }
+      // If in edit mode (but not resubmit), update existing application
+      else if (isEditMode && editingApplicationId) {
         response = await positionRegistrationService.updateApplication(
           editingApplicationId,
           request
         );
-      } else {
+      }
+      // Otherwise create new application
+      else {
         response = await positionRegistrationService.createApplication(request);
       }
 
@@ -1171,10 +1183,20 @@ export const PositionRegistrationPage = () => {
         setIsEditMode(true);
         setEditingApplicationId(parseInt(applicationId));
 
+        // Check if this is a resubmission (URL param: ?resubmit=true)
+        const isResubmit = searchParams.get("resubmit") === "true";
+        setIsResubmitMode(isResubmit);
+
         // Fetch application data
         const response = await positionRegistrationService.getApplication(
           parseInt(applicationId)
         );
+
+        // Store rejection comments if in resubmit mode
+        if (isResubmit && response.status === 37 && response.remarks) {
+          // Status 37 = REJECTED
+          setRejectionComments(response.remarks);
+        }
 
         // Map API response to form data
         const addressLocal = response.addresses?.find(
@@ -1296,7 +1318,7 @@ export const PositionRegistrationPage = () => {
     };
 
     loadApplicationData();
-  }, [applicationId, navigate, selectedPositionType]);
+  }, [applicationId, navigate, selectedPositionType, searchParams]);
 
   // Helper function to determine if a field should have error styling
   const hasFieldError = (fieldName: string): boolean => {
@@ -1487,6 +1509,77 @@ export const PositionRegistrationPage = () => {
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
+        {/* Rejection Banner - Only shown in resubmit mode */}
+        {isResubmitMode && rejectionComments && (
+          <div
+            className="pmc-fadeIn"
+            style={{
+              padding: "16px 20px",
+              marginBottom: "20px",
+              background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+              border: "2px solid #fca5a5",
+              borderRadius: "10px",
+              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.1)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "flex-start",
+                marginBottom: "12px",
+              }}
+            >
+              <AlertCircle
+                size={24}
+                style={{ color: "#dc2626", flexShrink: 0, marginTop: "2px" }}
+              />
+              <div style={{ flex: 1 }}>
+                <h3
+                  className="pmc-text-lg pmc-font-bold"
+                  style={{ color: "#dc2626", marginBottom: "8px" }}
+                >
+                  Application Rejected - Corrections Required
+                </h3>
+                <p
+                  className="pmc-text-sm pmc-font-semibold"
+                  style={{ color: "#7f1d1d", marginBottom: "6px" }}
+                >
+                  Rejection Reason:
+                </p>
+                <p
+                  className="pmc-text-sm"
+                  style={{
+                    color: "#7f1d1d",
+                    lineHeight: "1.7",
+                    background: "rgba(127, 29, 29, 0.05)",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(127, 29, 29, 0.15)",
+                  }}
+                >
+                  {rejectionComments}
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                paddingTop: "12px",
+                borderTop: "1px solid rgba(220, 38, 38, 0.2)",
+              }}
+            >
+              <p
+                className="pmc-text-sm pmc-font-medium"
+                style={{ color: "#991b1b" }}
+              >
+                📝 Please review the rejection comments above, make necessary
+                corrections to your application, and resubmit. Your application
+                will be reviewed again from the beginning.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Success/Error Messages */}
         {success && (
           <div
@@ -4413,7 +4506,9 @@ export const PositionRegistrationPage = () => {
                 marginBottom: "16px",
               }}
             >
-              Application Submitted Successfully!
+              {isResubmitMode
+                ? "Application Resubmitted Successfully!"
+                : "Application Submitted Successfully!"}
             </h2>
             <p
               style={{
@@ -4422,7 +4517,9 @@ export const PositionRegistrationPage = () => {
                 marginBottom: "8px",
               }}
             >
-              Your application has been submitted successfully.
+              {isResubmitMode
+                ? "Your application has been resubmitted and will be reviewed again from the beginning."
+                : "Your application has been submitted successfully."}
             </p>
             <p
               style={{

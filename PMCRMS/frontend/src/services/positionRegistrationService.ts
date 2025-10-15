@@ -203,6 +203,18 @@ const positionRegistrationService = {
   },
 
   /**
+   * Resubmit a rejected application with updated data
+   * This will reset the application status to JUNIOR_ENGINEER_PENDING
+   * and trigger the workflow to restart from JE stage
+   */
+  resubmitApplication: async (
+    id: number,
+    data: PositionRegistrationRequest
+  ): Promise<PositionRegistrationResponse> => {
+    return await apiClient.post(`/PositionRegistration/${id}/resubmit`, data);
+  },
+
+  /**
    * Get application by ID
    */
   getApplication: async (id: number): Promise<PositionRegistrationResponse> => {

@@ -84,11 +84,14 @@ class CEStage2WorkflowService {
   async getPendingApplications(): Promise<CEStage2ApplicationDto[]> {
     try {
       const token = localStorage.getItem("pmcrms_token");
-      const response = await axios.get(`${API_BASE_URL}/api/CEStage2/Pending`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await axios.get(
+        `${API_BASE_URL}/api/position/ce-stage2/Pending`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       if (response.data.success) {
         return response.data.data as CEStage2ApplicationDto[];
       }
@@ -112,7 +115,7 @@ class CEStage2WorkflowService {
     try {
       const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(
-        `${API_BASE_URL}/api/CEStage2/Completed`,
+        `${API_BASE_URL}/api/position/ce-stage2/Completed`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -144,7 +147,7 @@ class CEStage2WorkflowService {
     try {
       const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(
-        `${API_BASE_URL}/api/CEStage2/Application/${applicationId}`,
+        `${API_BASE_URL}/api/position/ce-stage2/${applicationId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -174,7 +177,7 @@ class CEStage2WorkflowService {
     try {
       const token = localStorage.getItem("pmcrms_token");
       const response = await axios.post(
-        `${API_BASE_URL}/api/CEStage2/GenerateOtp/${applicationId}`,
+        `${API_BASE_URL}/api/position/ce-stage2/${applicationId}/GenerateOtp`,
         {},
         {
           headers: {
@@ -207,7 +210,7 @@ class CEStage2WorkflowService {
       const token = localStorage.getItem("pmcrms_token");
       const requestData: CEStage2SignRequest = { otpCode };
       const response = await axios.post(
-        `${API_BASE_URL}/api/CEStage2/Sign/${applicationId}`,
+        `${API_BASE_URL}/api/position/ce-stage2/${applicationId}/ApplySignature`,
         requestData,
         {
           headers: {
@@ -239,7 +242,7 @@ class CEStage2WorkflowService {
     try {
       const token = localStorage.getItem("pmcrms_token");
       const response = await axios.get(
-        `${API_BASE_URL}/api/CEStage2/Statistics`,
+        `${API_BASE_URL}/api/position/ce-stage2/Statistics`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
