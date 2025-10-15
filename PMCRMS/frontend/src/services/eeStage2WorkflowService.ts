@@ -4,9 +4,7 @@
  */
 
 import axios from "axios";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5086";
+import { getApiUrl, getToken } from "./apiClient";
 
 // DTOs matching backend
 export interface EEStage2ApplicationDto {
@@ -93,8 +91,8 @@ class EEStage2WorkflowService {
    */
   async getPendingApplications(): Promise<EEStage2ApplicationDto[]> {
     try {
-      const token = localStorage.getItem("pmcrms_token");
-      const response = await axios.get(`${API_BASE_URL}/api/EEStage2/Pending`, {
+      const token = getToken();
+      const response = await axios.get(`${getApiUrl()}/EEStage2/Pending`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -120,15 +118,12 @@ class EEStage2WorkflowService {
    */
   async getCompletedApplications(): Promise<EEStage2ApplicationDto[]> {
     try {
-      const token = localStorage.getItem("pmcrms_token");
-      const response = await axios.get(
-        `${API_BASE_URL}/api/EEStage2/Completed`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const token = getToken();
+      const response = await axios.get(`${getApiUrl()}/EEStage2/Completed`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.data.success) {
         return response.data.data as EEStage2ApplicationDto[];
       }
@@ -152,9 +147,9 @@ class EEStage2WorkflowService {
     applicationId: number
   ): Promise<EEStage2ApplicationDetailDto> {
     try {
-      const token = localStorage.getItem("pmcrms_token");
+      const token = getToken();
       const response = await axios.get(
-        `${API_BASE_URL}/api/EEStage2/Application/${applicationId}`,
+        `${getApiUrl()}/EEStage2/Application/${applicationId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -182,9 +177,9 @@ class EEStage2WorkflowService {
    */
   async generateOtp(applicationId: number): Promise<EEStage2OtpResult> {
     try {
-      const token = localStorage.getItem("pmcrms_token");
+      const token = getToken();
       const response = await axios.post(
-        `${API_BASE_URL}/api/EEStage2/GenerateOtp/${applicationId}`,
+        `${getApiUrl()}/EEStage2/GenerateOtp/${applicationId}`,
         {},
         {
           headers: {
@@ -214,10 +209,10 @@ class EEStage2WorkflowService {
     otpCode: string
   ): Promise<EEStage2SignResult> {
     try {
-      const token = localStorage.getItem("pmcrms_token");
+      const token = getToken();
       const requestData: EEStage2SignRequest = { otpCode };
       const response = await axios.post(
-        `${API_BASE_URL}/api/EEStage2/Sign/${applicationId}`,
+        `${getApiUrl()}/EEStage2/Sign/${applicationId}`,
         requestData,
         {
           headers: {
@@ -247,15 +242,12 @@ class EEStage2WorkflowService {
    */
   async getStatistics(): Promise<EEStage2Statistics> {
     try {
-      const token = localStorage.getItem("pmcrms_token");
-      const response = await axios.get(
-        `${API_BASE_URL}/api/EEStage2/Statistics`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const token = getToken();
+      const response = await axios.get(`${getApiUrl()}/EEStage2/Statistics`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       if (response.data.success) {
         return response.data.data as EEStage2Statistics;
       }

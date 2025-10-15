@@ -1,15 +1,10 @@
-// BillDesk Payment Service for PMCRMS
-// Handles payment initiation, status checking, and history
+/**
+ * BillDesk Payment Service for PMCRMS
+ * Handles payment initiation, status checking, and history
+ */
 
 import axios from "axios";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5086";
-
-// Ensure API_BASE_URL includes /api path
-const API_URL = API_BASE_URL.endsWith("/api")
-  ? API_BASE_URL
-  : `${API_BASE_URL}/api`;
+import { getApiUrl, getToken } from "./apiClient";
 
 // ==================== INTERFACES ====================
 
@@ -117,9 +112,11 @@ interface PaymentInitiateApiResponse {
 // ==================== PAYMENT SERVICE CLASS ====================
 
 class BillDeskPaymentService {
+  /**
+   * Get authentication header with token
+   */
   private getAuthHeader() {
-    const token =
-      localStorage.getItem("pmcrms_token") || localStorage.getItem("token");
+    const token = getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
@@ -131,7 +128,7 @@ class BillDeskPaymentService {
   async initiatePayment(applicationId: number): Promise<PaymentResponse> {
     try {
       const response = await axios.post<PaymentInitiateApiResponse>(
-        `${API_URL}/Payment/Initiate`,
+        `${getApiUrl()}/Payment/Initiate`,
         { applicationId },
         { headers: this.getAuthHeader() }
       );
@@ -170,7 +167,7 @@ class BillDeskPaymentService {
   ): Promise<PaymentStatusResponse> {
     try {
       const response = await axios.get<PaymentStatusResponse>(
-        `${API_URL}/Payment/Status/${applicationId}`,
+        `${getApiUrl()}/Payment/Status/${applicationId}`,
         { headers: this.getAuthHeader() }
       );
       return response.data;
@@ -194,7 +191,7 @@ class BillDeskPaymentService {
   ): Promise<PaymentHistoryResponse> {
     try {
       const response = await axios.get<PaymentHistoryResponse>(
-        `${API_URL}/Payment/History/${applicationId}`,
+        `${getApiUrl()}/Payment/History/${applicationId}`,
         { headers: this.getAuthHeader() }
       );
       return response.data;
@@ -218,7 +215,7 @@ class BillDeskPaymentService {
   ): Promise<TransactionDetailsResponse> {
     try {
       const response = await axios.get<TransactionDetailsResponse>(
-        `${API_URL}/Payment/Transaction/${transactionId}`,
+        `${getApiUrl()}/Payment/Transaction/${transactionId}`,
         { headers: this.getAuthHeader() }
       );
       return response.data;
@@ -240,7 +237,7 @@ class BillDeskPaymentService {
   async verifyPayment(request: VerifyPaymentRequest): Promise<PaymentResponse> {
     try {
       const response = await axios.post<PaymentResponse>(
-        `${API_URL}/Payment/Verify`,
+        `${getApiUrl()}/Payment/Verify`,
         request,
         { headers: this.getAuthHeader() }
       );

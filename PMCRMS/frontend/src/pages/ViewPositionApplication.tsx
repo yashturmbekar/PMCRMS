@@ -34,6 +34,7 @@ import PaymentButton from "../components/PaymentButton";
 import PaymentStatusModal from "../components/PaymentStatusModal";
 import DateTimePicker from "../components/DateTimePicker";
 import ModalLoader from "../components/ModalLoader";
+import { getApiUrl, getToken } from "../services/apiClient";
 
 const ViewPositionApplication: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -214,7 +215,7 @@ const ViewPositionApplication: React.FC = () => {
         }
 
         const response = await fetch(
-          `http://localhost:5086/api/Certificate/status/${id}`,
+          `${getApiUrl()}/Certificate/status/${id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -380,9 +381,9 @@ const ViewPositionApplication: React.FC = () => {
     if (!id) return;
 
     try {
-      const token = localStorage.getItem("pmcrms_token");
+      const token = getToken();
       const response = await fetch(
-        `http://localhost:5086/api/Certificate/download/${id}`,
+        `${getApiUrl()}/Certificate/download/${id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -418,9 +419,9 @@ const ViewPositionApplication: React.FC = () => {
     if (!id) return;
 
     try {
-      const token = localStorage.getItem("pmcrms_token");
+      const token = getToken();
       const response = await fetch(
-        `http://localhost:5086/api/Certificate/download/${id}`,
+        `${getApiUrl()}/Certificate/download/${id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -1410,151 +1411,161 @@ const ViewPositionApplication: React.FC = () => {
           </div>
         )}
 
-        {/* License Certificate - Separate Section (only after payment) */}
-        {application.isPaymentComplete && (
-          <div className="pmc-card" style={{ marginBottom: "16px" }}>
-            <div
-              className="pmc-card-header"
-              style={{
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                color: "white",
-                padding: "12px 16px",
-                borderBottom: "2px solid #059669",
-              }}
-            >
-              <h2
-                className="pmc-card-title"
-                style={{ color: "white", margin: 0 }}
+        {/* License Certificate - Separate Section (only after payment AND for specific roles) */}
+        {application.isPaymentComplete &&
+          (isClerkOfficer ||
+            (isEEOfficer && application.status >= 19) || // EE Stage 2 (Digital Signature stages)
+            (isCEOfficer && application.status >= 21) || // CE Stage 2 (Final Approval stages)
+            (!isJEOfficer &&
+              !isAEOfficer &&
+              !isEEOfficer &&
+              !isCEOfficer &&
+              !isClerkOfficer)) && ( // Regular user
+            <div className="pmc-card" style={{ marginBottom: "16px" }}>
+              <div
+                className="pmc-card-header"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderBottom: "2px solid #059669",
+                }}
               >
-                License Certificate
-              </h2>
-            </div>
-            <div className="pmc-card-body">
-              <div className="pmc-form-grid pmc-form-grid-2">
-                {loadingCertificate ? (
-                  <div
-                    style={{
-                      padding: "16px",
-                      background: "#f8fafc",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                      textAlign: "center",
-                    }}
-                  >
-                    <p style={{ color: "#64748b" }}>
-                      Loading certificate status...
-                    </p>
-                  </div>
-                ) : certificateStatus?.exists ? (
-                  <div
-                    style={{
-                      padding: "16px",
-                      background: "#f0fdf4",
-                      borderRadius: "8px",
-                      border: "1px solid #86efac",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
+                <h2
+                  className="pmc-card-title"
+                  style={{ color: "white", margin: 0 }}
+                >
+                  License Certificate
+                </h2>
+              </div>
+              <div className="pmc-card-body">
+                <div className="pmc-form-grid pmc-form-grid-2">
+                  {loadingCertificate ? (
                     <div
                       style={{
+                        padding: "16px",
+                        background: "#f8fafc",
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        textAlign: "center",
+                      }}
+                    >
+                      <p style={{ color: "#64748b" }}>
+                        Loading certificate status...
+                      </p>
+                    </div>
+                  ) : certificateStatus?.exists ? (
+                    <div
+                      style={{
+                        padding: "16px",
+                        background: "#f0fdf4",
+                        borderRadius: "8px",
+                        border: "1px solid #86efac",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "12px",
+                        }}
+                      >
+                        <CheckCircle size={24} color="#10b981" />
+                        <div>
+                          <p
+                            className="pmc-value"
+                            style={{ marginBottom: "4px", color: "#059669" }}
+                          >
+                            License Certificate Generated
+                          </p>
+                          <p style={{ fontSize: "12px", color: "#64748b" }}>
+                            {certificateStatus.fileName ||
+                              "LicenceCertificate.pdf"}
+                          </p>
+                          {certificateStatus.fileSize && (
+                            <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                              {(certificateStatus.fileSize / 1024).toFixed(2)}{" "}
+                              KB
+                            </p>
+                          )}
+                          {certificateStatus.generatedDate && (
+                            <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                              Generated on:{" "}
+                              {new Date(
+                                certificateStatus.generatedDate
+                              ).toLocaleDateString("en-IN")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <button
+                          className="pmc-button pmc-button-success pmc-button-sm"
+                          onClick={handleViewCertificate}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Eye size={14} />
+                          View
+                        </button>
+                        <button
+                          className="pmc-button pmc-button-secondary pmc-button-sm"
+                          onClick={handleDownloadCertificate}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Download size={14} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        padding: "16px",
+                        background: "#fef3c7",
+                        borderRadius: "8px",
+                        border: "1px solid #fbbf24",
                         display: "flex",
                         alignItems: "center",
                         gap: "12px",
                       }}
                     >
-                      <CheckCircle size={24} color="#10b981" />
+                      <Info size={24} color="#f59e0b" />
                       <div>
                         <p
                           className="pmc-value"
-                          style={{ marginBottom: "4px", color: "#059669" }}
+                          style={{ marginBottom: "4px", color: "#d97706" }}
                         >
-                          License Certificate Generated
+                          Certificate Generation Pending
                         </p>
-                        <p style={{ fontSize: "12px", color: "#64748b" }}>
-                          {certificateStatus.fileName ||
-                            "LicenceCertificate.pdf"}
+                        <p style={{ fontSize: "12px", color: "#92400e" }}>
+                          Your license certificate is being generated. This may
+                          take a few moments after payment completion.
                         </p>
-                        {certificateStatus.fileSize && (
-                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
-                            {(certificateStatus.fileSize / 1024).toFixed(2)} KB
-                          </p>
-                        )}
-                        {certificateStatus.generatedDate && (
-                          <p style={{ fontSize: "11px", color: "#94a3b8" }}>
-                            Generated on:{" "}
-                            {new Date(
-                              certificateStatus.generatedDate
-                            ).toLocaleDateString("en-IN")}
-                          </p>
-                        )}
                       </div>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}
-                    >
-                      <button
-                        className="pmc-button pmc-button-success pmc-button-sm"
-                        onClick={handleViewCertificate}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Eye size={14} />
-                        View
-                      </button>
-                      <button
-                        className="pmc-button pmc-button-secondary pmc-button-sm"
-                        onClick={handleDownloadCertificate}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Download size={14} />
-                        Download
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      padding: "16px",
-                      background: "#fef3c7",
-                      borderRadius: "8px",
-                      border: "1px solid #fbbf24",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}
-                  >
-                    <Info size={24} color="#f59e0b" />
-                    <div>
-                      <p
-                        className="pmc-value"
-                        style={{ marginBottom: "4px", color: "#d97706" }}
-                      >
-                        Certificate Generation Pending
-                      </p>
-                      <p style={{ fontSize: "12px", color: "#92400e" }}>
-                        Your license certificate is being generated. This may
-                        take a few moments after payment completion.
-                      </p>
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Payment Section - Only show for regular users after CE Stage 1, or for Stage 2 officers (EE/CE), Clerk */}
         {!isJEOfficer &&

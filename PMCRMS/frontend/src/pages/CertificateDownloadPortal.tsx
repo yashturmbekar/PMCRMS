@@ -7,8 +7,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5086";
+import { getApiUrl } from "../services/apiClient";
 
 interface DownloadAccessRequest {
   applicationNumber: string;
@@ -86,7 +85,7 @@ const CertificateDownloadPortal: React.FC = () => {
       };
 
       const response = await axios.post(
-        `${API_BASE_URL}/api/Download/RequestAccess`,
+        `${getApiUrl()}/Download/RequestAccess`,
         requestData,
         {
           headers: {
@@ -139,7 +138,7 @@ const CertificateDownloadPortal: React.FC = () => {
       };
 
       const response = await axios.post(
-        `${API_BASE_URL}/api/Download/VerifyOTP`,
+        `${getApiUrl()}/Download/VerifyOTP`,
         verifyData,
         {
           headers: {
@@ -183,7 +182,7 @@ const CertificateDownloadPortal: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `${API_BASE_URL}/api/Download/Certificate/${downloadToken}`,
+        `${getApiUrl()}/Download/Certificate/${downloadToken}`,
         {
           responseType: "blob",
         }
@@ -225,7 +224,7 @@ const CertificateDownloadPortal: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `${API_BASE_URL}/api/Download/RecommendationForm/${downloadToken}`,
+        `${getApiUrl()}/Download/RecommendationForm/${downloadToken}`,
         {
           responseType: "blob",
         }
@@ -270,7 +269,7 @@ const CertificateDownloadPortal: React.FC = () => {
     try {
       setLoading(true);
       const response = await axios.get(
-        `${API_BASE_URL}/api/Download/Challan/${downloadToken}`,
+        `${getApiUrl()}/Download/Challan/${downloadToken}`,
         {
           responseType: "blob",
         }

@@ -8,31 +8,65 @@ import {
   FILE_UPLOAD_TIMEOUT,
 } from "../constants";
 
-// Token helpers
+// ==================== CONFIGURATION ====================
+
+/**
+ * Get the base URL for API requests
+ * Centralized configuration to avoid hardcoding URLs across the application
+ */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
+/**
+ * Get the full API URL with /api suffix
+ */
+export function getApiUrl(): string {
+  return `${API_BASE_URL}/api`;
+}
+
+// ==================== TOKEN MANAGEMENT ====================
+
+/**
+ * Retrieve authentication token from local storage
+ */
 export function getToken(): string | null {
   return localStorage.getItem(AUTH_TOKEN_KEY);
 }
 
+/**
+ * Store authentication token in local storage
+ */
 export function setToken(token: string): void {
   localStorage.setItem(AUTH_TOKEN_KEY, token);
 }
 
+/**
+ * Clear authentication token and user data from local storage
+ */
 export function removeToken(): void {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem("pmcrms_user");
 }
 
+// ==================== AXIOS INSTANCE CONFIGURATION ====================
+
 const controllers: AbortController[] = [];
 
+/**
+ * Create axios instance with centralized configuration
+ * All API requests should use this instance
+ */
 const instance = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: getApiUrl(),
   timeout: API_TIMEOUT,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// --- Request Interceptor ---
+// ==================== REQUEST INTERCEPTOR ====================
+
 instance.interceptors.request.use(
   (config: any) => {
     const url = config.url ?? "";
@@ -57,7 +91,8 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// --- Response Interceptor ---
+// ==================== RESPONSE INTERCEPTOR ====================
+
 instance.interceptors.response.use(
   (response: any) => Promise.resolve(response),
   (error) => {
@@ -93,15 +128,30 @@ instance.interceptors.response.use(
   }
 );
 
-// --- API Methods ---
+// ==================== API CLIENT METHODS ====================
+
+/**
+ * Centralized API client with standardized HTTP methods
+ * All application services should use this client for API requests
+ */
 const apiClient = {
+  /**
+   * Perform GET request
+   */
   get: async (url: string, config = {}): Promise<any> => {
     return (await instance.get(url, config)).data;
   },
+
+  /**
+   * Perform POST request
+   */
   post: async (url: string, data = {}, config = {}): Promise<any> => {
     return (await instance.post(url, data, config)).data;
   },
-  // Specialized method for file uploads with extended timeout
+
+  /**
+   * Specialized method for file uploads with extended timeout
+   */
   postWithFiles: async (url: string, data = {}, config = {}): Promise<any> => {
     const uploadConfig = {
       ...config,
@@ -113,12 +163,24 @@ const apiClient = {
     };
     return (await instance.post(url, data, uploadConfig)).data;
   },
+
+  /**
+   * Perform PUT request
+   */
   put: async (url: string, data = {}, config = {}): Promise<any> => {
     return (await instance.put(url, data, config)).data;
   },
+
+  /**
+   * Perform PATCH request
+   */
   patch: async (url: string, data = {}, config = {}): Promise<any> => {
     return (await instance.patch(url, data, config)).data;
   },
+
+  /**
+   * Perform DELETE request
+   */
   delete: async (url: string, config = {}): Promise<any> => {
     return (await instance.delete(url, config)).data;
   },
