@@ -697,7 +697,7 @@ export const PositionRegistrationPage = () => {
       addressLine3: data.currentAddress.addressLine3 || undefined,
       city: data.currentAddress.city || "",
       state: data.currentAddress.state || "",
-      country: data.currentAddress.country || "India",
+      country: "India", // Always India - ignore user input
       pinCode: data.currentAddress.pinCode || "",
     };
 
@@ -710,7 +710,7 @@ export const PositionRegistrationPage = () => {
           addressLine3: data.permanentAddress.addressLine3 || undefined,
           city: data.permanentAddress.city || "",
           state: data.permanentAddress.state || "",
-          country: data.permanentAddress.country || "India",
+          country: "India", // Always India - ignore user input
           pinCode: data.permanentAddress.pinCode || "",
         };
 
@@ -815,8 +815,7 @@ export const PositionRegistrationPage = () => {
       errors.push("Local address line 2 is required");
     if (!formData.currentAddress.city) errors.push("Local city is required");
     if (!formData.currentAddress.state) errors.push("Local state is required");
-    if (!formData.currentAddress.country)
-      errors.push("Local country is required");
+    // Country is always "India" - no validation needed
     if (!formData.currentAddress.pinCode)
       errors.push("Local postal code is required");
 
@@ -830,8 +829,7 @@ export const PositionRegistrationPage = () => {
         errors.push("Permanent city is required");
       if (!formData.permanentAddress.state)
         errors.push("Permanent state is required");
-      if (!formData.permanentAddress.country)
-        errors.push("Permanent country is required");
+      // Country is always "India" - no validation needed
       if (!formData.permanentAddress.pinCode)
         errors.push("Permanent postal code is required");
     }
@@ -1248,7 +1246,7 @@ export const PositionRegistrationPage = () => {
                 addressLine3: addressLocal.addressLine3 || "",
                 city: addressLocal.city || "",
                 state: addressLocal.state || "",
-                country: addressLocal.country || "",
+                country: "India", // Always India - ignore loaded data
                 pinCode: addressLocal.pinCode || "",
               }
             : {
@@ -1257,7 +1255,7 @@ export const PositionRegistrationPage = () => {
                 addressLine3: "",
                 city: "",
                 state: "",
-                country: "",
+                country: "India", // Always India
                 pinCode: "",
               },
           permanentAddress: addressPermanent
@@ -1267,7 +1265,7 @@ export const PositionRegistrationPage = () => {
                 addressLine3: addressPermanent.addressLine3 || "",
                 city: addressPermanent.city || "",
                 state: addressPermanent.state || "",
-                country: addressPermanent.country || "",
+                country: "India", // Always India - ignore loaded data
                 pinCode: addressPermanent.pinCode || "",
               }
             : {
@@ -1276,7 +1274,7 @@ export const PositionRegistrationPage = () => {
                 addressLine3: "",
                 city: "",
                 state: "",
-                country: "",
+                country: "India", // Always India
                 pinCode: "",
               },
           panCardNumber: response.panCardNumber || "",

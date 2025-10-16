@@ -143,7 +143,7 @@ namespace PMCRMS.API.Controllers
                         AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
                         City = request.LocalAddress.City?.Trim() ?? "",
                         State = request.LocalAddress.State?.Trim() ?? "",
-                        Country = request.LocalAddress.Country?.Trim() ?? "",
+                        Country = "India", // Always India - ignore user input
                         PinCode = request.LocalAddress.PinCode ?? "",
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -160,7 +160,7 @@ namespace PMCRMS.API.Controllers
                         AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
                         City = request.PermanentAddress.City?.Trim() ?? "",
                         State = request.PermanentAddress.State?.Trim() ?? "",
-                        Country = request.PermanentAddress.Country?.Trim() ?? "",
+                        Country = "India", // Always India - ignore user input
                         PinCode = request.PermanentAddress.PinCode ?? "",
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -338,7 +338,7 @@ namespace PMCRMS.API.Controllers
                     AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
                     City = request.LocalAddress.City.Trim(),
                     State = request.LocalAddress.State.Trim(),
-                    Country = request.LocalAddress.Country.Trim(),
+                    Country = "India", // Always India - ignore user input
                     PinCode = request.LocalAddress.PinCode,
                     CreatedBy = "User",
                     CreatedDate = DateTime.UtcNow
@@ -352,7 +352,7 @@ namespace PMCRMS.API.Controllers
                     AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
                     City = request.PermanentAddress.City.Trim(),
                     State = request.PermanentAddress.State.Trim(),
-                    Country = request.PermanentAddress.Country.Trim(),
+                    Country = "India", // Always India - ignore user input
                     PinCode = request.PermanentAddress.PinCode,
                     CreatedBy = "User",
                     CreatedDate = DateTime.UtcNow
@@ -618,7 +618,7 @@ namespace PMCRMS.API.Controllers
                         AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
                         City = request.LocalAddress.City?.Trim() ?? "",
                         State = request.LocalAddress.State?.Trim() ?? "",
-                        Country = request.LocalAddress.Country?.Trim() ?? "",
+                        Country = "India", // Always India - ignore user input
                         PinCode = request.LocalAddress.PinCode ?? "",
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -635,7 +635,7 @@ namespace PMCRMS.API.Controllers
                         AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
                         City = request.PermanentAddress.City?.Trim() ?? "",
                         State = request.PermanentAddress.State?.Trim() ?? "",
-                        Country = request.PermanentAddress.Country?.Trim() ?? "",
+                        Country = "India", // Always India - ignore user input
                         PinCode = request.PermanentAddress.PinCode ?? "",
                         CreatedBy = "User",
                         CreatedDate = DateTime.UtcNow
@@ -829,7 +829,7 @@ namespace PMCRMS.API.Controllers
                     AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
                     City = request.LocalAddress.City.Trim(),
                     State = request.LocalAddress.State.Trim(),
-                    Country = request.LocalAddress.Country.Trim(),
+                    Country = "India", // Always India - ignore user input
                     PinCode = request.LocalAddress.PinCode,
                     CreatedBy = "User",
                     CreatedDate = DateTime.UtcNow
@@ -843,7 +843,7 @@ namespace PMCRMS.API.Controllers
                     AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
                     City = request.PermanentAddress.City.Trim(),
                     State = request.PermanentAddress.State.Trim(),
-                    Country = request.PermanentAddress.Country.Trim(),
+                    Country = "India", // Always India - ignore user input
                     PinCode = request.PermanentAddress.PinCode,
                     CreatedBy = "User",
                     CreatedDate = DateTime.UtcNow
@@ -1160,7 +1160,7 @@ namespace PMCRMS.API.Controllers
                     AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
                     City = request.LocalAddress.City.Trim(),
                     State = request.LocalAddress.State.Trim(),
-                    Country = request.LocalAddress.Country.Trim(),
+                    Country = "India", // Always India - ignore user input
                     PinCode = request.LocalAddress.PinCode,
                     CreatedBy = "User_Resubmission",
                     CreatedDate = DateTime.UtcNow
@@ -1174,7 +1174,7 @@ namespace PMCRMS.API.Controllers
                     AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
                     City = request.PermanentAddress.City.Trim(),
                     State = request.PermanentAddress.State.Trim(),
-                    Country = request.PermanentAddress.Country.Trim(),
+                    Country = "India", // Always India - ignore user input
                     PinCode = request.PermanentAddress.PinCode,
                     CreatedBy = "User_Resubmission",
                     CreatedDate = DateTime.UtcNow
