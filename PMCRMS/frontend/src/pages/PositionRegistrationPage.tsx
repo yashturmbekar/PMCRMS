@@ -358,12 +358,27 @@ export const PositionRegistrationPage = () => {
     return mappedValue;
   };
 
+  // Helper function to get default birth date (18 years ago from today)
+  const getDefaultBirthDate = (): string => {
+    const today = new Date();
+    const eighteenYearsAgo = new Date(
+      today.getFullYear() - 18,
+      today.getMonth(),
+      today.getDate()
+    );
+    // Format as YYYY-MM-DD for HTML date input
+    return eighteenYearsAgo.toISOString().split("T")[0];
+  };
+
   // Use state for selected position type so it can be changed dynamically
   const [selectedPositionType, setSelectedPositionType] =
     useState<PositionTypeValue>(getPositionType());
 
   // Config updates automatically when selectedPositionType changes
-  const config = POSITION_CONFIG[selectedPositionType];
+  // Fallback to StructuralEngineer config if selected position type doesn't have a config
+  const config =
+    POSITION_CONFIG[selectedPositionType] ||
+    POSITION_CONFIG[PositionType.StructuralEngineer];
 
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -376,7 +391,7 @@ export const PositionRegistrationPage = () => {
     bloodGroup: "",
     height: 0,
     gender: Gender.Male,
-    dateOfBirth: "",
+    dateOfBirth: getDefaultBirthDate(),
     permanentAddress: {
       addressLine1: "",
       addressLine2: "",
@@ -675,52 +690,52 @@ export const PositionRegistrationPage = () => {
       return date.toISOString();
     };
 
-    // Map local address
+    // Map local address (handle empty/partial data for drafts)
     const localAddress: ApiAddress = {
-      addressLine1: data.currentAddress.addressLine1,
+      addressLine1: data.currentAddress.addressLine1 || "",
       addressLine2: data.currentAddress.addressLine2 || undefined,
       addressLine3: data.currentAddress.addressLine3 || undefined,
-      city: data.currentAddress.city,
-      state: data.currentAddress.state,
-      country: data.currentAddress.country,
-      pinCode: data.currentAddress.pinCode,
+      city: data.currentAddress.city || "",
+      state: data.currentAddress.state || "",
+      country: data.currentAddress.country || "India",
+      pinCode: data.currentAddress.pinCode || "",
     };
 
-    // Map permanent address
+    // Map permanent address (handle empty/partial data for drafts)
     const permanentAddress: ApiAddress = permanentSameAsLocal
       ? { ...localAddress }
       : {
-          addressLine1: data.permanentAddress.addressLine1,
+          addressLine1: data.permanentAddress.addressLine1 || "",
           addressLine2: data.permanentAddress.addressLine2 || undefined,
           addressLine3: data.permanentAddress.addressLine3 || undefined,
-          city: data.permanentAddress.city,
-          state: data.permanentAddress.state,
-          country: data.permanentAddress.country,
-          pinCode: data.permanentAddress.pinCode,
+          city: data.permanentAddress.city || "",
+          state: data.permanentAddress.state || "",
+          country: data.permanentAddress.country || "India",
+          pinCode: data.permanentAddress.pinCode || "",
         };
 
-    // Map qualifications
+    // Map qualifications (allow empty for drafts)
     const qualifications: ApiQualification[] = data.qualifications
-      .filter((q) => q.instituteName.trim() !== "")
+      .filter((q) => q.instituteName && q.instituteName.trim() !== "")
       .map((q) => ({
         fileId: q.fileId,
         instituteName: q.instituteName,
-        universityName: q.universityName,
+        universityName: q.universityName || "",
         specialization: q.specialization,
-        degreeName: q.degreeName,
-        passingMonth: q.passingMonth,
-        yearOfPassing: parseInt(q.yearOfPassing),
+        degreeName: q.degreeName || "",
+        passingMonth: q.passingMonth || 1,
+        yearOfPassing: q.yearOfPassing ? parseInt(q.yearOfPassing) : 0,
       }));
 
-    // Map experiences
+    // Map experiences (allow empty for drafts)
     const experiences: ApiExperience[] = data.experiences
-      .filter((e) => e.companyName.trim() !== "")
+      .filter((e) => e.companyName && e.companyName.trim() !== "")
       .map((e) => ({
         fileId: e.fileId,
         companyName: e.companyName,
-        position: e.position,
-        fromDate: toUTCDate(e.fromDate), // Convert to UTC
-        toDate: toUTCDate(e.toDate), // Convert to UTC
+        position: e.position || "",
+        fromDate: e.fromDate ? toUTCDate(e.fromDate) : "", // Convert to UTC or empty
+        toDate: e.toDate ? toUTCDate(e.toDate) : "", // Convert to UTC or empty
       }));
 
     // Convert documents to base64 format
@@ -746,21 +761,21 @@ export const PositionRegistrationPage = () => {
       })
     );
 
-    // Build request
+    // Build request (handle empty/partial data for drafts)
     const request: PositionRegistrationRequest = {
-      firstName: data.firstName,
+      firstName: data.firstName || "",
       middleName: data.middleName || undefined,
-      lastName: data.lastName,
-      motherName: data.motherName,
-      mobileNumber: data.mobileNumber,
-      emailAddress: data.emailAddress,
+      lastName: data.lastName || "",
+      motherName: data.motherName || "",
+      mobileNumber: data.mobileNumber || "",
+      emailAddress: data.emailAddress || "",
       positionType: data.positionType,
       bloodGroup: data.bloodGroup || undefined,
       height: data.height || undefined,
       gender: data.gender,
-      dateOfBirth: toUTCDate(data.dateOfBirth), // Convert to UTC
-      panCardNumber: data.panCardNumber,
-      aadharCardNumber: data.aadharCardNumber,
+      dateOfBirth: data.dateOfBirth ? toUTCDate(data.dateOfBirth) : "", // Convert to UTC or empty
+      panCardNumber: data.panCardNumber || "",
+      aadharCardNumber: data.aadharCardNumber || "",
       coaCardNumber: data.coaCardNumber || undefined,
       status,
       localAddress,
@@ -1080,22 +1095,24 @@ export const PositionRegistrationPage = () => {
 
     try {
       // Map form data to API request with Draft status (1)
-      // No validation required for draft save
+      // NO VALIDATION required for draft save - allow partial/incomplete data
       const request = await mapFormDataToRequest(formData, 1);
 
       let response;
       // If in edit mode, update existing draft; otherwise create new
       if (isEditMode && editingApplicationId) {
-        response = await positionRegistrationService.updateApplication(
+        response = await positionRegistrationService.updateDraft(
           editingApplicationId,
           request
         );
       } else {
-        response = await positionRegistrationService.createApplication(request);
+        response = await positionRegistrationService.saveDraft(request);
       }
 
       // Set draft application number and show success popup
-      setDraftApplicationNumber(response.applicationNumber || "DRAFT");
+      setDraftApplicationNumber(
+        response.applicationNumber || `DRAFT-${response.id}`
+      );
       setShowDraftSuccessPopup(true);
 
       // Navigate to dashboard after 3 seconds
@@ -1110,6 +1127,7 @@ export const PositionRegistrationPage = () => {
           data?: {
             message?: string;
             title?: string;
+            error?: string;
           };
         };
         message?: string;
@@ -1117,6 +1135,7 @@ export const PositionRegistrationPage = () => {
 
       // Show simple error message for draft save failures
       const errorMsg =
+        error?.response?.data?.error ||
         error?.response?.data?.message ||
         error?.response?.data?.title ||
         error?.message ||
@@ -1324,6 +1343,35 @@ export const PositionRegistrationPage = () => {
   const hasFieldError = (fieldName: string): boolean => {
     return !!fieldErrors[fieldName.toLowerCase()];
   };
+
+  // Safety check - if config is undefined, show error
+  if (!config) {
+    return (
+      <div
+        className="pmc-fadeIn"
+        style={{ padding: "40px", textAlign: "center" }}
+      >
+        <AlertCircle
+          size={48}
+          color="#dc2626"
+          style={{ margin: "0 auto 16px" }}
+        />
+        <h2 style={{ color: "#dc2626", marginBottom: "8px" }}>
+          Invalid Position Type
+        </h2>
+        <p style={{ color: "#6b7280", marginBottom: "24px" }}>
+          The selected position type is not configured. Please select a valid
+          position type.
+        </p>
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="pmc-button pmc-button-primary"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   // Show page loader during initialization
   if (initializing) {
@@ -4586,7 +4634,7 @@ export const PositionRegistrationPage = () => {
             style={{
               backgroundColor: "white",
               borderRadius: "16px",
-              maxWidth: "500px",
+              maxWidth: "550px",
               width: "100%",
               padding: "40px",
               textAlign: "center",
@@ -4595,54 +4643,94 @@ export const PositionRegistrationPage = () => {
           >
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "90px",
+                height: "90px",
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                background: "linear-gradient(135deg, #0f766e 0%, #115e59 100%)",
                 margin: "0 auto 24px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "40px",
+                fontSize: "48px",
+                boxShadow: "0 8px 20px rgba(15, 118, 110, 0.3)",
               }}
             >
               💾
             </div>
             <h2
               style={{
-                fontSize: "28px",
+                fontSize: "32px",
                 fontWeight: "700",
-                color: "#3b82f6",
+                color: "#0f766e",
                 marginBottom: "16px",
               }}
             >
               Draft Saved Successfully!
             </h2>
-            <p
-              style={{
-                fontSize: "16px",
-                color: "#64748b",
-                marginBottom: "8px",
-              }}
-            >
-              Your application has been saved as draft.
-            </p>
-            <p
-              style={{
-                fontSize: "18px",
-                fontWeight: "600",
-                color: "#1e40af",
-                marginBottom: "24px",
-              }}
-            >
-              Draft Number:{" "}
-              <span style={{ color: "#3b82f6" }}>{draftApplicationNumber}</span>
-            </p>
             <div
               style={{
-                width: "40px",
-                height: "40px",
-                border: "4px solid #3b82f6",
+                background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)",
+                padding: "20px",
+                borderRadius: "12px",
+                marginBottom: "24px",
+                border: "2px solid #99f6e4",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#115e59",
+                  marginBottom: "12px",
+                  fontWeight: 500,
+                }}
+              >
+                ✅ Your application has been saved as draft
+              </p>
+              <p
+                style={{
+                  fontSize: "20px",
+                  fontWeight: "700",
+                  color: "#0f766e",
+                  marginBottom: "8px",
+                }}
+              >
+                {draftApplicationNumber}
+              </p>
+              <div
+                style={{
+                  borderTop: "1px solid #5eead4",
+                  paddingTop: "12px",
+                  marginTop: "12px",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "#14b8a6",
+                    lineHeight: "1.6",
+                    marginBottom: "8px",
+                  }}
+                >
+                  📝 <strong>You can come back anytime</strong> to complete and
+                  submit your application
+                </p>
+                <p
+                  style={{
+                    fontSize: "13px",
+                    color: "#14b8a6",
+                    lineHeight: "1.6",
+                  }}
+                >
+                  📍 Find your draft in the{" "}
+                  <strong>"Draft Applications"</strong> tab on your dashboard
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                width: "45px",
+                height: "45px",
+                border: "5px solid #0f766e",
                 borderTopColor: "transparent",
                 borderRadius: "50%",
                 margin: "0 auto",
@@ -4651,9 +4739,10 @@ export const PositionRegistrationPage = () => {
             />
             <p
               style={{
-                marginTop: "16px",
+                marginTop: "20px",
                 fontSize: "14px",
                 color: "#64748b",
+                fontWeight: 500,
               }}
             >
               Redirecting to dashboard...

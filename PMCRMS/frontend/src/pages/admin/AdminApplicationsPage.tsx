@@ -9,7 +9,7 @@ import {
   XCircle,
   Clock,
 } from "lucide-react";
-import { PageLoader } from "../../components";
+import { PageLoader, Pagination } from "../../components";
 
 interface ApplicationSummary {
   applicationId: number;
@@ -33,13 +33,18 @@ const AdminApplicationsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>(
     searchParams.get("status") || "all"
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
 
   useEffect(() => {
     loadApplications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     filterApplications();
+    setCurrentPage(1); // Reset to first page when filters change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applications, searchTerm, statusFilter]);
 
   const loadApplications = async () => {
@@ -108,6 +113,22 @@ const AdminApplicationsPage: React.FC = () => {
     if (statusLower === "rejected")
       return <XCircle style={{ width: "14px", height: "14px" }} />;
     return <Clock style={{ width: "14px", height: "14px" }} />;
+  };
+
+  // Pagination logic
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredApplications.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(filteredApplications.length / itemsPerPage);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (loading) {
@@ -408,7 +429,7 @@ const AdminApplicationsPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredApplications.map((app) => (
+                    {getCurrentPageData().map((app) => (
                       <tr key={app.applicationId}>
                         <td
                           className="pmc-text-sm pmc-font-medium"
@@ -476,6 +497,19 @@ const AdminApplicationsPage: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Pagination */}
+                {filteredApplications.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={getTotalPages()}
+                    totalItems={filteredApplications.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={handlePageChange}
+                    showFirstLast={true}
+                    showPageInfo={true}
+                  />
+                )}
               </div>
             </div>
           )}

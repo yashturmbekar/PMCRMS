@@ -10,7 +10,7 @@ import ceStage2WorkflowService from "../services/ceStage2WorkflowService";
 import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import positionRegistrationService from "../services/positionRegistrationService";
 import { Calendar, Clock, Eye, CheckCircle, XCircle, Info } from "lucide-react";
-import { PageLoader, ModalLoader } from "../components";
+import { PageLoader, ModalLoader, Pagination } from "../components";
 import {
   DocumentApprovalModal,
   OTPVerificationModal,
@@ -90,6 +90,8 @@ const OfficerDashboard: React.FC = () => {
   const [showEEStage2ConfirmModal, setShowEEStage2ConfirmModal] =
     useState(false);
   const [eeStage2Remarks, setEEStage2Remarks] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
   const [notification, setNotification] = useState<{
     isOpen: boolean;
     message: string;
@@ -423,6 +425,28 @@ const OfficerDashboard: React.FC = () => {
   };
 
   const filteredApplications = getFilteredApplications();
+
+  // Pagination logic
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredApplications.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    return Math.ceil(filteredApplications.length / itemsPerPage);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of dashboard
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Reset to first page when tab changes or applications change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, applications]);
 
   // Event handlers
   const handleScheduleAppointment = (application: Application) => {
@@ -1098,7 +1122,7 @@ const OfficerDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredApplications.map((app) => (
+                    {getCurrentPageData().map((app) => (
                       <tr key={app.applicationId}>
                         <td>
                           <span className="pmc-badge pmc-badge-primary">
@@ -1322,6 +1346,19 @@ const OfficerDashboard: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Pagination */}
+                {filteredApplications.length > 0 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={getTotalPages()}
+                    totalItems={filteredApplications.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={handlePageChange}
+                    showFirstLast={true}
+                    showPageInfo={true}
+                  />
+                )}
               </div>
             )}
           </div>

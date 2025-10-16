@@ -75,7 +75,14 @@ builder.Services.AddDbContext<PMCRMSDbContext>(options =>
     }
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Allow string values for enums (e.g., "CityEngineer" instead of 14)
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        // Case-insensitive property matching
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

@@ -15,7 +15,7 @@ import {
   Edit,
   AlertCircle,
 } from "lucide-react";
-import { PageLoader, SectionLoader } from "../components";
+import { PageLoader, SectionLoader, Pagination } from "../components";
 
 // Position Type Enum matching backend
 const PositionType = {
@@ -56,6 +56,8 @@ const Dashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"submitted" | "draft">(
     "submitted"
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
 
   // Redirect JuniorEngineer to JE Dashboard
   useEffect(() => {
@@ -167,11 +169,33 @@ const Dashboard: React.FC = () => {
     if (tab !== activeTab) {
       setTabLoading(true);
       setActiveTab(tab);
+      setCurrentPage(1); // Reset to first page when switching tabs
       // Simulate loading delay for tab content
       setTimeout(() => {
         setTabLoading(false);
       }, 300);
     }
+  };
+
+  // Pagination logic
+  const getCurrentPageData = () => {
+    const applications =
+      activeTab === "submitted" ? submittedApplications : draftApplications;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return applications.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = () => {
+    const applications =
+      activeTab === "submitted" ? submittedApplications : draftApplications;
+    return Math.ceil(applications.length / itemsPerPage);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of table
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   // Show page loader for initial load
@@ -565,185 +589,163 @@ const Dashboard: React.FC = () => {
               </p>
             </div>
           ) : (
-            <table className="pmc-table">
-              <thead>
-                <tr>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Application #
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Position Type
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Applicant Name
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Assigned Officer
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    {activeTab === "submitted"
-                      ? "Submitted Date"
-                      : "Created Date"}
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Last Updated
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Status
-                  </th>
-                  <th
-                    className="pmc-text-xs pmc-font-semibold"
-                    style={{
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                      color: "var(--pmc-gray-700)",
-                    }}
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(activeTab === "submitted"
-                  ? submittedApplications
-                  : draftApplications
-                ).map((app) => (
-                  <React.Fragment key={app.id}>
-                    <tr>
-                      <td
-                        className="pmc-text-sm pmc-font-semibold"
-                        style={{ color: "var(--pmc-primary)" }}
-                      >
-                        #{app.applicationNumber || app.id}
-                      </td>
-                      <td
-                        className="pmc-text-sm pmc-font-medium"
-                        style={{ color: "var(--pmc-gray-800)" }}
-                      >
-                        {app.positionTypeName}
-                      </td>
-                      <td
-                        className="pmc-text-sm pmc-font-medium"
-                        style={{ color: "var(--pmc-gray-800)" }}
-                      >
-                        {app.fullName}
-                      </td>
-                      <td
-                        className="pmc-text-sm pmc-font-medium"
-                        style={{ color: "var(--pmc-gray-700)" }}
-                      >
-                        {app.assignedJuniorEngineerName ? (
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              padding: "4px 10px",
-                              background: "var(--pmc-gray-100)",
-                              borderRadius: "6px",
-                              fontSize: "13px",
-                            }}
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            >
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                              <circle cx="12" cy="7" r="4" />
-                            </svg>
-                            {app.assignedJuniorEngineerName}
-                          </span>
-                        ) : (
-                          <span
-                            className="pmc-text-sm"
-                            style={{
-                              color: "var(--pmc-gray-400)",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            Not assigned yet
-                          </span>
-                        )}
-                      </td>
-                      <td
-                        className="pmc-text-sm"
-                        style={{ color: "var(--pmc-gray-600)" }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                          }}
+            <>
+              <table className="pmc-table">
+                <thead>
+                  <tr>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Application #
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Position Type
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Applicant Name
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Assigned Officer
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      {activeTab === "submitted"
+                        ? "Submitted Date"
+                        : "Created Date"}
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Last Updated
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Status
+                    </th>
+                    <th
+                      className="pmc-text-xs pmc-font-semibold"
+                      style={{
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--pmc-gray-700)",
+                      }}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getCurrentPageData().map((app) => (
+                    <React.Fragment key={app.id}>
+                      <tr>
+                        <td
+                          className="pmc-text-sm pmc-font-semibold"
+                          style={{ color: "var(--pmc-primary)" }}
                         >
-                          <Calendar style={{ width: "14px", height: "14px" }} />
-                          {new Date(
-                            activeTab === "submitted"
-                              ? app.submittedDate || app.createdDate
-                              : app.createdDate
-                          ).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td
-                        className="pmc-text-sm"
-                        style={{ color: "var(--pmc-gray-600)" }}
-                      >
-                        {app.updatedDate ? (
+                          #{app.applicationNumber || app.id}
+                        </td>
+                        <td
+                          className="pmc-text-sm pmc-font-medium"
+                          style={{ color: "var(--pmc-gray-800)" }}
+                        >
+                          {app.positionTypeName}
+                        </td>
+                        <td
+                          className="pmc-text-sm pmc-font-medium"
+                          style={{ color: "var(--pmc-gray-800)" }}
+                        >
+                          {app.fullName}
+                        </td>
+                        <td
+                          className="pmc-text-sm pmc-font-medium"
+                          style={{ color: "var(--pmc-gray-700)" }}
+                        >
+                          {app.assignedJuniorEngineerName ? (
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "4px 10px",
+                                background: "var(--pmc-gray-100)",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                              }}
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                              {app.assignedJuniorEngineerName}
+                            </span>
+                          ) : (
+                            <span
+                              className="pmc-text-sm"
+                              style={{
+                                color: "var(--pmc-gray-400)",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              Not assigned yet
+                            </span>
+                          )}
+                        </td>
+                        <td
+                          className="pmc-text-sm"
+                          style={{ color: "var(--pmc-gray-600)" }}
+                        >
                           <div
                             style={{
                               display: "flex",
@@ -751,70 +753,65 @@ const Dashboard: React.FC = () => {
                               gap: "6px",
                             }}
                           >
-                            <Clock style={{ width: "14px", height: "14px" }} />
-                            {new Date(app.updatedDate).toLocaleDateString()}
+                            <Calendar
+                              style={{ width: "14px", height: "14px" }}
+                            />
+                            {new Date(
+                              activeTab === "submitted"
+                                ? app.submittedDate || app.createdDate
+                                : app.createdDate
+                            ).toLocaleDateString()}
                           </div>
-                        ) : (
-                          <span
-                            className="pmc-text-sm"
-                            style={{
-                              color: "var(--pmc-gray-400)",
-                              fontStyle: "italic",
-                            }}
-                          >
-                            —
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            app.status === 23
-                              ? "pmc-badge pmc-status-approved"
-                              : app.status === 37 // REJECTED status
-                              ? "pmc-badge pmc-status-rejected"
-                              : app.status === 2
-                              ? "pmc-badge pmc-status-under-review"
-                              : "pmc-badge pmc-status-pending"
-                          }
+                        </td>
+                        <td
+                          className="pmc-text-sm"
+                          style={{ color: "var(--pmc-gray-600)" }}
                         >
-                          {app.statusName}
-                        </span>
-                      </td>
-                      <td>
-                        {app.status === 37 ? ( // REJECTED status
-                          <button
-                            className="pmc-button pmc-button-primary pmc-button-sm"
-                            onClick={() => {
-                              const positionRoutes: Record<number, string> = {
-                                0: "architect",
-                                1: "licence-engineer",
-                                2: "structural-engineer",
-                                3: "supervisor1",
-                                4: "supervisor2",
-                              };
-                              const positionRoute =
-                                positionRoutes[app.positionType] ||
-                                "structural-engineer";
-                              navigate(
-                                `/register/${positionRoute}/${app.id}?resubmit=true`
-                              );
-                            }}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                            }}
+                          {app.updatedDate ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              <Clock
+                                style={{ width: "14px", height: "14px" }}
+                              />
+                              {new Date(app.updatedDate).toLocaleDateString()}
+                            </div>
+                          ) : (
+                            <span
+                              className="pmc-text-sm"
+                              style={{
+                                color: "var(--pmc-gray-400)",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              —
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          <span
+                            className={
+                              app.status === 23
+                                ? "pmc-badge pmc-status-approved"
+                                : app.status === 37 // REJECTED status
+                                ? "pmc-badge pmc-status-rejected"
+                                : app.status === 2
+                                ? "pmc-badge pmc-status-under-review"
+                                : "pmc-badge pmc-status-pending"
+                            }
                           >
-                            <Edit size={14} />
-                            Edit & Resubmit
-                          </button>
-                        ) : (
-                          <button
-                            className="pmc-button pmc-button-secondary pmc-button-sm"
-                            onClick={() => {
-                              if (activeTab === "draft") {
-                                // For drafts, navigate to edit page
+                            {app.statusName}
+                          </span>
+                        </td>
+                        <td>
+                          {app.status === 37 ? ( // REJECTED status
+                            <button
+                              className="pmc-button pmc-button-primary pmc-button-sm"
+                              onClick={() => {
                                 const positionRoutes: Record<number, string> = {
                                   0: "architect",
                                   1: "licence-engineer",
@@ -826,89 +823,138 @@ const Dashboard: React.FC = () => {
                                   positionRoutes[app.positionType] ||
                                   "structural-engineer";
                                 navigate(
-                                  `/register/${positionRoute}/${app.id}`
+                                  `/register/${positionRoute}/${app.id}?resubmit=true`
                                 );
-                              } else {
-                                // For submitted applications, view details
-                                navigate(`/application/${app.id}`);
-                              }
-                            }}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                            }}
-                          >
-                            {activeTab === "draft" ? (
-                              <>
-                                <svg
-                                  width="14"
-                                  height="14"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                >
-                                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                                </svg>
-                                Edit
-                              </>
-                            ) : (
-                              <>
-                                <Eye size={14} />
-                                View
-                              </>
-                            )}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                    {/* Show rejection comments row if application is rejected */}
-                    {app.status === 37 && app.remarks && (
-                      <tr style={{ background: "#fef2f2" }}>
-                        <td colSpan={8} style={{ padding: "12px 16px" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "10px",
-                              alignItems: "flex-start",
-                            }}
-                          >
-                            <AlertCircle
-                              size={18}
-                              style={{
-                                color: "#dc2626",
-                                flexShrink: 0,
-                                marginTop: "2px",
                               }}
-                            />
-                            <div>
-                              <p
-                                className="pmc-text-sm pmc-font-semibold"
-                                style={{
-                                  color: "#dc2626",
-                                  marginBottom: "4px",
-                                }}
-                              >
-                                Rejection Reason:
-                              </p>
-                              <p
-                                className="pmc-text-sm"
-                                style={{ color: "#7f1d1d", lineHeight: "1.6" }}
-                              >
-                                {app.remarks}
-                              </p>
-                            </div>
-                          </div>
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              <Edit size={14} />
+                              Edit & Resubmit
+                            </button>
+                          ) : (
+                            <button
+                              className="pmc-button pmc-button-secondary pmc-button-sm"
+                              onClick={() => {
+                                if (activeTab === "draft") {
+                                  // For drafts, navigate to edit page
+                                  const positionRoutes: Record<number, string> =
+                                    {
+                                      0: "architect",
+                                      1: "licence-engineer",
+                                      2: "structural-engineer",
+                                      3: "supervisor1",
+                                      4: "supervisor2",
+                                    };
+                                  const positionRoute =
+                                    positionRoutes[app.positionType] ||
+                                    "structural-engineer";
+                                  navigate(
+                                    `/register/${positionRoute}/${app.id}`
+                                  );
+                                } else {
+                                  // For submitted applications, view details
+                                  navigate(`/application/${app.id}`);
+                                }
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              {activeTab === "draft" ? (
+                                <>
+                                  <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                                  </svg>
+                                  Edit
+                                </>
+                              ) : (
+                                <>
+                                  <Eye size={14} />
+                                  View
+                                </>
+                              )}
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+                      {/* Show rejection comments row if application is rejected */}
+                      {app.status === 37 && app.remarks && (
+                        <tr style={{ background: "#fef2f2" }}>
+                          <td colSpan={8} style={{ padding: "12px 16px" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "10px",
+                                alignItems: "flex-start",
+                              }}
+                            >
+                              <AlertCircle
+                                size={18}
+                                style={{
+                                  color: "#dc2626",
+                                  flexShrink: 0,
+                                  marginTop: "2px",
+                                }}
+                              />
+                              <div>
+                                <p
+                                  className="pmc-text-sm pmc-font-semibold"
+                                  style={{
+                                    color: "#dc2626",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  Rejection Reason:
+                                </p>
+                                <p
+                                  className="pmc-text-sm"
+                                  style={{
+                                    color: "#7f1d1d",
+                                    lineHeight: "1.6",
+                                  }}
+                                >
+                                  {app.remarks}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={getTotalPages()}
+                totalItems={
+                  activeTab === "submitted"
+                    ? submittedApplications.length
+                    : draftApplications.length
+                }
+                itemsPerPage={itemsPerPage}
+                onPageChange={handlePageChange}
+                showFirstLast={true}
+                showPageInfo={true}
+              />
+            </>
           )}
         </div>
       </div>

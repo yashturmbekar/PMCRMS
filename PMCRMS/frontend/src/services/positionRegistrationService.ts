@@ -193,6 +193,33 @@ const positionRegistrationService = {
   },
 
   /**
+   * Save application as draft - NO VALIDATION
+   * Allows saving incomplete applications for later completion
+   */
+  saveDraft: async (
+    data: PositionRegistrationRequest
+  ): Promise<PositionRegistrationResponse> => {
+    // Force status to Draft
+    data.status = 1;
+    return await apiClient.post("/PositionRegistration/draft", data);
+  },
+
+  /**
+   * Update existing draft application - NO VALIDATION
+   * Allows updating saved drafts with partial data
+   */
+  updateDraft: async (
+    id: number,
+    data: PositionRegistrationRequest
+  ): Promise<PositionRegistrationResponse> => {
+    // Force status to Draft
+    data.status = 1;
+    await apiClient.put(`/PositionRegistration/draft/${id}`, data);
+    // Fetch and return updated application
+    return await apiClient.get(`/PositionRegistration/${id}`);
+  },
+
+  /**
    * Update an existing application
    */
   updateApplication: async (

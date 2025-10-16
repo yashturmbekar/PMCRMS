@@ -11,3 +11,6 @@ export { default as ApplicationTimeline } from "./ApplicationTimeline";
 
 // Form Components
 export { default as DateTimePicker } from "./DateTimePicker";
+
+// Common Components
+export { default as Pagination } from "./common/Pagination";

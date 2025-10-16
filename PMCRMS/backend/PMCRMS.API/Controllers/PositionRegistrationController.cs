@@ -44,6 +44,234 @@ namespace PMCRMS.API.Controllers
             return enumValue.Replace("_", " ");
         }
 
+        // POST: api/PositionRegistration/draft
+        /// <summary>
+        /// Save application as draft - NO VALIDATION applied
+        /// This endpoint allows users to save incomplete applications
+        /// </summary>
+        [HttpPost("draft")]
+        public async Task<ActionResult<PositionRegistrationResponseDTO>> SaveDraft(
+            [FromBody] System.Text.Json.JsonElement requestJson)
+        {
+            try
+            {
+                _logger.LogInformation("[DRAFT] SaveDraft called - Raw JSON received");
+                
+                // Deserialize with lenient options - ignore validation attributes
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                };
+                
+                PositionRegistrationRequestDTO? request;
+                try
+                {
+                    request = System.Text.Json.JsonSerializer.Deserialize<PositionRegistrationRequestDTO>(requestJson.GetRawText(), options);
+                    if (request == null)
+                    {
+                        return BadRequest(new { error = "Invalid request data" });
+                    }
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    _logger.LogWarning(ex, "[DRAFT] Failed to deserialize request - accepting partial data");
+                    // Create a minimal request object for drafts
+                    request = new PositionRegistrationRequestDTO
+                    {
+                        PositionType = requestJson.TryGetProperty("positionType", out var pt) ? (PositionType)pt.GetInt32() : PositionType.Architect,
+                        FirstName = requestJson.TryGetProperty("firstName", out var fn) ? fn.GetString() ?? "" : "",
+                        LastName = requestJson.TryGetProperty("lastName", out var ln) ? ln.GetString() ?? "" : "",
+                        MotherName = requestJson.TryGetProperty("motherName", out var mn) ? mn.GetString() ?? "" : "",
+                        MobileNumber = requestJson.TryGetProperty("mobileNumber", out var mob) ? mob.GetString() ?? "" : "",
+                        EmailAddress = requestJson.TryGetProperty("emailAddress", out var email) ? email.GetString() ?? "" : "",
+                        PanCardNumber = requestJson.TryGetProperty("panCardNumber", out var pan) ? pan.GetString() ?? "" : "",
+                        AadharCardNumber = requestJson.TryGetProperty("aadharCardNumber", out var aadhar) ? aadhar.GetString() ?? "" : "",
+                        Qualifications = new List<QualificationDTO>(),
+                        Experiences = new List<ExperienceDTO>(),
+                        Documents = new List<DocumentUploadDTO>(),
+                        LocalAddress = new AddressDTO(),
+                        PermanentAddress = new AddressDTO()
+                    };
+                }
+                
+                _logger.LogInformation("[DRAFT] SaveDraft processing - PositionType: {PositionType}", request.PositionType);
+                
+                // Force status to Draft (1)
+                request.Status = ApplicationCurrentStatus.Draft;
+                
+                // NO VALIDATION for draft - users can save incomplete forms
+                // This allows them to come back later and complete the application
+                
+                // Get user ID from authentication context
+                var userId = GetCurrentUserId();
+
+                // Create application entity with minimal required data
+                var application = new PositionApplication
+                {
+                    PositionType = request.PositionType,
+                    FirstName = request.FirstName?.Trim() ?? "",
+                    MiddleName = request.MiddleName?.Trim(),
+                    LastName = request.LastName?.Trim() ?? "",
+                    MotherName = request.MotherName?.Trim() ?? "",
+                    MobileNumber = request.MobileNumber ?? "",
+                    EmailAddress = request.EmailAddress?.ToLower().Trim() ?? "",
+                    BloodGroup = request.BloodGroup?.ToUpper().Trim(),
+                    Height = request.Height ?? 0,
+                    Gender = request.Gender,
+                    DateOfBirth = request.DateOfBirth != default ? request.DateOfBirth.Date : DateTime.MinValue,
+                    PanCardNumber = request.PanCardNumber?.ToUpper().Trim() ?? "",
+                    AadharCardNumber = request.AadharCardNumber ?? "",
+                    CoaCardNumber = request.CoaCardNumber?.Trim(),
+                    UserId = userId,
+                    Status = ApplicationCurrentStatus.Draft,
+                    CreatedBy = "User",
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                // No application number for drafts
+                application.ApplicationNumber = null;
+
+                // Add addresses if provided
+                if (request.LocalAddress != null && !string.IsNullOrEmpty(request.LocalAddress.AddressLine1))
+                {
+                    application.Addresses.Add(new SEAddress
+                    {
+                        AddressType = "Local",
+                        AddressLine1 = request.LocalAddress.AddressLine1?.Trim() ?? "",
+                        AddressLine2 = request.LocalAddress.AddressLine2?.Trim(),
+                        AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
+                        City = request.LocalAddress.City?.Trim() ?? "",
+                        State = request.LocalAddress.State?.Trim() ?? "",
+                        Country = request.LocalAddress.Country?.Trim() ?? "",
+                        PinCode = request.LocalAddress.PinCode ?? "",
+                        CreatedBy = "User",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                if (request.PermanentAddress != null && !string.IsNullOrEmpty(request.PermanentAddress.AddressLine1))
+                {
+                    application.Addresses.Add(new SEAddress
+                    {
+                        AddressType = "Permanent",
+                        AddressLine1 = request.PermanentAddress.AddressLine1?.Trim() ?? "",
+                        AddressLine2 = request.PermanentAddress.AddressLine2?.Trim(),
+                        AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
+                        City = request.PermanentAddress.City?.Trim() ?? "",
+                        State = request.PermanentAddress.State?.Trim() ?? "",
+                        Country = request.PermanentAddress.Country?.Trim() ?? "",
+                        PinCode = request.PermanentAddress.PinCode ?? "",
+                        CreatedBy = "User",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // Add qualifications if provided
+                if (request.Qualifications != null)
+                {
+                    foreach (var qual in request.Qualifications.Where(q => !string.IsNullOrEmpty(q.InstituteName)))
+                    {
+                        application.Qualifications.Add(new SEQualification
+                        {
+                            FileId = qual.FileId,
+                            InstituteName = qual.InstituteName?.Trim() ?? "",
+                            UniversityName = qual.UniversityName?.Trim() ?? "",
+                            Specialization = qual.Specialization,
+                            DegreeName = qual.DegreeName?.Trim() ?? "",
+                            PassingMonth = qual.PassingMonth,
+                            YearOfPassing = qual.YearOfPassing > 0 
+                                ? new DateTime(qual.YearOfPassing, 1, 1, 0, 0, 0, DateTimeKind.Utc) 
+                                : DateTime.MinValue,
+                            CreatedBy = "User",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                // Add experiences if provided
+                if (request.Experiences != null)
+                {
+                    foreach (var exp in request.Experiences.Where(e => !string.IsNullOrEmpty(e.CompanyName)))
+                    {
+                        var yearsOfExperience = 0m;
+                        if (exp.FromDate != default && exp.ToDate != default)
+                        {
+                            yearsOfExperience = CalculateYearsOfExperience(exp.FromDate, exp.ToDate);
+                        }
+                        
+                        application.Experiences.Add(new SEExperience
+                        {
+                            FileId = exp.FileId,
+                            CompanyName = exp.CompanyName?.Trim() ?? "",
+                            Position = exp.Position?.Trim() ?? "",
+                            FromDate = exp.FromDate != default 
+                                ? DateTime.SpecifyKind(exp.FromDate.Date, DateTimeKind.Utc) 
+                                : DateTime.MinValue,
+                            ToDate = exp.ToDate != default 
+                                ? DateTime.SpecifyKind(exp.ToDate.Date, DateTimeKind.Utc) 
+                                : DateTime.MinValue,
+                            YearsOfExperience = yearsOfExperience,
+                            CreatedBy = "User",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                // Add documents if provided - convert base64 to binary and store in database
+                if (request.Documents != null)
+                {
+                    foreach (var doc in request.Documents)
+                    {
+                        byte[]? fileContent = null;
+                        
+                        // Convert base64 string to binary data
+                        if (!string.IsNullOrEmpty(doc.FileBase64))
+                        {
+                            try
+                            {
+                                fileContent = Convert.FromBase64String(doc.FileBase64);
+                                _logger.LogInformation("[DRAFT] Converted document {FileId} from base64 to binary ({Size} bytes)", 
+                                    doc.FileId, fileContent.Length);
+                            }
+                            catch (FormatException ex)
+                            {
+                                _logger.LogWarning(ex, "[DRAFT] Failed to convert base64 data for document {FileId} - skipping", doc.FileId);
+                                // Don't fail the draft save if a document has invalid data
+                                continue;
+                            }
+                        }
+                        
+                        application.Documents.Add(new SEDocument
+                        {
+                            FileId = doc.FileId,
+                            DocumentType = doc.DocumentType,
+                            FileName = doc.FileName ?? "",
+                            FilePath = null, // No physical file path - storing in database
+                            FileContent = fileContent, // Binary data stored in database
+                            FileSize = fileContent != null ? (decimal)(fileContent.Length / 1024.0) : doc.FileSize,
+                            ContentType = doc.ContentType,
+                            CreatedBy = "User",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                _context.PositionApplications.Add(application);
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("[DRAFT] Position registration draft saved successfully. ID: {Id}", application.Id);
+
+                var response = await GetApplicationResponse(application.Id);
+                return CreatedAtAction(nameof(GetApplication), new { id = application.Id }, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[DRAFT] Error saving position registration draft");
+                return StatusCode(500, new { error = "An error occurred while saving your draft" });
+            }
+        }
+
         // POST: api/PositionRegistration
         [HttpPost]
         public async Task<ActionResult<PositionRegistrationResponseDTO>> CreateApplication(
@@ -294,6 +522,232 @@ namespace PMCRMS.API.Controllers
             {
                 _logger.LogError(ex, "Error retrieving application {Id}", id);
                 return StatusCode(500, new { error = "An error occurred while processing your request" });
+            }
+        }
+
+        // PUT: api/PositionRegistration/draft/{id}
+        /// <summary>
+        /// Update existing draft application - NO VALIDATION applied
+        /// This endpoint allows users to update their saved drafts
+        /// </summary>
+        [HttpPut("draft/{id}")]
+        public async Task<IActionResult> UpdateDraft(int id, [FromBody] System.Text.Json.JsonElement requestJson)
+        {
+            try
+            {
+                _logger.LogInformation("[DRAFT] UpdateDraft called - ID: {Id}", id);
+                
+                // Deserialize with lenient options - ignore validation attributes
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                };
+                
+                PositionRegistrationRequestDTO? request;
+                try
+                {
+                    request = System.Text.Json.JsonSerializer.Deserialize<PositionRegistrationRequestDTO>(requestJson.GetRawText(), options);
+                    if (request == null)
+                    {
+                        return BadRequest(new { error = "Invalid request data" });
+                    }
+                }
+                catch (System.Text.Json.JsonException ex)
+                {
+                    _logger.LogWarning(ex, "[DRAFT] Failed to deserialize request - this shouldn't happen for updates");
+                    return BadRequest(new { error = "Invalid request data", details = ex.Message });
+                }
+                
+                _logger.LogInformation("[DRAFT] UpdateDraft processing - PositionType: {PositionType}", request.PositionType);
+                
+                var application = await _context.PositionApplications
+                    .Include(a => a.Addresses)
+                    .Include(a => a.Qualifications)
+                    .Include(a => a.Experiences)
+                    .Include(a => a.Documents)
+                    .FirstOrDefaultAsync(a => a.Id == id);
+
+                if (application == null)
+                {
+                    return NotFound(new { error = "Application not found" });
+                }
+
+                // Only allow updating drafts
+                if (application.Status != ApplicationCurrentStatus.Draft)
+                {
+                    return BadRequest(new { error = "Only draft applications can be updated using this endpoint" });
+                }
+
+                // Force status to remain Draft
+                request.Status = ApplicationCurrentStatus.Draft;
+
+                // NO VALIDATION for draft updates
+
+                // Update basic fields
+                application.PositionType = request.PositionType;
+                application.FirstName = request.FirstName?.Trim() ?? "";
+                application.MiddleName = request.MiddleName?.Trim();
+                application.LastName = request.LastName?.Trim() ?? "";
+                application.MotherName = request.MotherName?.Trim() ?? "";
+                application.MobileNumber = request.MobileNumber ?? "";
+                application.EmailAddress = request.EmailAddress?.ToLower().Trim() ?? "";
+                application.BloodGroup = request.BloodGroup?.ToUpper().Trim();
+                application.Height = request.Height ?? 0;
+                application.Gender = request.Gender;
+                application.DateOfBirth = request.DateOfBirth != default ? request.DateOfBirth.Date : DateTime.MinValue;
+                application.PanCardNumber = request.PanCardNumber?.ToUpper().Trim() ?? "";
+                application.AadharCardNumber = request.AadharCardNumber ?? "";
+                application.CoaCardNumber = request.CoaCardNumber?.Trim();
+                application.Status = ApplicationCurrentStatus.Draft;
+                application.UpdatedBy = "User";
+                application.UpdatedDate = DateTime.UtcNow;
+
+                // Application number remains null for drafts
+
+                // Update addresses
+                _context.SEAddresses.RemoveRange(application.Addresses);
+                
+                if (request.LocalAddress != null && !string.IsNullOrEmpty(request.LocalAddress.AddressLine1))
+                {
+                    application.Addresses.Add(new SEAddress
+                    {
+                        AddressType = "Local",
+                        AddressLine1 = request.LocalAddress.AddressLine1?.Trim() ?? "",
+                        AddressLine2 = request.LocalAddress.AddressLine2?.Trim(),
+                        AddressLine3 = request.LocalAddress.AddressLine3?.Trim(),
+                        City = request.LocalAddress.City?.Trim() ?? "",
+                        State = request.LocalAddress.State?.Trim() ?? "",
+                        Country = request.LocalAddress.Country?.Trim() ?? "",
+                        PinCode = request.LocalAddress.PinCode ?? "",
+                        CreatedBy = "User",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                if (request.PermanentAddress != null && !string.IsNullOrEmpty(request.PermanentAddress.AddressLine1))
+                {
+                    application.Addresses.Add(new SEAddress
+                    {
+                        AddressType = "Permanent",
+                        AddressLine1 = request.PermanentAddress.AddressLine1?.Trim() ?? "",
+                        AddressLine2 = request.PermanentAddress.AddressLine2?.Trim(),
+                        AddressLine3 = request.PermanentAddress.AddressLine3?.Trim(),
+                        City = request.PermanentAddress.City?.Trim() ?? "",
+                        State = request.PermanentAddress.State?.Trim() ?? "",
+                        Country = request.PermanentAddress.Country?.Trim() ?? "",
+                        PinCode = request.PermanentAddress.PinCode ?? "",
+                        CreatedBy = "User",
+                        CreatedDate = DateTime.UtcNow
+                    });
+                }
+
+                // Update qualifications
+                _context.SEQualifications.RemoveRange(application.Qualifications);
+                
+                if (request.Qualifications != null)
+                {
+                    foreach (var qual in request.Qualifications.Where(q => !string.IsNullOrEmpty(q.InstituteName)))
+                    {
+                        application.Qualifications.Add(new SEQualification
+                        {
+                            FileId = qual.FileId,
+                            InstituteName = qual.InstituteName?.Trim() ?? "",
+                            UniversityName = qual.UniversityName?.Trim() ?? "",
+                            Specialization = qual.Specialization,
+                            DegreeName = qual.DegreeName?.Trim() ?? "",
+                            PassingMonth = qual.PassingMonth,
+                            YearOfPassing = qual.YearOfPassing > 0 
+                                ? new DateTime(qual.YearOfPassing, 1, 1, 0, 0, 0, DateTimeKind.Utc) 
+                                : DateTime.MinValue,
+                            CreatedBy = "User",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                // Update experiences
+                _context.SEExperiences.RemoveRange(application.Experiences);
+                
+                if (request.Experiences != null)
+                {
+                    foreach (var exp in request.Experiences.Where(e => !string.IsNullOrEmpty(e.CompanyName)))
+                    {
+                        var yearsOfExperience = 0m;
+                        if (exp.FromDate != default && exp.ToDate != default)
+                        {
+                            yearsOfExperience = CalculateYearsOfExperience(exp.FromDate, exp.ToDate);
+                        }
+                        
+                        application.Experiences.Add(new SEExperience
+                        {
+                            FileId = exp.FileId,
+                            CompanyName = exp.CompanyName?.Trim() ?? "",
+                            Position = exp.Position?.Trim() ?? "",
+                            FromDate = exp.FromDate != default 
+                                ? DateTime.SpecifyKind(exp.FromDate.Date, DateTimeKind.Utc) 
+                                : DateTime.MinValue,
+                            ToDate = exp.ToDate != default 
+                                ? DateTime.SpecifyKind(exp.ToDate.Date, DateTimeKind.Utc) 
+                                : DateTime.MinValue,
+                            YearsOfExperience = yearsOfExperience,
+                            CreatedBy = "User",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                // Update documents - convert base64 to binary and store in database
+                _context.SEDocuments.RemoveRange(application.Documents);
+                
+                if (request.Documents != null)
+                {
+                    foreach (var doc in request.Documents)
+                    {
+                        byte[]? fileContent = null;
+                        
+                        // Convert base64 string to binary data
+                        if (!string.IsNullOrEmpty(doc.FileBase64))
+                        {
+                            try
+                            {
+                                fileContent = Convert.FromBase64String(doc.FileBase64);
+                                _logger.LogInformation("[DRAFT] Converted document {FileId} from base64 to binary ({Size} bytes)", 
+                                    doc.FileId, fileContent.Length);
+                            }
+                            catch (FormatException ex)
+                            {
+                                _logger.LogWarning(ex, "[DRAFT] Failed to convert base64 data for document {FileId} - skipping", doc.FileId);
+                                // Don't fail the draft save if a document has invalid data
+                                continue;
+                            }
+                        }
+                        
+                        application.Documents.Add(new SEDocument
+                        {
+                            FileId = doc.FileId,
+                            DocumentType = doc.DocumentType,
+                            FileName = doc.FileName ?? "",
+                            FilePath = null, // No physical file path - storing in database
+                            FileContent = fileContent, // Binary data stored in database
+                            FileSize = fileContent != null ? (decimal)(fileContent.Length / 1024.0) : doc.FileSize,
+                            ContentType = doc.ContentType,
+                            CreatedBy = "User",
+                            CreatedDate = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("[DRAFT] Position registration draft updated successfully. ID: {Id}", id);
+
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[DRAFT] Error updating draft application {Id}", id);
+                return StatusCode(500, new { error = "An error occurred while updating your draft" });
             }
         }
 
