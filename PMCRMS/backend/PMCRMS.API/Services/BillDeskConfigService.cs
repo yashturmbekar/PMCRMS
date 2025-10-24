@@ -23,7 +23,8 @@ namespace PMCRMS.API.Services
         public string SigningKey => _configuration["BillDesk:SigningKey"] ?? string.Empty;
         public string KeyId => _configuration["BillDesk:KeyId"] ?? string.Empty;
         public string ClientId => _configuration["BillDesk:ClientId"] ?? string.Empty;
-        public string PaymentGatewayUrl => _configuration["BillDesk:PaymentGatewayUrl"] ?? "https://pay.billdesk.com/web/v1_2/embeddedsdk";
+        public string ApiBaseUrl => _configuration["BillDesk:ApiBaseUrl"] ?? "https://api.billdesk.com";
+        public string PaymentGatewayUrl => _configuration["BillDesk:PaymentGatewayUrl"] ?? string.Empty;
         public string ReturnUrlBase => _configuration["BillDesk:ReturnUrlBase"] ?? string.Empty;
 
         /// <summary>
@@ -39,6 +40,7 @@ namespace PMCRMS.API.Services
                 "BillDesk:SigningKey",
                 "BillDesk:KeyId",
                 "BillDesk:ClientId",
+                "BillDesk:ApiBaseUrl",
                 "BillDesk:PaymentGatewayUrl",
                 "BillDesk:ReturnUrlBase"
             };

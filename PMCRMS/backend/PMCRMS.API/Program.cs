@@ -303,6 +303,7 @@ builder.Services.AddScoped<ISECertificateGenerationService, SECertificateGenerat
 
 // BillDesk Payment Gateway Services
 builder.Services.AddSingleton<IBillDeskConfigService, BillDeskConfigService>(); // BillDesk configuration (singleton)
+builder.Services.AddScoped<IBillDeskCryptoService, BillDeskCryptoService>(); // BillDesk JWE encryption/decryption
 builder.Services.AddScoped<IPluginContextService, PluginContextService>(); // Plugin context for BillDesk operations
 builder.Services.AddScoped<IBillDeskPaymentService, BillDeskPaymentService>(); // BillDesk payment service
 builder.Services.AddScoped<PaymentService>(); // Main payment orchestration service

@@ -13,7 +13,7 @@ import billdeskPaymentService from "../services/billdeskPaymentService";
 
 interface PaymentButtonProps {
   applicationId: number;
-  applicationStatus: number;
+  applicationStatus: number | string; // Can be number or string from API
   isPaymentComplete: boolean;
   onPaymentInitiated?: () => void;
   onPaymentSuccess?: () => void;
@@ -31,12 +31,28 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ApplicationCurrentStatus.PaymentPending = 15
+  // ApplicationCurrentStatus.ApprovedByCE1 = 13, PaymentPending = 15
+  const APPROVED_BY_CE1_STATUS = 13;
   const PAYMENT_PENDING_STATUS = 15;
 
+  // Debug logging
+  console.log("PaymentButton Debug:", {
+    applicationId,
+    applicationStatus,
+    applicationStatusType: typeof applicationStatus,
+    isPaymentComplete,
+    APPROVED_BY_CE1_STATUS,
+    PAYMENT_PENDING_STATUS,
+  });
+
   // Check if payment can be initiated
+  // Status can be either number (13, 15) or string ("ApprovedByCE1", "PaymentPending")
   const canInitiatePayment =
-    applicationStatus === PAYMENT_PENDING_STATUS && !isPaymentComplete;
+    (applicationStatus === APPROVED_BY_CE1_STATUS ||
+      applicationStatus === "ApprovedByCE1" ||
+      applicationStatus === PAYMENT_PENDING_STATUS ||
+      applicationStatus === "PaymentPending") &&
+    !isPaymentComplete;
 
   const handlePayment = async () => {
     setLoading(true);
@@ -69,37 +85,48 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
 
         // BillDesk Embedded SDK Integration (for real payments)
         if (bdOrderId && rData && paymentGatewayUrl) {
-          // Create a form to submit to BillDesk
+          console.log("🔄 Redirecting to BillDesk payment gateway...");
+          console.log("BdOrderId:", bdOrderId);
+          console.log("RData:", rData);
+          console.log("Payment Gateway URL:", paymentGatewayUrl);
+
+          // Notify parent component
+          onPaymentInitiated?.();
+
+          // BillDesk requires POST form submission (not URL redirect)
+          // Create a hidden form and submit it
           const form = document.createElement("form");
           form.method = "POST";
           form.action = paymentGatewayUrl;
           form.style.display = "none";
 
-          // Add BillDesk required parameters
+          // Add merchantid field
+          const merchantIdInput = document.createElement("input");
+          merchantIdInput.type = "hidden";
+          merchantIdInput.name = "merchantid";
+          merchantIdInput.value = "UATPMCNTYA"; // Your merchant ID
+          form.appendChild(merchantIdInput);
+
+          // Add bdorderid field
           const bdOrderIdInput = document.createElement("input");
           bdOrderIdInput.type = "hidden";
-          bdOrderIdInput.name = "bdOrderId";
+          bdOrderIdInput.name = "bdorderid";
           bdOrderIdInput.value = bdOrderId;
           form.appendChild(bdOrderIdInput);
 
+          // Add rdata field
           const rDataInput = document.createElement("input");
           rDataInput.type = "hidden";
           rDataInput.name = "rdata";
           rDataInput.value = rData;
           form.appendChild(rDataInput);
 
-          // Add form to page and submit
+          // Append form to body, submit it, then remove it
           document.body.appendChild(form);
-
-          onPaymentInitiated?.();
-
-          // Submit form to redirect to BillDesk
+          console.log("Submitting BillDesk payment form...");
           form.submit();
 
-          // Clean up form after submission
-          setTimeout(() => {
-            document.body.removeChild(form);
-          }, 1000);
+          return;
         } else {
           setError("Invalid payment gateway response. Please try again.");
           setLoading(false);

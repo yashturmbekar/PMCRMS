@@ -36,6 +36,11 @@ namespace PMCRMS.API.Services
         string PaymentGatewayUrl { get; }
 
         /// <summary>
+        /// BillDesk API base URL for order creation
+        /// </summary>
+        string ApiBaseUrl { get; }
+
+        /// <summary>
         /// Base URL for payment callback/return URL
         /// </summary>
         string ReturnUrlBase { get; }

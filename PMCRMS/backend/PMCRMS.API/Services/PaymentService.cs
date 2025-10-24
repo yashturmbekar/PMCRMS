@@ -108,6 +108,7 @@ namespace PMCRMS.API.Services
                     Message = result.Message,
                     BdOrderId = result.BdOrderId,
                     RData = result.RData,
+                    PaymentGatewayUrl = result.PaymentGatewayUrl, // Pass through gateway URL
                     ErrorDetails = result.Success ? null : result.Message
                 };
             }

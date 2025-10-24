@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PMCRMS.API.Data;
 using PMCRMS.API.Models;
 using PMCRMS.API.ViewModels;
+using System.Globalization;
 
 namespace PMCRMS.API.Services
 {
@@ -144,10 +145,11 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("[PAYMENT] Response decrypted successfully");
 
-                // Step 9: Extract BdOrderId and RData
+                // Step 9: Extract BdOrderId, RData, and Payment Gateway URL
                 var paymentDetails = ExtractPaymentDetails(decryptResult.DecryptedData);
                 string bdOrderId = paymentDetails.Item1;
                 string rData = paymentDetails.Item2;
+                string paymentGatewayUrl = paymentDetails.Item3;
 
                 // Step 10: Update transaction with BillDesk order ID
                 await UpdateTransactionWithBdOrderId(txnEntityId, bdOrderId, rData, ipAddress, userAgent);
@@ -162,7 +164,7 @@ namespace PMCRMS.API.Services
                     TxnEntityId = txnEntityId,
                     BdOrderId = bdOrderId,
                     RData = rData,
-                    PaymentGatewayUrl = _configService.PaymentGatewayUrl
+                    PaymentGatewayUrl = paymentGatewayUrl // Use URL from BillDesk response
                 };
             }
             catch (Exception ex)
@@ -383,7 +385,11 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                var iso8601String = DateTimeOffset.Now.ToString("yyyy-MM-ddTHH:mm:sszzz");
+                // Use InvariantCulture to force standard formatting (colons, not dots)
+                // Format: 2025-10-24T18:31:30+05:30 (RFC3339/ISO 8601)
+                var orderDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture);
+                
+                _logger.LogInformation($"[PAYMENT] Generated order_date: {orderDate}");
 
                 dynamic input = new System.Dynamic.ExpandoObject();
                 input.MerchantId = _configService.MerchantId;
@@ -397,7 +403,7 @@ namespace PMCRMS.API.Services
                 input.currency = "356"; // INR currency code
                 input.ReturnUrl = $"{_configService.ReturnUrlBase}/{entityId}?txnEntityId={txnEntityId}";
                 input.itemcode = "DIRECT";
-                input.OrderDate = iso8601String;
+                input.OrderDate = orderDate.ToString(CultureInfo.InvariantCulture);
                 input.InitChannel = "internet";
                 input.IpAddress = ipAddress;
                 input.UserAgent = userAgent;
@@ -433,9 +439,9 @@ namespace PMCRMS.API.Services
             try
             {
                 dynamic input = new System.Dynamic.ExpandoObject();
-                input.Path = "orders/create";
+                input.Path = "payments/ve1_2/orders/create";
                 input.Method = "POST";
-                input.Headers = $"BD-Traceid: {traceId}\r\nBD-Timestamp: {bdTimestamp}\r\nContent-Type: application/jose\r\nAccept: application/jose";
+                input.Headers = $"BD-Traceid: {traceId}\r\nBD-Timestamp: {bdTimestamp}\r\nclient_id: {_configService.ClientId}\r\nContent-Type: application/jose\r\nAccept: application/jose";
                 input.Body = Encoding.UTF8.GetBytes(encryptedBody);
 
                 dynamic output = await _pluginContextService.Invoke("HTTPPayment", input);
@@ -497,12 +503,13 @@ namespace PMCRMS.API.Services
             }
         }
 
-        private (string bdOrderId, string rData) ExtractPaymentDetails(string jsonString)
+        private (string bdOrderId, string rData, string paymentGatewayUrl) ExtractPaymentDetails(string jsonString)
         {
             try
             {
                 string bdOrderId = "";
                 string rData = "";
+                string paymentGatewayUrl = "";
 
                 using (JsonDocument doc = JsonDocument.Parse(jsonString))
                 {
@@ -516,6 +523,10 @@ namespace PMCRMS.API.Services
                             if (link.TryGetProperty("rel", out JsonElement relProp) &&
                                 relProp.GetString() == "redirect")
                             {
+                                // Extract payment gateway URL from href
+                                if (link.TryGetProperty("href", out JsonElement hrefProp))
+                                    paymentGatewayUrl = hrefProp.GetString() ?? "";
+
                                 if (link.TryGetProperty("parameters", out JsonElement parameters))
                                 {
                                     if (parameters.TryGetProperty("bdorderid", out JsonElement bdorderidProp))
@@ -531,7 +542,8 @@ namespace PMCRMS.API.Services
                     }
                 }
 
-                return (bdOrderId, rData);
+                _logger.LogInformation($"[PAYMENT] Extracted payment gateway URL from BillDesk response: {paymentGatewayUrl}");
+                return (bdOrderId, rData, paymentGatewayUrl);
             }
             catch (Exception ex)
             {

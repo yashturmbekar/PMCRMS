@@ -35,6 +35,7 @@ namespace PMCRMS.API.ViewModels
         public string Message { get; set; } = string.Empty;
         public string? BdOrderId { get; set; }
         public string? RData { get; set; }
+        public string? PaymentGatewayUrl { get; set; }
         public string? ErrorDetails { get; set; }
     }
 

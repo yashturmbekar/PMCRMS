@@ -55,8 +55,7 @@ namespace PMCRMS.API.Controllers
         /// Initiate payment for an application
         /// POST /api/Payment/Initiate
         /// 
-        /// NOTE: BillDesk integration commented out for testing (similar to HSM)
-        /// Using MOCK payment system that completes payment immediately
+        /// BillDesk payment gateway integration enabled
         /// </summary>
         [HttpPost("Initiate")]
         [Authorize]
@@ -66,10 +65,7 @@ namespace PMCRMS.API.Controllers
             {
                 _logger.LogInformation($"[PaymentController] Initiate payment request for application: {request.ApplicationId}");
 
-                // ==================== BILLDESK INTEGRATION COMMENTED OUT FOR TESTING ====================
-                // Similar to HSM commenting pattern - BillDesk payment gateway disabled
-                // To enable BillDesk: Uncomment the code below and comment out the MOCK section
-                /*
+                // ==================== BILLDESK INTEGRATION ENABLED ====================
                 var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
                 var userAgent = HttpContext.Request.Headers["User-Agent"].ToString() ?? 
                                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
@@ -100,13 +96,15 @@ namespace PMCRMS.API.Controllers
                     {
                         bdOrderId = result.BdOrderId,
                         rData = result.RData,
-                        paymentGatewayUrl = "https://pay.billdesk.com/web/v1_2/embeddedsdk"
+                        paymentGatewayUrl = result.PaymentGatewayUrl // Use URL from BillDesk response
                     }
                 });
-                */
                 // ==================== END OF BILLDESK CODE ====================
 
-                // ==================== MOCK PAYMENT FOR TESTING ====================
+                /* ==================== MOCK PAYMENT FOR TESTING (DISABLED) ====================
+                // MOCK PAYMENT DISABLED - Using BillDesk payment gateway
+                // To enable MOCK payment: Uncomment this section and comment out the BillDesk code above
+                
                 _logger.LogInformation($"[PaymentController] Using MOCK payment (BillDesk disabled)");
 
                 // 1. Get application
@@ -436,7 +434,7 @@ namespace PMCRMS.API.Controllers
                         mockMode = true
                     }
                 });
-                // ==================== END OF MOCK PAYMENT ====================
+                ==================== END OF MOCK PAYMENT ==================== */
             }
             catch (Exception ex)
             {

@@ -17,15 +17,21 @@ namespace PMCRMS.API.Services
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<PluginContextService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IBillDeskCryptoService _cryptoService;
+        private readonly IBillDeskConfigService _configService;
 
         public PluginContextService(
             PMCRMSDbContext context,
             ILogger<PluginContextService> logger,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IBillDeskCryptoService cryptoService,
+            IBillDeskConfigService configService)
         {
             _context = context;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _cryptoService = cryptoService;
+            _configService = configService;
         }
 
         public async Task<dynamic> GetEntityFieldsById(string entityId)
@@ -125,36 +131,46 @@ namespace PMCRMS.API.Services
 
                 if (action == "Encrypt")
                 {
-                    // In production, this would call actual BillDesk encryption library/API
-                    // For now, we'll create a mock encrypted response
-                    var mockEncryptedData = $"mock_encrypted_data_{DateTime.UtcNow.Ticks}";
-                    
-                    _logger.LogInformation("BillDesk encryption completed");
-                    return new { Status = "SUCCESS", Message = mockEncryptedData };
-                }
-                else if (action == "Decrypt")
-                {
-                    // In production, this would call actual BillDesk decryption library/API
-                    // Mock decryption - return a sample payment response
-                    var mockResponse = new
+                    // Real BillDesk JWE encryption
+                    var payload = new
                     {
-                        links = new[]
+                        mercid = input.MerchantId?.ToString(),
+                        orderid = input.orderid?.ToString(),
+                        amount = input.amount?.ToString(),
+                        order_date = input.OrderDate?.ToString(),
+                        currency = input.currency?.ToString() ?? "356",
+                        ru = input.ReturnUrl?.ToString(),
+                        itemcode = input.itemcode?.ToString() ?? "DIRECT",
+                        device = new
                         {
-                            new
-                            {
-                                rel = "redirect",
-                                parameters = new
-                                {
-                                    bdorderid = $"BD{DateTime.UtcNow:yyyyMMddHHmmss}",
-                                    rdata = $"RDATA{DateTime.UtcNow.Ticks}"
-                                }
-                            }
+                            init_channel = input.InitChannel?.ToString() ?? "internet",
+                            ip = input.IpAddress?.ToString(),
+                            user_agent = input.UserAgent?.ToString(),
+                            accept_header = input.AcceptHeader?.ToString() ?? "text/html"
                         }
                     };
 
-                    var jsonResponse = JsonSerializer.Serialize(mockResponse);
+                    _logger.LogInformation($"[BILLDESK] Creating JWE for order: {input.orderid}, order_date: {payload.order_date}");
+                    
+                    string jweToken = _cryptoService.CreateJWE(
+                        payload, 
+                        input.MerchantId?.ToString() ?? "",
+                        input.keyId?.ToString() ?? ""
+                    );
+                    
+                    _logger.LogInformation("BillDesk encryption completed");
+                    return new { Status = "SUCCESS", Message = jweToken };
+                }
+                else if (action == "Decrypt")
+                {
+                    // Real BillDesk JWE decryption
+                    string jweToken = input.responseBody?.ToString() ?? "";
+                    
+                    _logger.LogInformation("[BILLDESK] Decrypting JWE response");
+                    string decryptedJson = _cryptoService.ParseJWE(jweToken);
+                    
                     _logger.LogInformation("BillDesk decryption completed");
-                    return new { Status = "SUCCESS", Message = jsonResponse };
+                    return new { Status = "SUCCESS", Message = decryptedJson };
                 }
 
                 return new { Status = "ERROR", Message = "Unsupported action" };
@@ -172,30 +188,125 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogInformation("Calling BillDesk HTTP Payment API");
 
-                // In production, this would make actual HTTP calls to BillDesk API
-                // Mock response for now
-                await Task.Delay(100); // Simulate network delay
+                // Real HTTP call to BillDesk API
+                string path = input.Path?.ToString() ?? "";
+                string method = input.Method?.ToString() ?? "POST";
+                string headers = input.Headers?.ToString() ?? "";
+                byte[] bodyBytes = input.Body as byte[] ?? Array.Empty<byte>();
 
-                var mockResponse = new
+                // Parse headers
+                var headerDict = new Dictionary<string, string>();
+                foreach (var headerLine in headers.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    links = new[]
+                    var parts = headerLine.Split(new string[] { ": " }, 2, StringSplitOptions.None);
+                    if (parts.Length == 2)
                     {
-                        new
+                        headerDict[parts[0]] = parts[1];
+                    }
+                }
+
+                // BillDesk UAT/Production API endpoint
+                string baseUrl = _configService.ApiBaseUrl;
+                string fullUrl = $"{baseUrl}/{path}";
+
+                _logger.LogInformation($"[HTTP] Calling BillDesk API: {method} {fullUrl}");
+
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+                var request = new HttpRequestMessage(new HttpMethod(method), fullUrl);
+                
+                // Add headers
+                foreach (var header in headerDict)
+                {
+                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                }
+
+                // Add body for POST/PUT requests
+                if (method.Equals("POST", StringComparison.OrdinalIgnoreCase) && bodyBytes.Length > 0)
+                {
+                    request.Content = new ByteArrayContent(bodyBytes);
+                    if (headerDict.ContainsKey("Content-Type"))
+                    {
+                        request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(headerDict["Content-Type"]);
+                    }
+                }
+
+                // Make the HTTP call
+                var response = await httpClient.SendAsync(request);
+                
+                _logger.LogInformation($"[HTTP] BillDesk API response: {response.StatusCode}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    string errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"[HTTP] BillDesk API error (encrypted): {errorContent}");
+                    
+                    // Try to decrypt the error response if it's a JWE/JWS token
+                    try
+                    {
+                        if (errorContent.Contains(".") && errorContent.Split('.').Length >= 3)
                         {
-                            rel = "redirect",
-                            parameters = new
+                            _logger.LogInformation("[HTTP] Attempting to decrypt BillDesk error response...");
+                            
+                            var decryptInput = new
                             {
-                                bdorderid = $"BD{DateTime.UtcNow:yyyyMMddHHmmss}",
-                                rdata = $"RDATA{DateTime.UtcNow.Ticks}"
+                                Action = "Decrypt",
+                                responseBody = errorContent,  // lowercase 'r' to match line 167
+                                EncryptionKey = _configService.EncryptionKey,
+                                SigningKey = _configService.SigningKey
+                            };
+                            
+                            dynamic decryptResult = await HandleBillDeskService(decryptInput);
+                            if (decryptResult.Status == "SUCCESS")
+                            {
+                                string decryptedError = decryptResult.Message;
+                                _logger.LogError($"[HTTP] BillDesk API error (decrypted): {decryptedError}");
+                                errorContent = decryptedError;
                             }
                         }
                     }
-                };
+                    catch (Exception decryptEx)
+                    {
+                        _logger.LogWarning($"[HTTP] Could not decrypt error response: {decryptEx.Message}");
+                    }
+                    
+                    return new { Status = "ERROR", Message = $"API returned {response.StatusCode}: {errorContent}" };
+                }
 
-                var jsonResponse = JsonSerializer.Serialize(mockResponse);
-                var responseBytes = Encoding.UTF8.GetBytes(jsonResponse);
+                var responseBytes = await response.Content.ReadAsByteArrayAsync();
+                string responseContent = System.Text.Encoding.UTF8.GetString(responseBytes);
 
-                _logger.LogInformation("HTTP Payment API call completed");
+                _logger.LogInformation("HTTP Payment API call completed successfully");
+                
+                // Decrypt and log successful responses too
+                try
+                {
+                    if (responseContent.Contains(".") && responseContent.Split('.').Length >= 3)
+                    {
+                        _logger.LogInformation("[HTTP] Attempting to decrypt BillDesk success response...");
+                        
+                        var decryptInput = new
+                        {
+                            Action = "Decrypt",
+                            responseBody = responseContent,
+                            EncryptionKey = _configService.EncryptionKey,
+                            SigningKey = _configService.SigningKey
+                        };
+                        
+                        dynamic decryptResult = await HandleBillDeskService(decryptInput);
+                        if (decryptResult.Status == "SUCCESS")
+                        {
+                            string decryptedResponse = decryptResult.Message;
+                            _logger.LogInformation($"[HTTP] BillDesk API success response (decrypted): {decryptedResponse}");
+                        }
+                    }
+                }
+                catch (Exception decryptEx)
+                {
+                    _logger.LogWarning($"[HTTP] Could not decrypt success response: {decryptEx.Message}");
+                }
+                
                 return new { Status = "SUCCESS", Content = responseBytes };
             }
             catch (Exception ex)
