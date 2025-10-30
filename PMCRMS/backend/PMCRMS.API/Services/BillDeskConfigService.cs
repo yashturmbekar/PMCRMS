@@ -64,7 +64,6 @@ namespace PMCRMS.API.Services
 
             _logger.LogInformation("BillDesk configuration validated successfully");
             _logger.LogInformation($"Payment Gateway URL: {PaymentGatewayUrl}");
-            _logger.LogInformation($"Merchant ID: {MerchantId}");
         }
     }
 }

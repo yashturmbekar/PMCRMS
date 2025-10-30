@@ -63,21 +63,43 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation($"[PaymentController] Initiate payment request for application: {request.ApplicationId}");
-
-                // ==================== BILLDESK INTEGRATION ENABLED ====================
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] ========================================");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] PAYMENT INITIATION REQUEST RECEIVED");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] ========================================");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Application ID: {request.ApplicationId}");
+                
+                // Get additional request context
                 var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "127.0.0.1";
                 var userAgent = HttpContext.Request.Headers["User-Agent"].ToString() ?? 
                                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+                var userId = User?.Identity?.Name ?? "Anonymous";
+                
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] === REQUEST CONTEXT ===");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Client IP: {clientIp}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] User Agent: {userAgent}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] User: {userId}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Timestamp: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] === END OF CONTEXT ===");
+
+                // ==================== BILLDESK INTEGRATION ENABLED ====================
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Using BillDesk Payment Gateway");
 
                 var result = await _paymentService.InitializePaymentAsync(
                     request.ApplicationId, 
                     clientIp, 
                     userAgent);
 
+                // **DETAILED RESULT LOGGING**
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] === PAYMENT SERVICE RESULT ===");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Success: {result.Success}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Message: {result.Message}");
+                
                 if (!result.Success)
                 {
-                    _logger.LogError($"[PaymentController] Payment initiation failed: {result.Message}");
+                    _logger.LogError($"[PAYMENT-CONTROLLER] Payment initiation failed");
+                    _logger.LogError($"[PAYMENT-CONTROLLER] Error Details: {result.ErrorDetails}");
+                    _logger.LogError($"[PAYMENT-CONTROLLER] ========================================");
+                    
                     return BadRequest(new
                     {
                         success = false,
@@ -86,9 +108,16 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                _logger.LogInformation($"[PaymentController] Payment initiated successfully - BdOrderId: {result.BdOrderId}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] BdOrderId: {result.BdOrderId}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] PaymentGatewayUrl: {result.PaymentGatewayUrl}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] RData Length: {result.RData?.Length ?? 0} characters");
+                if (!string.IsNullOrEmpty(result.RData))
+                {
+                    _logger.LogInformation($"[PAYMENT-CONTROLLER] RData (First 100 chars): {result.RData.Substring(0, Math.Min(100, result.RData.Length))}...");
+                }
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] === END OF RESULT ===");
 
-                return Ok(new
+                var responseData = new
                 {
                     success = true,
                     message = "Payment initiated successfully",
@@ -96,9 +125,20 @@ namespace PMCRMS.API.Controllers
                     {
                         bdOrderId = result.BdOrderId,
                         rData = result.RData,
-                        paymentGatewayUrl = result.PaymentGatewayUrl // Use URL from BillDesk response
+                        paymentGatewayUrl = result.PaymentGatewayUrl, // Use URL from BillDesk response
+                        merchantId = result.MerchantId
                     }
-                });
+                };
+
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] === RESPONSE TO CLIENT ===");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Response: {System.Text.Json.JsonSerializer.Serialize(responseData)}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] === END OF RESPONSE ===");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] Payment initiated successfully - BdOrderId: {result.BdOrderId}");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] ========================================");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] PAYMENT INITIATION COMPLETED");
+                _logger.LogInformation($"[PAYMENT-CONTROLLER] ========================================");
+
+                return Ok(responseData);
                 // ==================== END OF BILLDESK CODE ====================
 
                 /* ==================== MOCK PAYMENT FOR TESTING (DISABLED) ====================
@@ -463,8 +503,26 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                _logger.LogInformation($"[PaymentController] Payment callback for application: {applicationId}");
-                _logger.LogInformation($"[PaymentController] Callback params - Status: {status}, Amount: {amount}, BdOrderId: {bdOrderId}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] PAYMENT CALLBACK RECEIVED");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Application ID: {applicationId}");
+                
+                // **DETAILED CALLBACK PARAMETERS LOGGING**
+                _logger.LogInformation($"[PAYMENT-CALLBACK] === CALLBACK PARAMETERS ===");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] TxnEntityId: {txnEntityId}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] BdOrderId: {bdOrderId}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Status: {status}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Amount: {amount}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] === END OF PARAMETERS ===");
+                
+                // Log all query parameters
+                _logger.LogInformation($"[PAYMENT-CALLBACK] === ALL QUERY PARAMETERS ===");
+                foreach (var param in HttpContext.Request.Query)
+                {
+                    _logger.LogInformation($"[PAYMENT-CALLBACK] {param.Key}: {param.Value}");
+                }
+                _logger.LogInformation($"[PAYMENT-CALLBACK] === END OF QUERY PARAMETERS ===");
 
                 var callbackRequest = new PaymentCallbackRequest
                 {
@@ -475,22 +533,37 @@ namespace PMCRMS.API.Controllers
                     Amount = amount
                 };
 
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Processing callback through BillDesk payment service...");
                 var result = await _billDeskPaymentService.ProcessPaymentCallbackAsync(callbackRequest);
+
+                _logger.LogInformation($"[PAYMENT-CALLBACK] === CALLBACK PROCESSING RESULT ===");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Success: {result.Success}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Message: {result.Message}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Redirect URL: {result.RedirectUrl}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] Application Status: {result.ApplicationStatus}");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] === END OF RESULT ===");
 
                 if (result.Success)
                 {
-                    _logger.LogInformation($"[PaymentController] Callback processed successfully");
+                    _logger.LogInformation($"[PAYMENT-CALLBACK] Callback processed successfully");
                     
                     // Redirect to frontend success/failure page
                     var redirectUrl = status?.ToUpper() == "SUCCESS" 
                         ? $"{Request.Scheme}://{Request.Host}/#/payment/success?applicationId={applicationId}"
                         : $"{Request.Scheme}://{Request.Host}/#/payment/failure?applicationId={applicationId}";
                     
+                    _logger.LogInformation($"[PAYMENT-CALLBACK] Redirecting to: {redirectUrl}");
+                    _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
+                    _logger.LogInformation($"[PAYMENT-CALLBACK] CALLBACK PROCESSING COMPLETED");
+                    _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
+                    
                     return Redirect(redirectUrl);
                 }
                 else
                 {
-                    _logger.LogError($"[PaymentController] Callback processing failed: {result.Message}");
+                    _logger.LogError($"[PAYMENT-CALLBACK] Callback processing failed: {result.Message}");
+                    _logger.LogError($"[PAYMENT-CALLBACK] ========================================");
+                    
                     return BadRequest(new
                     {
                         success = false,
@@ -500,7 +573,10 @@ namespace PMCRMS.API.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[PaymentController] Error in PaymentCallback");
+                _logger.LogError(ex, "[PAYMENT-CALLBACK] Error in PaymentCallback");
+                _logger.LogError($"[PAYMENT-CALLBACK] Exception Details: {ex.ToString()}");
+                _logger.LogError($"[PAYMENT-CALLBACK] ========================================");
+                
                 return StatusCode(500, new
                 {
                     success = false,

@@ -23,6 +23,7 @@ namespace PMCRMS.API.ViewModels
         public string? BdOrderId { get; set; }
         public string? RData { get; set; }
         public string? PaymentGatewayUrl { get; set; }
+        public string? MerchantId { get; set; }
         public string? ErrorDetails { get; set; }
     }
 
@@ -36,6 +37,7 @@ namespace PMCRMS.API.ViewModels
         public string? BdOrderId { get; set; }
         public string? RData { get; set; }
         public string? PaymentGatewayUrl { get; set; }
+        public string? MerchantId { get; set; }
         public string? ErrorDetails { get; set; }
     }
 

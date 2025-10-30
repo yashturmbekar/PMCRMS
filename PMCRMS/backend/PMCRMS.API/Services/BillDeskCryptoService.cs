@@ -40,11 +40,11 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                _logger.LogInformation($"[CRYPTO] Creating JWE for merchant: {merchantId}");
+                _logger.LogInformation("[CRYPTO] Creating JWE token");
 
                 // Step 1: Serialize payload to JSON
                 string jsonPayload = JsonConvert.SerializeObject(payload);
-                _logger.LogInformation($"[CRYPTO] Payload to encrypt: {jsonPayload}");
+                _logger.LogInformation($"[CRYPTO] Payload serialized, length: {jsonPayload.Length}");
 
                 // Step 2: Get encryption and signing keys
                 string encryptionKey = _configService.EncryptionKey;
@@ -67,7 +67,7 @@ namespace PMCRMS.API.Services
                     { "clientid", clientId }
                 };
 
-                _logger.LogInformation($"[CRYPTO] JWE Header - kid: {keyId}, clientid: {clientId}");
+                _logger.LogInformation("[CRYPTO] JWE header configured");
 
                 // Step 4: Encrypt payload using JWE (A256GCM with direct key algorithm)
                 string encryptedPayload = JWT.Encode(

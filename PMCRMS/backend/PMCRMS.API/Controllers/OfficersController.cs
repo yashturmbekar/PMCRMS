@@ -178,8 +178,7 @@ namespace PMCRMS.API.Controllers
                     _logger.LogWarning("Failed to send invitation email to {Email}", request.Email);
                 }
 
-                _logger.LogInformation("Officer invited successfully: {Email}, Temporary Password: {Password}", 
-                    request.Email, temporaryPassword);
+                _logger.LogInformation("Officer invited successfully: {Email}", request.Email);
 
                 var invitationDto = new OfficerInvitationDto
                 {

@@ -127,7 +127,8 @@ namespace PMCRMS.API.Services
             try
             {
                 string action = input.Action;
-                _logger.LogInformation($"BillDesk service action: {action}");
+                _logger.LogInformation($"[PLUGIN-BILLDESK] ===== BILLDESK PLUGIN INVOKED =====");
+                _logger.LogInformation($"[PLUGIN-BILLDESK] Action: {action}");
 
                 if (action == "Encrypt")
                 {
@@ -150,7 +151,24 @@ namespace PMCRMS.API.Services
                         }
                     };
 
-                    _logger.LogInformation($"[BILLDESK] Creating JWE for order: {input.orderid}, order_date: {payload.order_date}");
+                    // **DETAILED ENCRYPTION PAYLOAD LOGGING**
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] === JWE ENCRYPTION PAYLOAD ===");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] mercid: {payload.mercid}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] orderid: {payload.orderid}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] amount: {payload.amount}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] order_date: {payload.order_date}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] currency: {payload.currency}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] ru (return url): {payload.ru}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] itemcode: {payload.itemcode}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] device.init_channel: {payload.device.init_channel}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] device.ip: {payload.device.ip}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] device.user_agent: {payload.device.user_agent}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] device.accept_header: {payload.device.accept_header}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] === END OF PAYLOAD ===");
+                    
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Merchant ID: {input.MerchantId?.ToString()}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Key ID: {input.keyId?.ToString()}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Creating JWE token...");
                     
                     string jweToken = _cryptoService.CreateJWE(
                         payload, 
@@ -158,7 +176,11 @@ namespace PMCRMS.API.Services
                         input.keyId?.ToString() ?? ""
                     );
                     
-                    _logger.LogInformation("BillDesk encryption completed");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] JWE token created successfully");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] JWE Token Length: {jweToken.Length} characters");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] JWE Token (First 100 chars): {jweToken.Substring(0, Math.Min(100, jweToken.Length))}...");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] ===== ENCRYPTION COMPLETED =====");
+                    
                     return new { Status = "SUCCESS", Message = jweToken };
                 }
                 else if (action == "Decrypt")
@@ -166,18 +188,27 @@ namespace PMCRMS.API.Services
                     // Real BillDesk JWE decryption
                     string jweToken = input.responseBody?.ToString() ?? "";
                     
-                    _logger.LogInformation("[BILLDESK] Decrypting JWE response");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] === JWE DECRYPTION ===");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] JWE Token Length: {jweToken.Length} characters");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] JWE Token (First 100 chars): {jweToken.Substring(0, Math.Min(100, jweToken.Length))}...");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Decrypting JWE response...");
+                    
                     string decryptedJson = _cryptoService.ParseJWE(jweToken);
                     
-                    _logger.LogInformation("BillDesk decryption completed");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Decryption successful");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Decrypted JSON Length: {decryptedJson.Length} characters");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] Decrypted JSON: {decryptedJson}");
+                    _logger.LogInformation($"[PLUGIN-BILLDESK] ===== DECRYPTION COMPLETED =====");
+                    
                     return new { Status = "SUCCESS", Message = decryptedJson };
                 }
 
+                _logger.LogError($"[PLUGIN-BILLDESK] Unsupported action: {action}");
                 return new { Status = "ERROR", Message = "Unsupported action" };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in BillDesk service");
+                _logger.LogError(ex, "[PLUGIN-BILLDESK] Error in BillDesk service");
                 return new { Status = "ERROR", Message = ex.Message };
             }
         }
@@ -186,7 +217,7 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                _logger.LogInformation("Calling BillDesk HTTP Payment API");
+                _logger.LogInformation($"[PLUGIN-HTTP] ===== HTTP PAYMENT SERVICE INVOKED =====");
 
                 // Real HTTP call to BillDesk API
                 string path = input.Path?.ToString() ?? "";
@@ -194,6 +225,12 @@ namespace PMCRMS.API.Services
                 string headers = input.Headers?.ToString() ?? "";
                 byte[] bodyBytes = input.Body as byte[] ?? Array.Empty<byte>();
 
+                // **DETAILED HTTP REQUEST LOGGING**
+                _logger.LogInformation($"[PLUGIN-HTTP] === HTTP REQUEST DETAILS ===");
+                _logger.LogInformation($"[PLUGIN-HTTP] Method: {method}");
+                _logger.LogInformation($"[PLUGIN-HTTP] Path: {path}");
+                _logger.LogInformation($"[PLUGIN-HTTP] Base URL: {_configService.ApiBaseUrl}");
+                
                 // Parse headers
                 var headerDict = new Dictionary<string, string>();
                 foreach (var headerLine in headers.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
@@ -205,11 +242,25 @@ namespace PMCRMS.API.Services
                     }
                 }
 
+                _logger.LogInformation($"[PLUGIN-HTTP] === REQUEST HEADERS ===");
+                foreach (var header in headerDict)
+                {
+                    _logger.LogInformation($"[PLUGIN-HTTP] {header.Key}: {header.Value}");
+                }
+                _logger.LogInformation($"[PLUGIN-HTTP] === END OF HEADERS ===");
+
                 // BillDesk UAT/Production API endpoint
                 string baseUrl = _configService.ApiBaseUrl;
                 string fullUrl = $"{baseUrl}/{path}";
 
-                _logger.LogInformation($"[HTTP] Calling BillDesk API: {method} {fullUrl}");
+                _logger.LogInformation($"[PLUGIN-HTTP] Full URL: {fullUrl}");
+                _logger.LogInformation($"[PLUGIN-HTTP] Request Body Size: {bodyBytes.Length} bytes");
+                if (bodyBytes.Length > 0)
+                {
+                    var bodyPreview = Encoding.UTF8.GetString(bodyBytes);
+                    _logger.LogInformation($"[PLUGIN-HTTP] Request Body (First 200 chars): {bodyPreview.Substring(0, Math.Min(200, bodyPreview.Length))}...");
+                }
+                _logger.LogInformation($"[PLUGIN-HTTP] === END OF REQUEST DETAILS ===");
 
                 var httpClient = _httpClientFactory.CreateClient();
                 httpClient.Timeout = TimeSpan.FromSeconds(30);
@@ -232,22 +283,43 @@ namespace PMCRMS.API.Services
                     }
                 }
 
+                _logger.LogInformation($"[PLUGIN-HTTP] Sending HTTP request to BillDesk...");
+                
                 // Make the HTTP call
                 var response = await httpClient.SendAsync(request);
                 
-                _logger.LogInformation($"[HTTP] BillDesk API response: {response.StatusCode}");
+                // **DETAILED HTTP RESPONSE LOGGING**
+                _logger.LogInformation($"[PLUGIN-HTTP] === HTTP RESPONSE ===");
+                _logger.LogInformation($"[PLUGIN-HTTP] Status Code: {response.StatusCode} ({(int)response.StatusCode})");
+                _logger.LogInformation($"[PLUGIN-HTTP] Is Success: {response.IsSuccessStatusCode}");
+                
+                _logger.LogInformation($"[PLUGIN-HTTP] === RESPONSE HEADERS ===");
+                foreach (var header in response.Headers)
+                {
+                    _logger.LogInformation($"[PLUGIN-HTTP] {header.Key}: {string.Join(", ", header.Value)}");
+                }
+                if (response.Content?.Headers != null)
+                {
+                    foreach (var header in response.Content.Headers)
+                    {
+                        _logger.LogInformation($"[PLUGIN-HTTP] {header.Key}: {string.Join(", ", header.Value)}");
+                    }
+                }
+                _logger.LogInformation($"[PLUGIN-HTTP] === END OF RESPONSE HEADERS ===");
 
                 if (!response.IsSuccessStatusCode)
                 {
                     string errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"[HTTP] BillDesk API error (encrypted): {errorContent}");
+                    _logger.LogError($"[PLUGIN-HTTP] === ERROR RESPONSE ===");
+                    _logger.LogError($"[PLUGIN-HTTP] Error Content Length: {errorContent.Length} characters");
+                    _logger.LogError($"[PLUGIN-HTTP] Error Content (encrypted): {errorContent}");
                     
                     // Try to decrypt the error response if it's a JWE/JWS token
                     try
                     {
                         if (errorContent.Contains(".") && errorContent.Split('.').Length >= 3)
                         {
-                            _logger.LogInformation("[HTTP] Attempting to decrypt BillDesk error response...");
+                            _logger.LogInformation("[PLUGIN-HTTP] Attempting to decrypt BillDesk error response...");
                             
                             var decryptInput = new
                             {
@@ -261,30 +333,36 @@ namespace PMCRMS.API.Services
                             if (decryptResult.Status == "SUCCESS")
                             {
                                 string decryptedError = decryptResult.Message;
-                                _logger.LogError($"[HTTP] BillDesk API error (decrypted): {decryptedError}");
+                                _logger.LogError($"[PLUGIN-HTTP] BillDesk API error (decrypted): {decryptedError}");
                                 errorContent = decryptedError;
                             }
                         }
                     }
                     catch (Exception decryptEx)
                     {
-                        _logger.LogWarning($"[HTTP] Could not decrypt error response: {decryptEx.Message}");
+                        _logger.LogWarning($"[PLUGIN-HTTP] Could not decrypt error response: {decryptEx.Message}");
                     }
                     
+                    _logger.LogError($"[PLUGIN-HTTP] === END OF ERROR RESPONSE ===");
+                    _logger.LogError($"[PLUGIN-HTTP] ===== HTTP REQUEST FAILED =====");
                     return new { Status = "ERROR", Message = $"API returned {response.StatusCode}: {errorContent}" };
                 }
 
                 var responseBytes = await response.Content.ReadAsByteArrayAsync();
                 string responseContent = System.Text.Encoding.UTF8.GetString(responseBytes);
 
-                _logger.LogInformation("HTTP Payment API call completed successfully");
+                _logger.LogInformation($"[PLUGIN-HTTP] Response Content Length: {responseContent.Length} characters");
+                _logger.LogInformation($"[PLUGIN-HTTP] Response Content (First 200 chars): {responseContent.Substring(0, Math.Min(200, responseContent.Length))}...");
+                _logger.LogInformation($"[PLUGIN-HTTP] Full Response Content: {responseContent}");
+                _logger.LogInformation($"[PLUGIN-HTTP] === END OF RESPONSE ===");
                 
                 // Decrypt and log successful responses too
                 try
                 {
                     if (responseContent.Contains(".") && responseContent.Split('.').Length >= 3)
                     {
-                        _logger.LogInformation("[HTTP] Attempting to decrypt BillDesk success response...");
+                        _logger.LogInformation("[PLUGIN-HTTP] Response appears to be encrypted (JWE/JWS token)");
+                        _logger.LogInformation("[PLUGIN-HTTP] Attempting to decrypt BillDesk success response...");
                         
                         var decryptInput = new
                         {
@@ -298,20 +376,24 @@ namespace PMCRMS.API.Services
                         if (decryptResult.Status == "SUCCESS")
                         {
                             string decryptedResponse = decryptResult.Message;
-                            _logger.LogInformation($"[HTTP] BillDesk API success response (decrypted): {decryptedResponse}");
+                            _logger.LogInformation($"[PLUGIN-HTTP] === DECRYPTED SUCCESS RESPONSE ===");
+                            _logger.LogInformation($"[PLUGIN-HTTP] Decrypted Response: {decryptedResponse}");
+                            _logger.LogInformation($"[PLUGIN-HTTP] === END OF DECRYPTED RESPONSE ===");
                         }
                     }
                 }
                 catch (Exception decryptEx)
                 {
-                    _logger.LogWarning($"[HTTP] Could not decrypt success response: {decryptEx.Message}");
+                    _logger.LogWarning($"[PLUGIN-HTTP] Could not decrypt success response: {decryptEx.Message}");
                 }
                 
+                _logger.LogInformation($"[PLUGIN-HTTP] ===== HTTP REQUEST COMPLETED SUCCESSFULLY =====");
                 return new { Status = "SUCCESS", Content = responseBytes };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in HTTP Payment service");
+                _logger.LogError(ex, "[PLUGIN-HTTP] Error in HTTP Payment service");
+                _logger.LogError($"[PLUGIN-HTTP] ===== HTTP REQUEST FAILED WITH EXCEPTION =====");
                 return new { Status = "ERROR", Message = ex.Message };
             }
         }

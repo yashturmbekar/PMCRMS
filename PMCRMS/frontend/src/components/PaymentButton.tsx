@@ -100,11 +100,21 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
           form.action = paymentGatewayUrl;
           form.style.display = "none";
 
+          // Get merchantId from backend response
+          const merchantId = response.data.merchantId;
+          if (!merchantId) {
+            setError(
+              "Merchant ID not found in response. Please contact support."
+            );
+            setLoading(false);
+            return;
+          }
+
           // Add merchantid field
           const merchantIdInput = document.createElement("input");
           merchantIdInput.type = "hidden";
           merchantIdInput.name = "merchantid";
-          merchantIdInput.value = "UATPMCNTYA"; // Your merchant ID
+          merchantIdInput.value = merchantId; // Use merchant ID from backend
           form.appendChild(merchantIdInput);
 
           // Add bdorderid field

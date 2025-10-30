@@ -109,6 +109,7 @@ namespace PMCRMS.API.Services
                     BdOrderId = result.BdOrderId,
                     RData = result.RData,
                     PaymentGatewayUrl = result.PaymentGatewayUrl, // Pass through gateway URL
+                    MerchantId = result.MerchantId, // Include merchant ID from backend
                     ErrorDetails = result.Success ? null : result.Message
                 };
             }

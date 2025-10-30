@@ -164,7 +164,8 @@ namespace PMCRMS.API.Services
                     TxnEntityId = txnEntityId,
                     BdOrderId = bdOrderId,
                     RData = rData,
-                    PaymentGatewayUrl = paymentGatewayUrl // Use URL from BillDesk response
+                    PaymentGatewayUrl = paymentGatewayUrl, // Use URL from BillDesk response
+                    MerchantId = _configService.MerchantId // Include merchant ID from configuration
                 };
             }
             catch (Exception ex)
@@ -389,7 +390,8 @@ namespace PMCRMS.API.Services
                 // Format: 2025-10-24T18:31:30+05:30 (RFC3339/ISO 8601)
                 var orderDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture);
                 
-                _logger.LogInformation($"[PAYMENT] Generated order_date: {orderDate}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] ===== ENCRYPTION REQUEST STARTED =====");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] Generated order_date: {orderDate}");
 
                 dynamic input = new System.Dynamic.ExpandoObject();
                 input.MerchantId = _configService.MerchantId;
@@ -409,7 +411,34 @@ namespace PMCRMS.API.Services
                 input.UserAgent = userAgent;
                 input.AcceptHeader = "text/html";
 
+                // **PAYLOAD LOGGING (Sensitive data masked)**
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] === ENCRYPTION INPUT PAYLOAD ===");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] OrderId: {orderId}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] Amount: {amount}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] Currency: 356 (INR)");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] ReturnUrl: {_configService.ReturnUrlBase}/{entityId}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] ItemCode: DIRECT");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] OrderDate: {orderDate}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] InitChannel: internet");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] IpAddress: {ipAddress}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] === END OF INPUT PAYLOAD ===");
+
                 dynamic response = await _pluginContextService.Invoke("BILLDESK", input);
+
+                // **LOG ENCRYPTION RESPONSE**
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] === ENCRYPTION RESPONSE ===");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] Status: {response?.Status}");
+                if (response?.Status == "SUCCESS")
+                {
+                    var encryptedToken = response.Message?.ToString() ?? "";
+                    _logger.LogInformation($"[BILLDESK-ENCRYPT] Encrypted JWE Token Length: {encryptedToken.Length} characters");
+                }
+                else
+                {
+                    _logger.LogError($"[BILLDESK-ENCRYPT] Encryption Failed - Message: {response?.Message}");
+                }
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] === END OF RESPONSE ===");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] ===== ENCRYPTION REQUEST COMPLETED =====");
 
                 if (response?.Status != "SUCCESS")
                 {
@@ -428,7 +457,7 @@ namespace PMCRMS.API.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[PAYMENT] Error encrypting payment data");
+                _logger.LogError(ex, "[BILLDESK-ENCRYPT] Error encrypting payment data");
                 return new EncryptionResult { Success = false, Message = ex.Message };
             }
         }
@@ -438,13 +467,47 @@ namespace PMCRMS.API.Services
         {
             try
             {
+                _logger.LogInformation($"[BILLDESK-API] ===== API CALL STARTED =====");
+                
                 dynamic input = new System.Dynamic.ExpandoObject();
                 input.Path = "payments/ve1_2/orders/create";
                 input.Method = "POST";
                 input.Headers = $"BD-Traceid: {traceId}\r\nBD-Timestamp: {bdTimestamp}\r\nclient_id: {_configService.ClientId}\r\nContent-Type: application/jose\r\nAccept: application/jose";
                 input.Body = Encoding.UTF8.GetBytes(encryptedBody);
 
+                // **DETAILED API REQUEST LOGGING**
+                _logger.LogInformation($"[BILLDESK-API] === API REQUEST DETAILS ===");
+                _logger.LogInformation($"[BILLDESK-API] Endpoint: {_configService.ApiBaseUrl}/payments/ve1_2/orders/create");
+                _logger.LogInformation($"[BILLDESK-API] Method: POST");
+                _logger.LogInformation($"[BILLDESK-API] Path: payments/ve1_2/orders/create");
+                _logger.LogInformation($"[BILLDESK-API] === REQUEST HEADERS ===");
+                _logger.LogInformation($"[BILLDESK-API] BD-Traceid: {traceId}");
+                _logger.LogInformation($"[BILLDESK-API] BD-Timestamp: {bdTimestamp}");
+                _logger.LogInformation($"[BILLDESK-API] Content-Type: application/jose");
+                _logger.LogInformation($"[BILLDESK-API] Accept: application/jose");
+                _logger.LogInformation($"[BILLDESK-API] === END OF HEADERS ===");
+                _logger.LogInformation($"[BILLDESK-API] Request Body Size: {input.Body.Length} bytes");
+                _logger.LogInformation($"[BILLDESK-API] === END OF REQUEST DETAILS ===");
+
                 dynamic output = await _pluginContextService.Invoke("HTTPPayment", input);
+
+                // **API RESPONSE LOGGING (Sensitive data masked)**
+                string responseData = output?.Status == "SUCCESS" ? Encoding.UTF8.GetString(output.Content) : "";
+                
+                _logger.LogInformation($"[BILLDESK-API] === API RESPONSE ===");
+                _logger.LogInformation($"[BILLDESK-API] Response Status: {output?.Status}");
+                
+                if (output?.Status == "SUCCESS")
+                {
+                    _logger.LogInformation($"[BILLDESK-API] Response Length: {responseData.Length} characters");
+                    _logger.LogInformation($"[BILLDESK-API] API call successful - proceeding to decrypt response");
+                }
+                else
+                {
+                    _logger.LogError($"[BILLDESK-API] API call failed - Status: {output?.Status}, Message: {output?.Message}");
+                }
+                _logger.LogInformation($"[BILLDESK-API] === END OF RESPONSE ===");
+                _logger.LogInformation($"[BILLDESK-API] ===== API CALL COMPLETED =====");
 
                 if (output?.Status != "SUCCESS")
                 {
@@ -455,16 +518,15 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                string encryptedResponse = Encoding.UTF8.GetString(output.Content);
                 return new PaymentApiResult
                 {
                     Success = true,
-                    EncryptedResponse = encryptedResponse
+                    EncryptedResponse = responseData
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[PAYMENT] Error calling BillDesk payment API");
+                _logger.LogError(ex, "[BILLDESK-API] Error calling BillDesk payment API");
                 return new PaymentApiResult { Success = false, Message = ex.Message };
             }
         }
@@ -473,13 +535,85 @@ namespace PMCRMS.API.Services
         {
             try
             {
+                _logger.LogInformation($"[BILLDESK-DECRYPT] ===== DECRYPTION REQUEST STARTED =====");
+                _logger.LogInformation($"[BILLDESK-DECRYPT] Encrypted Response Length: {encryptedResponse.Length} characters");
+                
                 dynamic input = new System.Dynamic.ExpandoObject();
                 input.EncryptionKey = _configService.EncryptionKey;
                 input.SigningKey = _configService.SigningKey;
                 input.Action = "Decrypt";
                 input.responseBody = encryptedResponse;
 
+                // **DECRYPTION REQUEST LOGGING (Sensitive data masked)**
+                _logger.LogInformation($"[BILLDESK-DECRYPT] === DECRYPTION INPUT ===");
+                _logger.LogInformation($"[BILLDESK-DECRYPT] Action: Decrypt");
+                _logger.LogInformation($"[BILLDESK-DECRYPT] ResponseBody Length: {encryptedResponse.Length} characters");
+                _logger.LogInformation($"[BILLDESK-DECRYPT] === END OF INPUT ===");
+
                 dynamic response = await _pluginContextService.Invoke("BILLDESK", input);
+
+                // **DECRYPTION RESPONSE LOGGING (Sensitive data masked)**
+                _logger.LogInformation($"[BILLDESK-DECRYPT] === DECRYPTION RESPONSE ===");
+                _logger.LogInformation($"[BILLDESK-DECRYPT] Status: {response?.Status}");
+                
+                if (response?.Status == "SUCCESS")
+                {
+                    var decryptedData = response.Message?.ToString() ?? "";
+                    _logger.LogInformation($"[BILLDESK-DECRYPT] Decryption successful");
+                    _logger.LogInformation($"[BILLDESK-DECRYPT] Decrypted Data Length: {decryptedData.Length} characters");
+                    
+                    // Try to parse and log structured data (non-sensitive fields only)
+                    try
+                    {
+                        using (JsonDocument doc = JsonDocument.Parse(decryptedData))
+                        {
+                            _logger.LogInformation($"[BILLDESK-DECRYPT] === PARSED RESPONSE DATA ===");
+                            var root = doc.RootElement;
+                            
+                            if (root.TryGetProperty("orderid", out var orderId))
+                                _logger.LogInformation($"[BILLDESK-DECRYPT] Order ID: {orderId.GetString()}");
+                            
+                            if (root.TryGetProperty("bdorderid", out var bdOrderId))
+                                _logger.LogInformation($"[BILLDESK-DECRYPT] BillDesk Order ID: {bdOrderId.GetString()}");
+                            
+                            if (root.TryGetProperty("amount", out var amount))
+                                _logger.LogInformation($"[BILLDESK-DECRYPT] Amount: {amount.GetString()}");
+                            
+                            if (root.TryGetProperty("order_status", out var orderStatus))
+                                _logger.LogInformation($"[BILLDESK-DECRYPT] Order Status: {orderStatus.GetString()}");
+                            
+                            if (root.TryGetProperty("transaction_date", out var txnDate))
+                                _logger.LogInformation($"[BILLDESK-DECRYPT] Transaction Date: {txnDate.GetString()}");
+                            
+                            if (root.TryGetProperty("links", out var links) && links.ValueKind == JsonValueKind.Array)
+                            {
+                                _logger.LogInformation($"[BILLDESK-DECRYPT] Links Found: {links.GetArrayLength()}");
+                                foreach (var link in links.EnumerateArray())
+                                {
+                                    if (link.TryGetProperty("rel", out var rel))
+                                    {
+                                        _logger.LogInformation($"[BILLDESK-DECRYPT] Link Rel: {rel.GetString()}");
+                                        if (link.TryGetProperty("href", out var href))
+                                            _logger.LogInformation($"[BILLDESK-DECRYPT] Link Href: {href.GetString()}");
+                                        if (link.TryGetProperty("parameters", out var parameters))
+                                            _logger.LogInformation($"[BILLDESK-DECRYPT] Link Parameters: {parameters.ToString()}");
+                                    }
+                                }
+                            }
+                            _logger.LogInformation($"[BILLDESK-DECRYPT] === END OF PARSED DATA ===");
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger.LogWarning($"[BILLDESK-DECRYPT] Unable to parse decrypted JSON: {jsonEx.Message}");
+                    }
+                }
+                else
+                {
+                    _logger.LogError($"[BILLDESK-DECRYPT] Decryption Failed - Message: {response?.Message}");
+                }
+                _logger.LogInformation($"[BILLDESK-DECRYPT] === END OF RESPONSE ===");
+                _logger.LogInformation($"[BILLDESK-DECRYPT] ===== DECRYPTION REQUEST COMPLETED =====");
 
                 if (response?.Status != "SUCCESS")
                 {
@@ -498,7 +632,7 @@ namespace PMCRMS.API.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "[PAYMENT] Error decrypting payment response");
+                _logger.LogError(ex, "[BILLDESK-DECRYPT] Error decrypting payment response");
                 return new DecryptionResult { Success = false, Message = ex.Message };
             }
         }

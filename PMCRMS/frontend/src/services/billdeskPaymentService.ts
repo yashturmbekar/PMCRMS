@@ -19,6 +19,7 @@ export interface PaymentResponse {
     bdOrderId?: string;
     rData?: string;
     paymentGatewayUrl?: string;
+    merchantId?: string;
   };
   gatewayUrl?: string; // For backward compatibility
   transactionId?: string;
