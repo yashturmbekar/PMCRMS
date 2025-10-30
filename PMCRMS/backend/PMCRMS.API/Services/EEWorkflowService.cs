@@ -203,20 +203,24 @@ namespace PMCRMS.API.Services
                     throw new Exception("Application not found");
                 }
 
-                // Validate officer has KeyLabel
-                if (string.IsNullOrEmpty(officer.KeyLabel))
+                // Validate officer has KeyLabel (unless using test mode)
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
+
+                if (string.IsNullOrEmpty(keyLabel))
                 {
                     throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
                 }
 
                 _logger.LogInformation(
-                    "Generating OTP from HSM for EE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
-                    officerId, officer.Name, officer.KeyLabel);
+                    "{Mode}: Generating OTP from HSM for EE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    officerId, officer.Name, keyLabel);
 
-                // Call HSM OTP service with officer's KeyLabel
+                // Call HSM OTP service with KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: officer.KeyLabel,
+                    keyLabel: keyLabel,
                     otpType: "single"
                 );
 
@@ -275,66 +279,64 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
-                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
+                // For local development, use test KeyLabel; for production, use officer's KeyLabel
+                // IMPORTANT: Must use the SAME KeyLabel that was used for OTP generation
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
                 
-                // // Get HSM key label for EE
-                // var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("EE", application.PositionType.ToString());
-                
-                // if (string.IsNullOrEmpty(keyLabel))
-                // {
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = "HSM key label not configured for EE officer" 
-                //     };
-                // }
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
+                    };
+                }
 
-                // // Convert PDF to Base64 for HSM signing
-                // var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
-
-                // // Sign PDF with HSM
-                // var signRequest = new HsmSignRequest
-                // {
-                //     TransactionId = applicationId.ToString(),
-                //     KeyLabel = keyLabel,
-                //     Base64Pdf = base64Pdf,
-                //     Otp = otp,
-                //     Coordinates = SignatureCoordinates.RecommendationForm
-                // };
-
-                // var signResult = await _hsmService.SignPdfAsync(signRequest);
-
-                // if (!signResult.Success)
-                // {
-                //     _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                //     };
-                // }
-
-                // if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                // {
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = "Signed PDF content is empty" 
-                //     };
-                // }
-
-                // // Update recommendation form with signed PDF
-                // var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                // recommendationForm.FileContent = signedPdfBytes;
-                // recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                // recommendationForm.UpdatedDate = DateTime.UtcNow;
-
-                // TESTING MODE: Skip HSM signature
                 _logger.LogInformation(
-                    "[TESTING MODE] Skipping HSM signature for EE application {ApplicationId}", 
-                    applicationId);
-                // ========== END TESTING MODE ==========
+                    "{Mode}: Using KeyLabel {KeyLabel} for EE officer {OfficerName} signature",
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    keyLabel, officer.Name);
+
+                // Convert PDF to Base64 for HSM signing
+                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
+
+                // Sign PDF with HSM using the SAME KeyLabel used for OTP generation
+                var signRequest = new HsmSignRequest
+                {
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = keyLabel, // Must match the KeyLabel used in GenerateOtpAsync
+                    Base64Pdf = base64Pdf,
+                    Otp = otp,
+                    Coordinates = "383,383,502,324" // Executive Engineer position (bottom-center-right)
+                };
+
+                var signResult = await _hsmService.SignPdfAsync(signRequest);
+
+                if (!signResult.Success)
+                {
+                    _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
+                    };
+                }
+
+                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "Signed PDF content is empty" 
+                    };
+                }
+
+                // Update recommendation form with signed PDF
+                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                recommendationForm.FileContent = signedPdfBytes;
+                recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                recommendationForm.UpdatedDate = DateTime.UtcNow;
                 
                 _logger.LogInformation(
                     "Updated recommendation form with EE digitally signed PDF via HSM for application {ApplicationId}", 

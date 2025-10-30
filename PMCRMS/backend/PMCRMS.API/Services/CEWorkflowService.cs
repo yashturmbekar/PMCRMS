@@ -22,6 +22,7 @@ namespace PMCRMS.API.Services
         private readonly IConfiguration _configuration;
         private readonly IHsmService _hsmService;
         private readonly IOptions<HsmConfiguration> _hsmConfig;
+        private readonly IAutoAssignmentService _autoAssignmentService;
 
         public CEWorkflowService(
             PMCRMSDbContext context,
@@ -32,7 +33,8 @@ namespace PMCRMS.API.Services
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
             IHsmService hsmService,
-            IOptions<HsmConfiguration> hsmConfig)
+            IOptions<HsmConfiguration> hsmConfig,
+            IAutoAssignmentService autoAssignmentService)
         {
             _context = context;
             _logger = logger;
@@ -43,6 +45,7 @@ namespace PMCRMS.API.Services
             _configuration = configuration;
             _hsmService = hsmService;
             _hsmConfig = hsmConfig;
+            _autoAssignmentService = autoAssignmentService;
         }
 
         public async Task<List<CEWorkflowStatusDto>> GetPendingApplicationsAsync(int officerId)
@@ -204,20 +207,24 @@ namespace PMCRMS.API.Services
                     throw new Exception("Application not found");
                 }
 
-                // Validate officer has KeyLabel
-                if (string.IsNullOrEmpty(officer.KeyLabel))
+                // Validate officer has KeyLabel (unless using test mode)
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
+
+                if (string.IsNullOrEmpty(keyLabel))
                 {
                     throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
                 }
 
                 _logger.LogInformation(
-                    "Generating OTP from HSM for CE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
-                    officerId, officer.Name, officer.KeyLabel);
+                    "{Mode}: Generating OTP from HSM for CE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    officerId, officer.Name, keyLabel);
 
-                // Call HSM OTP service with officer's KeyLabel
+                // Call HSM OTP service with KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: officer.KeyLabel,
+                    keyLabel: keyLabel,
                     otpType: "single"
                 );
 
@@ -276,72 +283,70 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
-                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
+                // For local development, use test KeyLabel; for production, use officer's KeyLabel
+                // IMPORTANT: Must use the SAME KeyLabel that was used for OTP generation
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
                 
-                // // Get HSM key label for CE
-                // var keyLabel = _hsmConfig.Value.KeyLabels.GetKeyLabel("CE", application.PositionType.ToString());
-                
-                // if (string.IsNullOrEmpty(keyLabel))
-                // {
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = "HSM key label not configured for CE officer" 
-                //     };
-                // }
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
+                    };
+                }
 
-                // // Convert PDF to Base64 for HSM signing
-                // var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
-
-                // // Sign PDF with HSM
-                // var signRequest = new HsmSignRequest
-                // {
-                //     TransactionId = applicationId.ToString(),
-                //     KeyLabel = keyLabel,
-                //     Base64Pdf = base64Pdf,
-                //     Otp = otp,
-                //     Coordinates = SignatureCoordinates.RecommendationForm
-                // };
-
-                // var signResult = await _hsmService.SignPdfAsync(signRequest);
-
-                // if (!signResult.Success)
-                // {
-                //     _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                //     };
-                // }
-
-                // if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                // {
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = "Signed PDF content is empty" 
-                //     };
-                // }
-
-                // TESTING MODE: Skip HSM signature
                 _logger.LogInformation(
-                    "[TESTING MODE] Skipping HSM signature for CE application {ApplicationId}", 
-                    applicationId);
-                
-                // // Update recommendation form with signed PDF
-                // var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                // recommendationForm.FileContent = signedPdfBytes;
-                // recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                // recommendationForm.UpdatedDate = DateTime.UtcNow;
-                
-                // _logger.LogInformation(
-                //     "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
-                //     applicationId);
-                // ========== END TESTING MODE ==========
+                    "{Mode}: Using KeyLabel {KeyLabel} for CE officer {OfficerName} signature",
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    keyLabel, officer.Name);
 
-                // Update application - CE Stage 1 Approval, Payment Required
+                // Convert PDF to Base64 for HSM signing
+                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
+
+                // Sign PDF with HSM using the SAME KeyLabel used for OTP generation
+                var signRequest = new HsmSignRequest
+                {
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = keyLabel, // Must match the KeyLabel used in GenerateOtpAsync
+                    Base64Pdf = base64Pdf,
+                    Otp = otp,
+                    Coordinates = "516,383,635,324" // City Engineer position (bottom-right)
+                };
+
+                var signResult = await _hsmService.SignPdfAsync(signRequest);
+
+                if (!signResult.Success)
+                {
+                    _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
+                    };
+                }
+
+                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = "Signed PDF content is empty" 
+                    };
+                }
+                
+                // Update recommendation form with signed PDF
+                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                recommendationForm.FileContent = signedPdfBytes;
+                recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                recommendationForm.UpdatedDate = DateTime.UtcNow;
+                
+                _logger.LogInformation(
+                    "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
+                    applicationId);
+
+                // Update application - CE Stage 1 Approval, assign to Clerk
                 var signatureDate = DateTime.UtcNow;
                 application.CityEngineerApprovalStatus = true;
                 application.CityEngineerApprovalComments = comments;
@@ -349,30 +354,55 @@ namespace PMCRMS.API.Services
                 application.CityEngineerDigitalSignatureApplied = true;
                 application.CityEngineerDigitalSignatureDate = signatureDate;
                 
-                // Set status to PaymentPending (Stage 1 approval complete)
-                application.Status = ApplicationCurrentStatus.PaymentPending;
-                application.Remarks = $"Approved by City Engineer (Stage 1) on {signatureDate:yyyy-MM-dd HH:mm:ss}. Payment required to proceed.";
+                // Set status to CLERK_PENDING (CE Stage 1 approval complete, forward to Clerk)
+                application.Status = ApplicationCurrentStatus.CLERK_PENDING;
+                application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. Forwarded to Clerk for certificate generation.";
                 
-                // Clear assigned officer - application is now waiting for payment, not assigned to anyone
-                application.AssignedJuniorEngineerId = null;
-                application.AssignedToJEDate = null;
+                // Auto-assign to an available clerk
+                try
+                {
+                    var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
+                        applicationId: application.Id,
+                        currentStatus: ApplicationCurrentStatus.CLERK_PENDING,
+                        currentOfficerId: officerId
+                    );
+
+                    if (assignment != null)
+                    {
+                        _logger.LogInformation(
+                            "Application {ApplicationId} auto-assigned to Clerk officer {OfficerId}",
+                            application.Id, assignment.AssignedToOfficerId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "No available Clerk found for application {ApplicationId}. Status set to CLERK_PENDING.",
+                            application.Id);
+                    }
+                }
+                catch (Exception assignEx)
+                {
+                    _logger.LogWarning(assignEx, 
+                        "Failed to auto-assign to Clerk for application {ApplicationId}. Status set to CLERK_PENDING.",
+                        application.Id);
+                }
 
                 await _context.SaveChangesAsync();
 
-                // Send email notification to applicant about payment
+                // Send email notification to applicant
                 await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
                     application.Id,
-                    ApplicationCurrentStatus.PaymentPending
+                    ApplicationCurrentStatus.CLERK_PENDING
                 );
 
                 _logger.LogInformation(
-                    "Application {ApplicationId} approved by City Engineer (Stage 1) - Payment Pending for officer {OfficerId}", 
+                    "Application {ApplicationId} approved by City Engineer - Forwarded to Clerk for officer {OfficerId}", 
                     applicationId, officerId);
 
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = "Documents verified and approved by City Engineer (Stage 1). Application status set to Payment Pending. Applicant will be notified to complete payment.",
+                    Message = "Documents verified and approved by City Engineer. Application forwarded to Clerk for certificate generation.",
                     NewStatus = application.Status
                 };
             }

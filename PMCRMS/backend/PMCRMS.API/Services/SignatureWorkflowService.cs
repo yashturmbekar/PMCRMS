@@ -48,6 +48,7 @@ namespace PMCRMS.API.Services
         private readonly IHsmService _hsmService;
         private readonly ILogger<SignatureWorkflowService> _logger;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
         // Signature coordinates for each officer on recommendation form
         private static class SignatureCoordinates
@@ -62,12 +63,14 @@ namespace PMCRMS.API.Services
             PMCRMSDbContext context,
             IHsmService hsmService,
             ILogger<SignatureWorkflowService> logger,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IConfiguration configuration)
         {
             _context = context;
             _hsmService = hsmService;
             _logger = logger;
             _environment = environment;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -270,13 +273,14 @@ namespace PMCRMS.API.Services
                         };
                     }
 
-                    // 5. Sign PDF using HSM with test KeyLabel
-                    var signResult = await SignPdfWithTestKeyLabelAsync(
+                    // 5. Sign PDF using HSM
+                    var signResult = await SignPdfWithOfficerKeyLabelAsync(
                         applicationId,
                         officerId,
                         pdfContent,
                         otp,
-                        officer.Role
+                        officer.Role,
+                        officer.KeyLabel
                     );
 
                     if (!signResult.Success)
@@ -344,23 +348,35 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Sign PDF using HSM with Test2025Sign KeyLabel (Testing mode)
+        /// Sign PDF using HSM with officer's KeyLabel (or test KeyLabel for local development)
         /// </summary>
-        private async Task<HsmWorkflowSignResult> SignPdfWithTestKeyLabelAsync(
+        private async Task<HsmWorkflowSignResult> SignPdfWithOfficerKeyLabelAsync(
             int applicationId,
             int officerId,
             byte[] pdfContent,
             string otp,
-            OfficerRole role)
+            OfficerRole role,
+            string? officerKeyLabel)
         {
             try
             {
-                // 🧪 TESTING: Use hardcoded Test2025Sign KeyLabel
-                var testKeyLabel = "Test2025Sign";
+                // For local development, use test KeyLabel; for production, use officer's KeyLabel
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officerKeyLabel;
+
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new HsmWorkflowSignResult
+                    {
+                        Success = false,
+                        ErrorMessage = "Officer does not have a KeyLabel configured and test mode is disabled"
+                    };
+                }
                 
                 _logger.LogInformation(
-                    "🧪 TESTING MODE: Signing PDF for officer {OfficerId} ({Role}) using TEST KeyLabel '{TestKeyLabel}'",
-                    officerId, role, testKeyLabel);
+                    "{Mode}: Signing PDF for officer {OfficerId} ({Role}) using KeyLabel '{KeyLabel}'",
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    officerId, role, keyLabel);
 
                 // Get signature coordinates for this role
                 var coordinates = GetSignatureCoordinates(role, 0);
@@ -372,7 +388,7 @@ namespace PMCRMS.API.Services
                 var signRequest = new HsmSignRequest
                 {
                     TransactionId = applicationId.ToString(),
-                    KeyLabel = testKeyLabel, // 🧪 Using test KeyLabel
+                    KeyLabel = keyLabel,
                     Base64Pdf = base64Pdf,
                     Otp = otp,
                     Coordinates = coordinates,

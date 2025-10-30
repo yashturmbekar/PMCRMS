@@ -540,13 +540,18 @@ namespace PMCRMS.API.Services
                     throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
                 }
 
+                // For local development, use test KeyLabel; for production, use officer's KeyLabel
+                var keyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false) 
+                    ? "Test2025Sign" 
+                    : officer.KeyLabel;
+
                 _logger.LogInformation("Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
-                    officer.KeyLabel, officer.Name, officer.Role);
+                    keyLabel, officer.Name, officer.Role);
 
                 // Call HSM OTP service with officer's KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: "Test2025Sign",
+                    keyLabel: keyLabel,
                     otpType: "single"
                 );
 

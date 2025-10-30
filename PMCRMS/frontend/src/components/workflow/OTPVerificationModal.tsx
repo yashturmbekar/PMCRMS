@@ -32,10 +32,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   onVerifyAndSign,
   onSuccess,
 }) => {
-  // ========== TESTING MODE: HSM OTP BYPASSED ==========
-  // TODO: REMOVE THIS FOR PRODUCTION
-  const TESTING_MODE = true; // Set to false to enable OTP verification
-  // ========== END TESTING MODE ==========
+  const TESTING_MODE = false; // Production mode - OTP verification enabled
 
   const [comments, setComments] = useState("");
   const [otpValue, setOtpValue] = useState("");
@@ -64,7 +61,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       case "EE":
         return "Executive Engineer";
       case "CE":
-        return "City Engineer - Final Approval";
+        return "City Engineer - Document Verification";
       default:
         return "Officer";
     }
@@ -379,21 +376,13 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 <p
                   style={{
                     fontSize: "13px",
-                    color: "#14532d",
+                    color: "#92400e",
                     margin: 0,
                   }}
                 >
                   <strong>🧪 TESTING MODE:</strong> HSM OTP verification is
                   bypassed. Click "VERIFY & SIGN (TESTING)" to directly approve
                   without OTP.
-                  {officerType === "CE" && (
-                    <>
-                      {" "}
-                      <strong style={{ color: "#dc2626" }}>
-                        This is the FINAL APPROVAL step.
-                      </strong>
-                    </>
-                  )}
                 </p>
               </div>
             ) : (
@@ -419,14 +408,6 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     <strong>Note:</strong> Click "GET OTP" to receive a
                     verification code on your email. You'll need to enter this
                     OTP to digitally sign the recommendation form.
-                    {officerType === "CE" && (
-                      <>
-                        {" "}
-                        <strong style={{ color: "#dc2626" }}>
-                          This is the FINAL APPROVAL step.
-                        </strong>
-                      </>
-                    )}
                   </p>
                 </div>
               )
@@ -479,11 +460,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   border: "none",
                 }}
               >
-                {isSubmitting
-                  ? "Processing..."
-                  : officerType === "CE"
-                  ? "FINAL APPROVAL & SIGN (TESTING)"
-                  : "VERIFY & SIGN (TESTING)"}
+                {isSubmitting ? "Processing..." : "VERIFY & SIGN (TESTING)"}
               </button>
             ) : !otpGenerated ? (
               <button
@@ -523,11 +500,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   border: "none",
                 }}
               >
-                {isSubmitting
-                  ? "Processing..."
-                  : officerType === "CE"
-                  ? "FINAL APPROVAL & SIGN"
-                  : "VERIFY & SIGN"}
+                {isSubmitting ? "Processing..." : "VERIFY & SIGN"}
               </button>
             )}
             {/* ========== END TESTING MODE ========== */}

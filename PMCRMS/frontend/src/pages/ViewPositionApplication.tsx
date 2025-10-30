@@ -185,6 +185,30 @@ const ViewPositionApplication: React.FC = () => {
 
   // Fetch certificate status after application loads and poll if pending
   useEffect(() => {
+    // Don't poll certificate status for workflow officers (JE, AE, EE, CE)
+    // This is only needed for applicants and clerks
+    const workflowOfficerRoles = [
+      "JuniorArchitect",
+      "JuniorLicenceEngineer",
+      "JuniorStructuralEngineer",
+      "JuniorSupervisor1",
+      "JuniorSupervisor2",
+      "AssistantArchitect",
+      "AssistantLicenceEngineer",
+      "AssistantStructuralEngineer",
+      "AssistantSupervisor1",
+      "AssistantSupervisor2",
+      "ExecutiveEngineer",
+      "CityEngineer",
+    ];
+
+    if (user?.role && workflowOfficerRoles.includes(user.role)) {
+      console.log(
+        `🚫 Skipping certificate polling for workflow officer role: ${user.role}`
+      );
+      return;
+    }
+
     let pollCount = 0;
     const MAX_POLL_ATTEMPTS = 40; // Poll for max 2 minutes (40 * 3 seconds)
 
@@ -290,7 +314,12 @@ const ViewPositionApplication: React.FC = () => {
       clearInterval(pollInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, application?.isPaymentComplete, certificateStatus?.exists]);
+  }, [
+    id,
+    application?.isPaymentComplete,
+    certificateStatus?.exists,
+    user?.role,
+  ]);
 
   // Show notification when certificate becomes available
   useEffect(() => {

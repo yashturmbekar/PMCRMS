@@ -179,19 +179,24 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Generating OTP from HSM for AE application {ApplicationId} and officer {OfficerId}", 
                     applicationId, officerId);
 
-                // Validate officer has KeyLabel
-                if (string.IsNullOrEmpty(officer.KeyLabel))
+                // Validate officer has KeyLabel (unless using test mode)
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
+
+                if (string.IsNullOrEmpty(keyLabel))
                 {
                     throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
                 }
 
-                _logger.LogInformation("Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
-                    officer.KeyLabel, officer.Name, officer.Role);
+                _logger.LogInformation(
+                    "{Mode}: Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    keyLabel, officer.Name, officer.Role);
 
-                // Call HSM OTP service with officer's KeyLabel
+                // Call HSM OTP service with KeyLabel
                 var hsmResult = await _hsmService.GenerateOtpAsync(
                     transactionId: applicationId.ToString(),
-                    keyLabel: officer.KeyLabel,
+                    keyLabel: keyLabel,
                     otpType: "single"
                 );
 
@@ -253,69 +258,66 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("Starting HSM digital signature process for AE application {ApplicationId}", applicationId);
 
-                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
-                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
-                
-                // // Validate officer has KeyLabel
-                // if (string.IsNullOrEmpty(officer.KeyLabel))
-                // {
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
-                //     };
-                // }
+                // For local development, use test KeyLabel; for production, use officer's KeyLabel
+                // IMPORTANT: Must use the SAME KeyLabel that was used for OTP generation
+                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
+                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
 
-                // _logger.LogInformation("Using KeyLabel {KeyLabel} for AE officer {OfficerName} signature", 
-                //     officer.KeyLabel, officer.Name);
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
+                    };
+                }
 
-                // // Convert PDF to Base64
-                // var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
-
-                // // Sign PDF using HSM with officer's KeyLabel
-                // var signRequest = new HsmSignRequest
-                // {
-                //     TransactionId = applicationId.ToString(),
-                //     KeyLabel = officer.KeyLabel,
-                //     Base64Pdf = base64Pdf,
-                //     Otp = otp,
-                //     Coordinates = SignatureCoordinates.RecommendationForm, // 117,383,236,324
-                //     PageLocation = "last",
-                //     OtpType = "single"
-                // };
-
-                // var signResult = await _hsmService.SignPdfAsync(signRequest);
-
-                // if (!signResult.Success)
-                // {
-                //     _logger.LogError("HSM signature failed for application {ApplicationId}: {Error}", 
-                //         applicationId, signResult.ErrorMessage);
-                    
-                //     return new WorkflowActionResultDto 
-                //     { 
-                //         Success = false, 
-                //         Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                //     };
-                // }
-
-                // // Update recommendation form with signed PDF
-                // if (!string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                // {
-                //     var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                //     recommendationForm.FileContent = signedPdfBytes;
-                //     recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                //     recommendationForm.UpdatedDate = DateTime.UtcNow;
-                    
-                //     _logger.LogInformation(
-                //         "Updated recommendation form with AE digitally signed PDF for application {ApplicationId}", 
-                //         applicationId);
-                // }
-
-                // TESTING MODE: Skip HSM signature
                 _logger.LogInformation(
-                    "[TESTING MODE] Skipping HSM signature for AE application {ApplicationId}", 
-                    applicationId);
-                // ========== END TESTING MODE ==========
+                    "{Mode}: Using KeyLabel {KeyLabel} for AE officer {OfficerName} signature", 
+                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    keyLabel, officer.Name);
+
+                // Convert PDF to Base64
+                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
+
+                // Sign PDF with HSM using the SAME KeyLabel used for OTP generation
+                var signRequest = new HsmSignRequest
+                {
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = keyLabel, // Must match the KeyLabel used in GenerateOtpAsync
+                    Base64Pdf = base64Pdf,
+                    Otp = otp,
+                    Coordinates = "250,383,369,324", // Assistant Engineer position (bottom-center-left)
+                    PageLocation = "last",
+                    OtpType = "single"
+                };
+
+                var signResult = await _hsmService.SignPdfAsync(signRequest);
+
+                if (!signResult.Success)
+                {
+                    _logger.LogError("HSM signature failed for application {ApplicationId}: {Error}", 
+                        applicationId, signResult.ErrorMessage);
+                    
+                    return new WorkflowActionResultDto 
+                    { 
+                        Success = false, 
+                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
+                    };
+                }
+
+                // Update recommendation form with signed PDF
+                if (!string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                {
+                    var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                    recommendationForm.FileContent = signedPdfBytes;
+                    recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                    recommendationForm.UpdatedDate = DateTime.UtcNow;
+                    
+                    _logger.LogInformation(
+                        "Updated recommendation form with AE digitally signed PDF for application {ApplicationId}", 
+                        applicationId);
+                }
 
                 // Update application based on position type
                 UpdateApplicationAfterAESignature(application, positionType, comments, DateTime.UtcNow);

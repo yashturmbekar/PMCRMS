@@ -136,14 +136,14 @@ namespace PMCRMS.API.Controllers
         /// <summary>
         /// Generate OTP for digital signature on recommendation form
         /// </summary>
-        [HttpPost("generate-otp-for-signature")]
+        [HttpPost("application/{id}/generate-otp")]
         [Authorize(Roles = JuniorRoles)]
         [ProducesResponseType(typeof(object), 200)]
-        public async Task<IActionResult> GenerateOtpForSignature([FromBody] GenerateOtpForSignatureDto request)
+        public async Task<IActionResult> GenerateOtpForSignature(int id)
         {
             try
             {
-                var result = await _workflowService.GenerateOtpForSignatureAsync(request.ApplicationId, GetCurrentUserId());
+                var result = await _workflowService.GenerateOtpForSignatureAsync(id, GetCurrentUserId());
                 return Ok(new
                 {
                     success = true,

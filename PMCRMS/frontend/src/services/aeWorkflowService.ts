@@ -46,14 +46,13 @@ export const aeWorkflowService = {
 
   /**
    * Generate OTP for digital signature
-   * POST /api/AssistantEngineer/generate-otp-for-signature
+   * POST /api/AssistantEngineer/application/{id}/generate-otp
    */
   async generateOtpForSignature(
     applicationId: number
   ): Promise<{ success: boolean; message?: string; otp?: string }> {
     const response = await apiClient.post(
-      `${BASE_URL}/generate-otp-for-signature`,
-      { applicationId }
+      `${BASE_URL}/application/${applicationId}/generate-otp`
     );
     return {
       success: true,

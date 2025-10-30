@@ -27,10 +27,7 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
   applicationId,
   onApprovalComplete,
 }) => {
-  // ========== TESTING MODE: HSM OTP BYPASSED ==========
-  // TODO: REMOVE THIS FOR PRODUCTION
-  const TESTING_MODE = true; // Set to false to enable OTP verification
-  // ========== END TESTING MODE ==========
+  const TESTING_MODE = false; // Production mode - OTP verification enabled
 
   const [comments, setComments] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
