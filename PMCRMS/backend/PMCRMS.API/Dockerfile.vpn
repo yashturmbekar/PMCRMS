@@ -1,0 +1,51 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy csproj and restore dependencies
+COPY PMCRMS/backend/PMCRMS.API/PMCRMS.API.csproj ./PMCRMS.API/
+RUN dotnet restore "./PMCRMS.API/PMCRMS.API.csproj"
+
+# Copy everything else and build
+COPY PMCRMS/backend/PMCRMS.API/. ./PMCRMS.API/
+RUN dotnet build "./PMCRMS.API/PMCRMS.API.csproj" -c Release -o /app/build
+
+# Publish stage
+FROM build AS publish
+RUN dotnet publish "./PMCRMS.API/PMCRMS.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+WORKDIR /app
+
+# Install OpenVPN, fontconfig and fonts
+RUN apt-get update && apt-get install -y \
+    openvpn \
+    curl \
+    iproute2 \
+    iptables \
+    fontconfig \
+    fonts-noto-core \
+    fonts-noto-ui-core \
+    fonts-indic \
+    && fc-cache -f -v \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /app/logs /app/uploads /etc/openvpn
+
+EXPOSE 8080
+
+COPY --from=publish /app/publish .
+
+# Copy OpenVPN config (will be mounted at runtime)
+# COPY openvpn/client.ovpn /etc/openvpn/client.conf
+
+# Set environment variable for ASP.NET Core
+ENV ASPNETCORE_URLS=http://+:8080
+
+# Copy startup script
+COPY PMCRMS/backend/PMCRMS.API/start-with-vpn.sh /app/start-with-vpn.sh
+RUN chmod +x /app/start-with-vpn.sh
+
+ENTRYPOINT ["/app/start-with-vpn.sh"]

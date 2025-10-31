@@ -1,0 +1,17 @@
+# Railway Configuration for VPN-enabled Backend
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "PMCRMS/backend/PMCRMS.API/Dockerfile"
+
+[deploy]
+# Use the VPN startup script
+startCommand = "/app/start-with-vpn.sh"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+# Note: Railway may not support NET_ADMIN capability
+# If VPN doesn't work, you'll need to deploy to a VPS instead
+# Uncomment if Railway supports it:
+# [deploy.capabilities]
+# add = ["NET_ADMIN"]

@@ -129,3 +129,9 @@ appsettings.Development.json
 
 # Entity Framework
 Migrations/*.cs.bak
+
+# OpenVPN credentials (sensitive)
+*.ovpn
+openvpn-client.conf
+openvpn-client.ovpn
+PMCRMS.API/openvpn-client.ovpn
