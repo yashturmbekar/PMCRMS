@@ -84,7 +84,7 @@ namespace PMCRMS.API.Controllers
         /// POST /api/SignatureWorkflow/sign-je
         /// </summary>
         [HttpPost("sign-je")]
-        [Authorize(Roles = "JuniorStructuralEngineer")]
+        [Authorize(Roles = "JuniorArchitect,JuniorLicenceEngineer,JuniorStructuralEngineer,JuniorSupervisor1,JuniorSupervisor2,Admin")]
         public async Task<IActionResult> SignAsJuniorEngineer([FromBody] SignDocumentRequest request)
         {
             try
@@ -132,7 +132,7 @@ namespace PMCRMS.API.Controllers
         /// POST /api/SignatureWorkflow/sign-ae
         /// </summary>
         [HttpPost("sign-ae")]
-        [Authorize(Roles = "AssistantEngineer")]
+        [Authorize(Roles = "AssistantArchitect,AssistantLicenceEngineer,AssistantStructuralEngineer,AssistantSupervisor1,AssistantSupervisor2,Admin")]
         public async Task<IActionResult> SignAsAssistantEngineer([FromBody] SignDocumentRequest request)
         {
             try

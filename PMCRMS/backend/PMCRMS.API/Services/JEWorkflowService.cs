@@ -350,48 +350,45 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
                 }
 
-                // ========== TESTING MODE: HSM SIGNATURE BYPASSED ==========
-                // TODO: REMOVE THIS COMMENT BLOCK FOR PRODUCTION
                 // Apply digital signature if OTP provided (HSM validates OTP directly)
-                // if (!string.IsNullOrWhiteSpace(request.Otp))
-                // {
-                //     // ✅ Use SignatureWorkflowService - HSM handles OTP validation
-                //     _logger.LogInformation(
-                //         "Initiating JE digital signature for application {ApplicationId} by officer {OfficerId}",
-                //         request.ApplicationId, officerId);
+                if (!string.IsNullOrWhiteSpace(request.Otp))
+                {
+                    // ✅ Use SignatureWorkflowService - HSM handles OTP validation
+                    _logger.LogInformation(
+                        "Initiating JE digital signature for application {ApplicationId} by officer {OfficerId}",
+                        request.ApplicationId, officerId);
 
-                //     var signatureResult = await _signatureWorkflowService.SignAsJuniorEngineerAsync(
-                //         request.ApplicationId,
-                //         officerId,
-                //         request.Otp
-                //     );
+                    var signatureResult = await _signatureWorkflowService.SignAsJuniorEngineerAsync(
+                        request.ApplicationId,
+                        officerId,
+                        request.Otp
+                    );
 
-                //     if (!signatureResult.Success)
-                //     {
-                //         return new WorkflowActionResultDto
-                //         {
-                //             Success = false,
-                //             Message = $"Digital signature failed: {signatureResult.ErrorMessage}",
-                //             Errors = new List<string> { signatureResult.ErrorMessage ?? "Unknown error" }
-                //         };
-                //     }
+                    if (!signatureResult.Success)
+                    {
+                        return new WorkflowActionResultDto
+                        {
+                            Success = false,
+                            Message = $"Digital signature failed: {signatureResult.ErrorMessage}",
+                            Errors = new List<string> { signatureResult.ErrorMessage ?? "Unknown error" }
+                        };
+                    }
 
-                //     // Set digital signature flags on application
-                //     application.JEDigitalSignatureApplied = true;
-                //     application.JEDigitalSignatureDate = DateTime.UtcNow;
+                    // Set digital signature flags on application
+                    application.JEDigitalSignatureApplied = true;
+                    application.JEDigitalSignatureDate = DateTime.UtcNow;
 
-                //     _logger.LogInformation(
-                //         "JE digital signature completed for application {ApplicationId}",
-                //         request.ApplicationId);
-                // }
-
-                // TESTING MODE: Auto-apply digital signature without HSM
-                application.JEDigitalSignatureApplied = true;
-                application.JEDigitalSignatureDate = DateTime.UtcNow;
-                _logger.LogInformation(
-                    "[TESTING MODE] JE digital signature auto-applied for application {ApplicationId}",
-                    request.ApplicationId);
-                // ========== END TESTING MODE ==========
+                    _logger.LogInformation(
+                        "JE digital signature completed for application {ApplicationId}",
+                        request.ApplicationId);
+                }
+                else
+                {
+                    // OTP not provided - signature will be applied later
+                    _logger.LogWarning(
+                        "OTP not provided for application {ApplicationId} - digital signature skipped",
+                        request.ApplicationId);
+                }
 
                 // Update application status if this is the first verification
                 if (application.Status == ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING)
