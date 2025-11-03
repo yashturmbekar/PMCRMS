@@ -167,16 +167,31 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Generate OTP via HSM - Initiate signature process
-                // For EE Stage 2, we need the certificate path
-                var certificatePath = $"certificates/{application.ApplicationNumber}_certificate.pdf";
+                // Fetch the license certificate from database
+                var licenseCertificate = await _context.SEDocuments
+                    .Where(d => d.ApplicationId == applicationId && d.DocumentType == SEDocumentType.LicenceCertificate)
+                    .OrderByDescending(d => d.CreatedDate)
+                    .FirstOrDefaultAsync();
+
+                if (licenseCertificate == null || licenseCertificate.FileContent == null)
+                {
+                    return new EEStage2OtpResult
+                    {
+                        Success = false,
+                        Message = "License certificate not found. Please ensure the certificate has been generated."
+                    };
+                }
+
+                // Save certificate temporarily for signing
+                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
+                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
                 
                 var otpResult = await _digitalSignatureService.InitiateSignatureAsync(
                     applicationId,
                     eeUserId,
                     SignatureType.ExecutiveEngineer,
-                    certificatePath,
-                    "100,700,200,50,1", // Signature coordinates on certificate PDF (x,y,width,height,page)
+                    tempCertPath,
+                    "50,50,180,60,1", // EE signature coordinates on LEFT side of license certificate (x,y,width,height,page)
                     null, // IP address (optional)
                     null  // User agent (optional)
                 );
@@ -252,15 +267,30 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // First, initiate the signature to get a signature ID
-                var certificatePath = $"certificates/{application.ApplicationNumber}_certificate.pdf";
-                
+                // First, get the license certificate document from database
+                var licenseCertificate = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && 
+                                            d.DocumentType == SEDocumentType.LicenceCertificate);
+
+                if (licenseCertificate == null || licenseCertificate.FileContent == null)
+                {
+                    return new EEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "License certificate not found. Certificate must be generated before signing."
+                    };
+                }
+
+                // Initiate signature on license certificate
+                // Coordinates: Executive Engineer signature (left side at bottom)
+                // Format: x,y,width,height,page
+                // Position: Left side, 50 points from left, 50 points from bottom
                 var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
                     applicationId,
                     eeUserId,
                     SignatureType.ExecutiveEngineer,
-                    certificatePath,
-                    "100,700,200,50,1", // Signature coordinates
+                    $"LICENSE_CERT_{application.ApplicationNumber}",
+                    "50,50,180,60,1", // Left signature box (x=50, y=50 from bottom, width=180, height=60, page=1)
                     null, // IP address
                     null  // User agent
                 );
@@ -288,6 +318,24 @@ namespace PMCRMS.API.Services
                         Success = false,
                         Message = $"Digital signature failed: {completeResult.Message}"
                     };
+                }
+
+                // Update the license certificate in database with signed version
+                try
+                {
+                    if (!string.IsNullOrEmpty(completeResult.SignedDocumentPath) && File.Exists(completeResult.SignedDocumentPath))
+                    {
+                        var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
+                        licenseCertificate.FileContent = signedPdfBytes;
+                        licenseCertificate.UpdatedDate = DateTime.UtcNow;
+                        
+                        _logger.LogInformation($"[EEStage2Workflow] Updated license certificate in database with EE signature for application {applicationId}");
+                    }
+                }
+                catch (Exception certEx)
+                {
+                    _logger.LogError(certEx, $"[EEStage2Workflow] Failed to update license certificate in database for application {applicationId}");
+                    // Don't fail the entire operation if this fails
                 }
 
                 // Update application status to CITY_ENGINEER_SIGN_PENDING and mark EE Stage 2 signature complete

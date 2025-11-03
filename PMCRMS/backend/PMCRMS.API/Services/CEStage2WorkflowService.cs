@@ -184,15 +184,31 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Generate OTP via HSM for license certificate signature
-                var certificatePath = $"certificates/license_{application.ApplicationNumber}_certificate.pdf";
+                // Fetch the license certificate from database
+                var licenseCertificate = await _context.SEDocuments
+                    .Where(d => d.ApplicationId == applicationId && d.DocumentType == SEDocumentType.LicenceCertificate)
+                    .OrderByDescending(d => d.CreatedDate)
+                    .FirstOrDefaultAsync();
+
+                if (licenseCertificate == null || licenseCertificate.FileContent == null)
+                {
+                    return new CEStage2OtpResult
+                    {
+                        Success = false,
+                        Message = "License certificate not found. Please ensure the certificate has been generated and signed by Executive Engineer."
+                    };
+                }
+
+                // Save certificate temporarily for signing
+                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
+                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
                 
                 var otpResult = await _digitalSignatureService.InitiateSignatureAsync(
                     applicationId,
                     ceUserId,
                     SignatureType.CityEngineer,
-                    certificatePath,
-                    "100,600,200,50,1", // Signature coordinates (below EE signature)
+                    tempCertPath,
+                    "280,50,180,60,1", // CE signature coordinates on RIGHT side of license certificate (x,y,width,height,page)
                     null,
                     null
                 );
@@ -278,15 +294,31 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Initiate signature
-                var certificatePath = $"certificates/license_{application.ApplicationNumber}_certificate.pdf";
+                // Fetch the license certificate from database
+                var licenseCertificate = await _context.SEDocuments
+                    .Where(d => d.ApplicationId == applicationId && d.DocumentType == SEDocumentType.LicenceCertificate)
+                    .OrderByDescending(d => d.CreatedDate)
+                    .FirstOrDefaultAsync();
+
+                if (licenseCertificate == null || licenseCertificate.FileContent == null)
+                {
+                    return new CEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "License certificate not found. Please ensure the certificate has been generated and signed by Executive Engineer."
+                    };
+                }
+
+                // Save certificate temporarily for signing
+                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
+                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
                 
                 var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
                     applicationId,
                     ceUserId,
                     SignatureType.CityEngineer,
-                    certificatePath,
-                    "100,600,200,50,1",
+                    tempCertPath,
+                    "280,50,180,60,1", // CE signature coordinates on RIGHT side of license certificate (x,y,width,height,page)
                     null,
                     null
                 );
@@ -314,6 +346,24 @@ namespace PMCRMS.API.Services
                         Success = false,
                         Message = $"Digital signature failed: {completeResult.Message}"
                     };
+                }
+
+                // Update the license certificate in database with final signed version
+                try
+                {
+                    if (!string.IsNullOrEmpty(completeResult.SignedDocumentPath) && File.Exists(completeResult.SignedDocumentPath))
+                    {
+                        var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
+                        licenseCertificate.FileContent = signedPdfBytes;
+                        licenseCertificate.UpdatedDate = DateTime.UtcNow;
+                        
+                        _logger.LogInformation($"[CEStage2Workflow] Updated license certificate in database with CE signature for application {applicationId}");
+                    }
+                }
+                catch (Exception certEx)
+                {
+                    _logger.LogError(certEx, $"[CEStage2Workflow] Failed to update license certificate in database for application {applicationId}");
+                    // Don't fail the entire operation if this fails
                 }
 
                 // Update application - final approval
