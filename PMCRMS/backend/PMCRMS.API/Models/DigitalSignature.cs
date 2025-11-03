@@ -97,7 +97,7 @@ namespace PMCRMS.API.Models
         public DateTime? CertificateExpiryDate { get; set; }
 
         /// <summary>
-        /// HSM provider name (e.g., "eMudhra", "Sify", "nCode")
+        /// HSM provider name (e.g., "Sify", "nCode")
         /// </summary>
         [MaxLength(100)]
         public string? HsmProvider { get; set; }

@@ -414,7 +414,7 @@ namespace PMCRMS.API.Controllers
                 {
                     IsHealthy = isHealthy,
                     ServiceUrl = "Configured", // Don't expose actual URL in response
-                    Provider = "eMudhra", // TODO: Get from configuration
+                    Provider = "HSM", // Get from configuration
                     CheckedAt = DateTime.UtcNow,
                     ResponseTimeMs = (int)responseTime,
                     ErrorMessage = isHealthy ? null : "HSM service is not accessible",

@@ -14,7 +14,7 @@ namespace PMCRMS.API.Configuration
         public string OtpServiceUrl { get; set; } = string.Empty;
 
         /// <summary>
-        /// Base URL for eMudhra signer service
+        /// Base URL for HSM signer service
         /// Example: http://210.212.188.35:8080/emSigner/
         /// </summary>
         public string SignerServiceUrl { get; set; } = string.Empty;

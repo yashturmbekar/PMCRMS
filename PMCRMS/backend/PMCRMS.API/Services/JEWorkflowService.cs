@@ -584,7 +584,7 @@ namespace PMCRMS.API.Services
             try
             {
                 // Build the request payload for HSM OTP service
-                // Note: The exact format depends on eMudhra's API specification
+                // Note: The exact format depends on HSM provider's API specification
                 // This is a common format - adjust based on actual API documentation
                 var requestData = new
                 {

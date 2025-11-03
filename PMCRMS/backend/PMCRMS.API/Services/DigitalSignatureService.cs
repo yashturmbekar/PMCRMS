@@ -107,7 +107,7 @@ namespace PMCRMS.API.Services
                     OriginalDocumentPath = documentPath,
                     IpAddress = ipAddress,
                     UserAgent = userAgent,
-                    HsmProvider = _configuration["HSM:Provider"] ?? "eMudhra",
+                    HsmProvider = _configuration["HSM:Provider"] ?? "HSM",
                     KeyLabel = officer.KeyLabel ?? $"CERT_{officer.EmployeeId}", // Use officer's KeyLabel
                     CreatedBy = officer.Name,
                     CreatedDate = DateTime.UtcNow,

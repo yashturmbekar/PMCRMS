@@ -12,7 +12,7 @@ namespace PMCRMS.API.Services
 {
     /// <summary>
     /// Service for interacting with HSM (Hardware Security Module) for digital signatures
-    /// Implements eMudhra HSM integration for OTP generation and PDF signing
+    /// Implements HSM integration for OTP generation and PDF signing
     /// </summary>
     public interface IHsmService
     {
@@ -168,7 +168,7 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Signing PDF for transaction {TransactionId} with key {KeyLabel}",
                     request.TransactionId, request.KeyLabel);
 
-                // Build SOAP envelope for eMudhra signature service - matches HSM specification exactly
+                // Build SOAP envelope for HSM signature service - matches HSM specification exactly
                 var soapEnvelope = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
 <s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"">
   <s:Body xmlns:xsi=""http://www.w3.org/2001/XMLSchema-instance"" xmlns:xsd=""http://www.w3.org/2001/XMLSchema"">
