@@ -346,7 +346,7 @@ namespace PMCRMS.API.Services
                     "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
                     applicationId);
 
-                // Update application - CE Stage 1 Approval, route to Payment
+                // Update application - CE Stage 1 Approval
                 var signatureDate = DateTime.UtcNow;
                 application.CityEngineerApprovalStatus = true;
                 application.CityEngineerApprovalComments = comments;
@@ -354,28 +354,82 @@ namespace PMCRMS.API.Services
                 application.CityEngineerDigitalSignatureApplied = true;
                 application.CityEngineerDigitalSignatureDate = signatureDate;
                 
-                // Set status to PaymentPending (CE Stage 1 approval complete, user must complete payment)
-                application.Status = ApplicationCurrentStatus.PaymentPending;
-                application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. Payment required to proceed to Clerk for certificate generation.";
-                
-                await _context.SaveChangesAsync();
-
-                // Send email notification to applicant about payment requirement
-                await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
-                    application.Id,
-                    ApplicationCurrentStatus.PaymentPending
-                );
-
-                _logger.LogInformation(
-                    "Application {ApplicationId} approved by City Engineer - Routed to Payment for officer {OfficerId}. User must complete payment before Clerk assignment.", 
-                    applicationId, officerId);
-
-                return new WorkflowActionResultDto
+                // Check if position is Architect - NO payment required for Architects
+                if (application.PositionType == PositionType.Architect)
                 {
-                    Success = true,
-                    Message = "Documents verified and approved by City Engineer. Please complete payment to proceed.",
-                    NewStatus = application.Status
-                };
+                    _logger.LogInformation(
+                        "Application {ApplicationId} is for Architect position - Skipping payment, directly assigning to Clerk", 
+                        applicationId);
+                    
+                    // Set status to CLERK_PENDING and auto-assign to clerk
+                    application.Status = ApplicationCurrentStatus.CLERK_PENDING;
+                    application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. No payment required for Architect position. Assigned to Clerk for certificate processing.";
+                    
+                    // Auto-assign to an active clerk
+                    var clerk = await _context.Officers
+                        .Where(o => o.Role == OfficerRole.Clerk && o.IsActive)
+                        .OrderBy(o => Guid.NewGuid()) // Random assignment
+                        .FirstOrDefaultAsync();
+                    
+                    if (clerk != null)
+                    {
+                        application.AssignedClerkId = clerk.Id;
+                        application.AssignedToClerkDate = DateTime.UtcNow;
+                        _logger.LogInformation(
+                            "Application {ApplicationId} (Architect) assigned to Clerk {ClerkId} - {ClerkName}", 
+                            applicationId, clerk.Id, clerk.Name);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "No active clerk found for Architect application {ApplicationId} - Status set to CLERK_PENDING but not assigned", 
+                            applicationId);
+                    }
+                    
+                    await _context.SaveChangesAsync();
+
+                    // Send email notification to applicant about clerk assignment (no payment needed)
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                        application.Id,
+                        ApplicationCurrentStatus.CLERK_PENDING
+                    );
+
+                    _logger.LogInformation(
+                        "Application {ApplicationId} (Architect) approved by City Engineer - Direct to Clerk (no payment) for officer {OfficerId}", 
+                        applicationId, officerId);
+
+                    return new WorkflowActionResultDto
+                    {
+                        Success = true,
+                        Message = "Documents verified and approved by City Engineer. No payment required for Architect position. Application forwarded to Clerk.",
+                        NewStatus = application.Status
+                    };
+                }
+                else
+                {
+                    // For non-Architect positions, route to Payment
+                    application.Status = ApplicationCurrentStatus.PaymentPending;
+                    application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. Payment required to proceed to Clerk for certificate generation.";
+                    
+                    await _context.SaveChangesAsync();
+
+                    // Send email notification to applicant about payment requirement
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                        application.Id,
+                        ApplicationCurrentStatus.PaymentPending
+                    );
+
+                    _logger.LogInformation(
+                        "Application {ApplicationId} approved by City Engineer - Routed to Payment for officer {OfficerId}. User must complete payment before Clerk assignment.", 
+                        applicationId, officerId);
+
+                    return new WorkflowActionResultDto
+                    {
+                        Success = true,
+                        Message = "Documents verified and approved by City Engineer. Please complete payment to proceed.",
+                        NewStatus = application.Status
+                    };
+                }
             }
             catch (Exception ex)
             {

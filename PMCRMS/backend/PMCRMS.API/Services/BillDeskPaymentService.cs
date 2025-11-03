@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PMCRMS.API.Data;
 using PMCRMS.API.Models;
 using PMCRMS.API.ViewModels;
+using PMCRMS.API.DTOs;
 using System.Globalization;
 
 namespace PMCRMS.API.Services
@@ -18,17 +19,20 @@ namespace PMCRMS.API.Services
         private readonly IPluginContextService _pluginContextService;
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<BillDeskPaymentService> _logger;
+        private readonly IChallanService _challanService;
 
         public BillDeskPaymentService(
             IBillDeskConfigService configService,
             IPluginContextService pluginContextService,
             PMCRMSDbContext context,
-            ILogger<BillDeskPaymentService> logger)
+            ILogger<BillDeskPaymentService> logger,
+            IChallanService challanService)
         {
             _configService = configService;
             _pluginContextService = pluginContextService;
             _context = context;
             _logger = logger;
+            _challanService = challanService;
         }
 
         /// <summary>
@@ -58,6 +62,18 @@ namespace PMCRMS.API.Services
                     {
                         Success = false,
                         Message = "Price not found in application"
+                    };
+                }
+
+                // Check if payment amount is 0 (for Architects or free positions)
+                if (finalFee == "0" || decimal.Parse(finalFee) == 0)
+                {
+                    _logger.LogWarning($"[PAYMENT] No payment required for application {model.EntityId} - Amount is ₹0");
+                    return new PaymentResponseViewModel
+                    {
+                        Success = false,
+                        Message = "No payment required for this position type",
+                        ErrorDetails = "This application does not require payment"
                     };
                 }
 
@@ -486,17 +502,73 @@ namespace PMCRMS.API.Services
                     // transaction_status: SUCCESS or FAILURE
                     bool paymentSuccess = (authStatus == "0300" || orderStatus?.ToUpper() == "SUCCESS");
 
-                    // Step 6: Update application status
+                    // Step 6: Update application status and assign to clerk if payment successful
                     if (paymentSuccess)
                     {
                         _logger.LogInformation($"[BILLDESK-CALLBACK] Payment successful for application {applicationId}");
-                        application.Status = ApplicationCurrentStatus.PaymentCompleted;
+                        
+                        // Generate Challan
+                        decimal amountPaid = 0;
+                        if (decimal.TryParse(amount, out var parsedAmount))
+                        {
+                            amountPaid = parsedAmount / 100; // Convert paise to rupees
+                        }
+
+                        try
+                        {
+                            var challanRequest = new ChallanGenerationRequest
+                            {
+                                ApplicationId = applicationId,
+                                Name = $"{application.FirstName} {application.LastName}",
+                                Position = application.PositionType.ToString(),
+                                Amount = amountPaid,
+                                AmountInWords = ConvertAmountToWords(amountPaid),
+                                Date = DateTime.UtcNow
+                            };
+
+                            var challanResult = await _challanService.GenerateChallanAsync(challanRequest);
+                            
+                            if (challanResult.Success)
+                            {
+                                _logger.LogInformation($"[BILLDESK-CALLBACK] Challan generated: {challanResult.ChallanNumber}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"[BILLDESK-CALLBACK] Challan generation failed: {challanResult.Message}");
+                            }
+                        }
+                        catch (Exception challanEx)
+                        {
+                            _logger.LogError(challanEx, "[BILLDESK-CALLBACK] Error generating challan");
+                        }
+
+                        // Auto-assign to Clerk for processing
+                        _logger.LogInformation($"[BILLDESK-CALLBACK] Searching for active clerks...");
+                        
+                        var clerk = await _context.Officers
+                            .Where(o => o.Role == Models.OfficerRole.Clerk && o.IsActive)
+                            .OrderBy(o => Guid.NewGuid()) // Random assignment
+                            .FirstOrDefaultAsync();
+
+                        if (clerk != null)
+                        {
+                            application.AssignedClerkId = clerk.Id;
+                            application.AssignedToClerkDate = DateTime.UtcNow;
+                            application.Status = ApplicationCurrentStatus.CLERK_PENDING;
+                            _logger.LogInformation($"[BILLDESK-CALLBACK] Assigned to Clerk {clerk.Id} - {clerk.Name}, Status: CLERK_PENDING");
+                        }
+                        else
+                        {
+                            application.Status = ApplicationCurrentStatus.PaymentCompleted;
+                            _logger.LogWarning($"[BILLDESK-CALLBACK] No active clerk found for assignment, Status: PaymentCompleted");
+                        }
+
                         application.UpdatedDate = DateTime.UtcNow;
-                        application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{amount}. Transaction ID: {transactionId}.";
+                        application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{amountPaid}. Transaction ID: {transactionId}.";
+                        
                         await _context.SaveChangesAsync();
 
-                        // Note: Clerk assignment will be handled by PaymentService.ProcessPaymentSuccessAsync
-                        // or WorkflowProgressionService.ProgressToClerkAsync after this callback completes
+                        _logger.LogInformation($"[BILLDESK-CALLBACK] Application {applicationId} updated - Status: {application.Status}");
                     }
                     else
                     {
@@ -912,6 +984,21 @@ namespace PMCRMS.API.Services
                 var istNow = DateTime.UtcNow.AddHours(5).AddMinutes(30);
                 return istNow.ToString("yyyyMMddHHmmss");
             }
+        }
+
+        private string ConvertAmountToWords(decimal amount)
+        {
+            if (amount == 0) return "Zero Rupees Only";
+            
+            // Convert based on position fee structure
+            if (amount == 3000) return "Three Thousand Only";
+            if (amount == 1500) return "One Thousand Five Hundred Only";
+            if (amount == 900) return "Nine Hundred Only";
+            if (amount == 5000) return "Five Thousand Only";
+            if (amount == 10000) return "Ten Thousand Only";
+            
+            // For other amounts, use a basic format
+            return $"{amount:N2} Rupees Only";
         }
 
         #endregion

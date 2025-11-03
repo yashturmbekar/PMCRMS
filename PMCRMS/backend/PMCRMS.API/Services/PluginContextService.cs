@@ -49,8 +49,8 @@ namespace PMCRMS.API.Services
                 throw new InvalidOperationException("Application not found");
             }
 
-            // Fixed price for license certificate - can be made configurable
-            const string CERTIFICATE_PRICE = "3000";
+            // Calculate price based on position type
+            string certificatePrice = GetPriceByPositionType(application.PositionType);
 
             var applicant = await _context.Users.FindAsync(application.UserId);
 
@@ -60,7 +60,27 @@ namespace PMCRMS.API.Services
                 LastName = application.LastName ?? "",
                 EmailAddress = application.EmailAddress ?? "",
                 MobileNumber = application.MobileNumber ?? "",
-                Price = CERTIFICATE_PRICE
+                Price = certificatePrice
+            };
+        }
+
+        /// <summary>
+        /// Get fee amount based on position type
+        /// Architect: 0 (No fee)
+        /// LicenceEngineer: 3000
+        /// StructuralEngineer: 1500
+        /// Supervisor1 & Supervisor2: 900
+        /// </summary>
+        private string GetPriceByPositionType(PositionType positionType)
+        {
+            return positionType switch
+            {
+                PositionType.Architect => "0",
+                PositionType.LicenceEngineer => "3000",
+                PositionType.StructuralEngineer => "1500",
+                PositionType.Supervisor1 => "900",
+                PositionType.Supervisor2 => "900",
+                _ => "0" // Default to 0 for unknown types
             };
         }
 

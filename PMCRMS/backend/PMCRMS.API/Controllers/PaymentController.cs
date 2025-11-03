@@ -556,8 +556,11 @@ namespace PMCRMS.API.Controllers
                     ?? HttpContext.Request.Form["bd_order_id"].FirstOrDefault();
 
                 // Get encrypted response (msg parameter from BillDesk)
+                // BillDesk UAT sends "transaction_response" parameter
                 string? encryptedResponse = HttpContext.Request.Query["msg"].FirstOrDefault()
-                    ?? HttpContext.Request.Form["msg"].FirstOrDefault();
+                    ?? HttpContext.Request.Form["msg"].FirstOrDefault()
+                    ?? HttpContext.Request.Query["transaction_response"].FirstOrDefault()
+                    ?? HttpContext.Request.Form["transaction_response"].FirstOrDefault();
 
                 _logger.LogInformation($"[BILLDESK-CALLBACK] Extracted txnEntityId: {txnEntityId}");
                 _logger.LogInformation($"[BILLDESK-CALLBACK] Extracted bdOrderId: {bdOrderId}");
@@ -573,7 +576,7 @@ namespace PMCRMS.API.Controllers
 
                 if (string.IsNullOrEmpty(encryptedResponse))
                 {
-                    _logger.LogError($"[BILLDESK-CALLBACK] No encrypted response (msg parameter) found in callback");
+                    _logger.LogError($"[BILLDESK-CALLBACK] No encrypted response (msg or transaction_response parameter) found in callback");
                     return Redirect($"{_configuration["BillDesk:FrontendBaseUrl"]}/#/payment/failure?applicationId={applicationId}&error=no_response");
                 }
 

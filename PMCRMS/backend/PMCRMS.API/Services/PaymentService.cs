@@ -63,6 +63,18 @@ namespace PMCRMS.API.Services
                     };
                 }
 
+                // Check if position is Architect - NO payment required for Architects
+                if (application.PositionType == PositionType.Architect)
+                {
+                    _logger.LogWarning($"[PaymentService] Payment not required for Architect position: {applicationId}");
+                    return new PaymentInitializationResponse
+                    {
+                        Success = false,
+                        Message = "No payment required for Architect position",
+                        ErrorDetails = "Architect positions do not require payment"
+                    };
+                }
+
                 // Validate application is in PaymentPending stage
                 if (application.Status != ApplicationCurrentStatus.PaymentPending)
                 {
