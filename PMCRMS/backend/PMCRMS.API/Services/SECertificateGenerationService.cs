@@ -192,9 +192,26 @@ namespace PMCRMS.API.Services
             string applicantName = $"{application.FirstName} {(string.IsNullOrEmpty(application.MiddleName) ? "" : application.MiddleName + " ")}{application.LastName}".Trim();
             
             var currentAddress = application.Addresses.FirstOrDefault(a => a.AddressType == "Current");
-            string fullAddress = currentAddress != null
-                ? $"{currentAddress.AddressLine1}, {currentAddress.City} {currentAddress.State} {currentAddress.PinCode}"
-                : "";
+            string fullAddress = "";
+            
+            if (currentAddress != null)
+            {
+                fullAddress = $"{currentAddress.AddressLine1}, {currentAddress.City}, {currentAddress.State} - {currentAddress.PinCode}";
+                _logger.LogInformation("✅ Address loaded for application {ApplicationId}: {Address}", applicationId, fullAddress);
+            }
+            else
+            {
+                _logger.LogWarning("⚠️ No current address found for application {ApplicationId}. Total addresses: {Count}", 
+                    applicationId, application.Addresses?.Count ?? 0);
+                    
+                // Try any address if current is not available
+                var anyAddress = application.Addresses?.FirstOrDefault();
+                if (anyAddress != null)
+                {
+                    fullAddress = $"{anyAddress.AddressLine1}, {anyAddress.City}, {anyAddress.State} - {anyAddress.PinCode}";
+                    _logger.LogInformation("✅ Using alternate address for application {ApplicationId}: {Address}", applicationId, fullAddress);
+                }
+            }
 
             DateTime fromDate = DateTime.Now;
             int toYear = DateTime.Now.Year + 3;
@@ -229,28 +246,58 @@ namespace PMCRMS.API.Services
                 }
             }
 
-            // Get profile photo from SEDocument table
+            // Get profile photo from SEDocument table (DocumentType = 8 = ProfilePicture)
             var profilePhotoDocument = await _context.SEDocuments
                 .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && 
                                         d.DocumentType == SEDocumentType.ProfilePicture);
 
+            _logger.LogInformation("Profile photo document query for ApplicationId={ApplicationId}, DocumentType=ProfilePicture(8): {Found}", 
+                applicationId, profilePhotoDocument != null ? "FOUND" : "NOT FOUND");
+
             byte[]? profilePhotoBytes = null;
             if (profilePhotoDocument != null)
             {
+                _logger.LogInformation("Profile photo document details - FileName: {FileName}, FileContent Length: {Length}, FilePath: {FilePath}", 
+                    profilePhotoDocument.FileName, 
+                    profilePhotoDocument.FileContent?.Length ?? 0, 
+                    profilePhotoDocument.FilePath);
+
                 // If FileContent exists, use it; otherwise read from FilePath
                 if (profilePhotoDocument.FileContent != null && profilePhotoDocument.FileContent.Length > 0)
                 {
                     profilePhotoBytes = profilePhotoDocument.FileContent;
-                    _logger.LogInformation("Using profile photo from database FileContent for application {ApplicationId}", applicationId);
+                    _logger.LogInformation("✅ Using profile photo from database FileContent for application {ApplicationId} (Size: {Size} bytes)", applicationId, profilePhotoBytes.Length);
+                    
+                    // Log image format info for debugging
+                    var formatInfo = GetImageFormatInfo(profilePhotoBytes);
+                    _logger.LogInformation("Profile photo format info: {Format}", formatInfo);
+                    
+                    // Check if it's AVIF format (not supported by QuestPDF/SkiaSharp)
+                    if (formatInfo.StartsWith("AVIF"))
+                    {
+                        _logger.LogError("❌ AVIF format is not supported by QuestPDF. Please re-upload profile photo as JPEG or PNG for application {ApplicationId}", applicationId);
+                        profilePhotoBytes = null; // Will use placeholder
+                    }
+                    // Don't validate other formats - let QuestPDF try to decode them
                 }
                 else if (!string.IsNullOrEmpty(profilePhotoDocument.FilePath))
                 {
                     var photoPath = Path.Combine(_environment.WebRootPath, profilePhotoDocument.FilePath.TrimStart('/'));
+                    _logger.LogInformation("Attempting to read profile photo from file path: {PhotoPath}", photoPath);
                     if (File.Exists(photoPath))
                     {
                         profilePhotoBytes = File.ReadAllBytes(photoPath);
-                        _logger.LogInformation("Using profile photo from file path {PhotoPath} for application {ApplicationId}", photoPath, applicationId);
+                        _logger.LogInformation("✅ Using profile photo from file path {PhotoPath} for application {ApplicationId} (Size: {Size} bytes)", 
+                            photoPath, applicationId, profilePhotoBytes.Length);
                     }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ Profile photo file not found at path: {PhotoPath}", photoPath);
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning("⚠️ Profile photo document found but has no FileContent or FilePath for application {ApplicationId}", applicationId);
                 }
             }
 
@@ -320,14 +367,50 @@ namespace PMCRMS.API.Services
                             // Profile Photo (Right) - 75x95 with border
                             row.RelativeItem(1).AlignRight().Column(photoCol =>
                             {
-                                if (profilePhotoBytes != null)
+                                if (profilePhotoBytes != null && profilePhotoBytes.Length > 0)
                                 {
+                                    try
+                                    {
+                                        photoCol.Item()
+                                            .Height(95)
+                                            .Width(75)
+                                            .Border(2)
+                                            .BorderColor(Colors.Black)
+                                            .Image(profilePhotoBytes);
+                                        _logger.LogInformation("✅ Profile photo rendered successfully for application {ApplicationId}", applicationId);
+                                    }
+                                    catch (Exception imgEx)
+                                    {
+                                        _logger.LogError(imgEx, "❌ Failed to render profile photo image for application {ApplicationId}. Using placeholder.", applicationId);
+                                        // Use placeholder - 75x95 yellow rectangle with border and text
+                                        photoCol.Item()
+                                            .Height(95)
+                                            .Width(75)
+                                            .Border(2)
+                                            .BorderColor(Colors.Black)
+                                            .Background(Colors.Grey.Lighten3)
+                                            .AlignCenter()
+                                            .AlignMiddle()
+                                            .Text("No Photo")
+                                            .FontSize(8)
+                                            .FontColor(Colors.Grey.Darken2);
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("⚠️ No profile photo available for application {ApplicationId}. Using placeholder.", applicationId);
+                                    // Use placeholder - 75x95 light grey rectangle with border and text
                                     photoCol.Item()
                                         .Height(95)
                                         .Width(75)
                                         .Border(2)
                                         .BorderColor(Colors.Black)
-                                        .Image(profilePhotoBytes);
+                                        .Background(Colors.Grey.Lighten3)
+                                        .AlignCenter()
+                                        .AlignMiddle()
+                                        .Text("No Photo")
+                                        .FontSize(8)
+                                        .FontColor(Colors.Grey.Darken2);
                                 }
                             });
                         });
@@ -547,6 +630,80 @@ namespace PMCRMS.API.Services
                 PositionType.Supervisor2 => "Supervisor2",
                 _ => "Engineer"
             };
+        }
+
+        /// <summary>
+        /// Validate if byte array is a valid image format (JPEG, PNG, BMP)
+        /// Checks magic bytes (file signature) at the beginning of the file
+        /// </summary>
+        private bool IsValidImageFormat(byte[] imageBytes)
+        {
+            if (imageBytes == null || imageBytes.Length < 4)
+                return false;
+
+            // Check for common image format magic bytes
+            // PNG: 89 50 4E 47
+            if (imageBytes.Length >= 4 && imageBytes[0] == 0x89 && imageBytes[1] == 0x50 && 
+                imageBytes[2] == 0x4E && imageBytes[3] == 0x47)
+            {
+                _logger.LogInformation("✅ Detected PNG image format");
+                return true;
+            }
+
+            // JPEG: FF D8 FF
+            if (imageBytes.Length >= 3 && imageBytes[0] == 0xFF && imageBytes[1] == 0xD8 && imageBytes[2] == 0xFF)
+            {
+                _logger.LogInformation("✅ Detected JPEG image format");
+                return true;
+            }
+
+            // BMP: 42 4D
+            if (imageBytes.Length >= 2 && imageBytes[0] == 0x42 && imageBytes[1] == 0x4D)
+            {
+                _logger.LogInformation("✅ Detected BMP image format");
+                return true;
+            }
+
+            // Log first few bytes for debugging
+            string hexDump = BitConverter.ToString(imageBytes.Take(Math.Min(16, imageBytes.Length)).ToArray());
+            _logger.LogError("❌ Unknown image format. First bytes: {HexDump}", hexDump);
+            return false;
+        }
+
+        /// <summary>
+        /// Get image format information from byte array
+        /// </summary>
+        private string GetImageFormatInfo(byte[] imageBytes)
+        {
+            if (imageBytes == null || imageBytes.Length < 4)
+                return "Invalid or too small";
+
+            string hexDump = BitConverter.ToString(imageBytes.Take(Math.Min(16, imageBytes.Length)).ToArray());
+            
+            // PNG: 89 50 4E 47
+            if (imageBytes.Length >= 4 && imageBytes[0] == 0x89 && imageBytes[1] == 0x50 && 
+                imageBytes[2] == 0x4E && imageBytes[3] == 0x47)
+                return $"PNG (Header: {hexDump})";
+
+            // JPEG: FF D8 FF
+            if (imageBytes.Length >= 3 && imageBytes[0] == 0xFF && imageBytes[1] == 0xD8 && imageBytes[2] == 0xFF)
+                return $"JPEG (Header: {hexDump})";
+
+            // BMP: 42 4D
+            if (imageBytes.Length >= 2 && imageBytes[0] == 0x42 && imageBytes[1] == 0x4D)
+                return $"BMP (Header: {hexDump})";
+
+            // AVIF: ftyp avif (at offset 4)
+            if (imageBytes.Length >= 12 && imageBytes[4] == 0x66 && imageBytes[5] == 0x74 && 
+                imageBytes[6] == 0x79 && imageBytes[7] == 0x70)
+                return $"AVIF/HEIF (Header: {hexDump})";
+
+            // WebP: RIFF ... WEBP
+            if (imageBytes.Length >= 12 && imageBytes[0] == 0x52 && imageBytes[1] == 0x49 && 
+                imageBytes[2] == 0x46 && imageBytes[3] == 0x46)
+                return $"WebP (Header: {hexDump})";
+
+            return $"Unknown format (Header: {hexDump})";
         }
     }
 }

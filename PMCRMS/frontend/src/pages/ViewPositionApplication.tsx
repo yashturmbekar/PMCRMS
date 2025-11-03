@@ -13,7 +13,6 @@ import {
   CreditCard,
   Info,
 } from "lucide-react";
-import { MAX_POLL_ATTEMPTS } from "../constants";
 import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
@@ -205,15 +204,14 @@ const ViewPositionApplication: React.FC = () => {
 
     if (user?.role && workflowOfficerRoles.includes(user.role)) {
       console.log(
-        `🚫 Skipping certificate polling for workflow officer role: ${user.role}`
+        `🚫 Skipping certificate status check for workflow officer role: ${user.role}`
       );
       return;
     }
 
-    let pollCount = 0;
-
     const fetchCertificateStatus = async () => {
       if (!id || !application || !application.isPaymentComplete) {
+        console.log("⏸️ Skipping certificate check - payment not complete");
         return;
       }
 
@@ -280,39 +278,10 @@ const ViewPositionApplication: React.FC = () => {
       }
     };
 
-    // Initial fetch
+    // Fetch certificate status only once
     fetchCertificateStatus();
 
-    // Poll every 3 seconds if certificate doesn't exist yet, but stop after max attempts
-    const pollInterval = setInterval(() => {
-      pollCount++;
-
-      if (certificateStatus?.exists) {
-        // Certificate found - stop polling
-        console.log("✅ Certificate found - stopping poll");
-        clearInterval(pollInterval);
-        return;
-      }
-
-      if (pollCount >= MAX_POLL_ATTEMPTS) {
-        // Max attempts reached - stop polling
-        console.log("⏱️ Max poll attempts reached (2 minutes) - stopping poll");
-        clearInterval(pollInterval);
-        return;
-      }
-
-      if (!certificateStatus?.exists && application?.isPaymentComplete) {
-        console.log(
-          `Polling for certificate status... (${pollCount}/${MAX_POLL_ATTEMPTS})`
-        );
-        fetchCertificateStatus();
-      }
-    }, 3000); // Poll every 3 seconds
-
-    // Cleanup interval on unmount or when certificate is found
-    return () => {
-      clearInterval(pollInterval);
-    };
+    // No cleanup needed since we're not using intervals
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     id,

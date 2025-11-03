@@ -20,19 +20,22 @@ namespace PMCRMS.API.Services
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<BillDeskPaymentService> _logger;
         private readonly IChallanService _challanService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
         public BillDeskPaymentService(
             IBillDeskConfigService configService,
             IPluginContextService pluginContextService,
             PMCRMSDbContext context,
             ILogger<BillDeskPaymentService> logger,
-            IChallanService challanService)
+            IChallanService challanService,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _configService = configService;
             _pluginContextService = pluginContextService;
             _context = context;
             _logger = logger;
             _challanService = challanService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         /// <summary>
@@ -325,7 +328,7 @@ namespace PMCRMS.API.Services
                         
                         if (decimal.TryParse(request.Amount, out var amount))
                         {
-                            transaction.AmountPaid = amount;
+                            transaction.AmountPaid = amount / 100; // Convert paise to rupees
                         }
 
                         _logger.LogInformation($"[PAYMENT] Updated transaction {transaction.Id} - Status: {transaction.Status}");
@@ -358,8 +361,75 @@ namespace PMCRMS.API.Services
                     
                     application.UpdatedDate = DateTime.UtcNow;
 
-                    // TODO: Generate Certificate and Challan PDFs here
-                    // await GenerateCertificateAndChallan(application);
+                    // Generate Challan PDF
+                    try
+                    {
+                        decimal amountPaid = 0;
+                        if (decimal.TryParse(request.Amount, out amountPaid))
+                        {
+                            var challanRequest = new ChallanGenerationRequest
+                            {
+                                ApplicationId = request.ApplicationId,
+                                Name = $"{application.FirstName} {application.LastName}",
+                                Position = application.PositionType.ToString(),
+                                Amount = amountPaid,
+                                AmountInWords = ConvertAmountToWords(amountPaid),
+                                Date = DateTime.UtcNow
+                            };
+
+                            var challanResult = await _challanService.GenerateChallanAsync(challanRequest);
+                            
+                            if (challanResult.Success)
+                            {
+                                _logger.LogInformation($"[PAYMENT] Challan generated: {challanResult.ChallanNumber}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"[PAYMENT] Challan generation failed: {challanResult.Message}");
+                            }
+                        }
+                    }
+                    catch (Exception challanEx)
+                    {
+                        _logger.LogError(challanEx, "[PAYMENT] Error generating challan");
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    // Generate Licence Certificate (background task with retry logic)
+                    // Use IServiceScopeFactory to create independent scope for background task
+                    var scopeFactory = _serviceScopeFactory;
+                    var applicationId = request.ApplicationId;
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            _logger.LogInformation($"[PAYMENT] Starting licence certificate generation for application: {applicationId}");
+                            
+                            // Add a small delay to ensure all database changes are committed
+                            await Task.Delay(1000);
+                            
+                            // Create a new scope to get a fresh DbContext
+                            using var scope = scopeFactory.CreateScope();
+                            var certificateService = scope.ServiceProvider.GetRequiredService<ISECertificateGenerationService>();
+                            
+                            var certificateGenerated = await certificateService.GenerateAndSaveLicenceCertificateAsync(applicationId);
+                            
+                            if (certificateGenerated)
+                            {
+                                _logger.LogInformation($"[PAYMENT] ✅ Licence certificate successfully generated for application: {applicationId}");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"[PAYMENT] ⚠️ Licence certificate generation failed for application: {applicationId}");
+                            }
+                        }
+                        catch (Exception certEx)
+                        {
+                            _logger.LogError(certEx, $"[PAYMENT] ❌ Error during licence certificate generation for application: {applicationId}");
+                            // Don't throw - certificate generation failure shouldn't affect payment success
+                        }
+                    });
                 }
                 else
                 {
@@ -569,6 +639,41 @@ namespace PMCRMS.API.Services
                         await _context.SaveChangesAsync();
 
                         _logger.LogInformation($"[BILLDESK-CALLBACK] Application {applicationId} updated - Status: {application.Status}");
+
+                        // Generate Licence Certificate (background task with retry logic)
+                        // Use IServiceScopeFactory to create independent scope for background task
+                        var scopeFactory = _serviceScopeFactory;
+                        var appId = applicationId;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                _logger.LogInformation($"[BILLDESK-CALLBACK] Starting licence certificate generation for application: {appId}");
+                                
+                                // Add a small delay to ensure all database changes are committed
+                                await Task.Delay(1000);
+                                
+                                // Create a new scope to get a fresh DbContext
+                                using var scope = scopeFactory.CreateScope();
+                                var certificateService = scope.ServiceProvider.GetRequiredService<ISECertificateGenerationService>();
+                                
+                                var certificateGenerated = await certificateService.GenerateAndSaveLicenceCertificateAsync(appId);
+                                
+                                if (certificateGenerated)
+                                {
+                                    _logger.LogInformation($"[BILLDESK-CALLBACK] ✅ Licence certificate successfully generated for application: {appId}");
+                                }
+                                else
+                                {
+                                    _logger.LogWarning($"[BILLDESK-CALLBACK] ⚠️ Licence certificate generation failed for application: {appId}");
+                                }
+                            }
+                            catch (Exception certEx)
+                            {
+                                _logger.LogError(certEx, $"[BILLDESK-CALLBACK] ❌ Error during licence certificate generation for application: {appId}");
+                                // Don't throw - certificate generation failure shouldn't affect payment success
+                            }
+                        });
                     }
                     else
                     {
@@ -637,7 +742,8 @@ namespace PMCRMS.API.Services
                 input.clientId = _configService.ClientId;
                 input.orderid = orderId;
                 input.Action = "Encrypt";
-                input.amount = amount;
+                // BillDesk expects amount in paise (smallest currency unit)
+                input.amount = (decimal.Parse(amount) * 100).ToString("0");
                 input.currency = "356"; // INR currency code
                 input.ReturnUrl = $"{_configService.ReturnUrlBase}/{entityId}?txnEntityId={txnEntityId}";
                 input.itemcode = "DIRECT";
