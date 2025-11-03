@@ -346,7 +346,7 @@ namespace PMCRMS.API.Services
                     "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
                     applicationId);
 
-                // Update application - CE Stage 1 Approval, assign to Clerk
+                // Update application - CE Stage 1 Approval, route to Payment
                 var signatureDate = DateTime.UtcNow;
                 application.CityEngineerApprovalStatus = true;
                 application.CityEngineerApprovalComments = comments;
@@ -354,55 +354,26 @@ namespace PMCRMS.API.Services
                 application.CityEngineerDigitalSignatureApplied = true;
                 application.CityEngineerDigitalSignatureDate = signatureDate;
                 
-                // Set status to CLERK_PENDING (CE Stage 1 approval complete, forward to Clerk)
-                application.Status = ApplicationCurrentStatus.CLERK_PENDING;
-                application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. Forwarded to Clerk for certificate generation.";
+                // Set status to PaymentPending (CE Stage 1 approval complete, user must complete payment)
+                application.Status = ApplicationCurrentStatus.PaymentPending;
+                application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. Payment required to proceed to Clerk for certificate generation.";
                 
-                // Auto-assign to an available clerk
-                try
-                {
-                    var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
-                        applicationId: application.Id,
-                        currentStatus: ApplicationCurrentStatus.CLERK_PENDING,
-                        currentOfficerId: officerId
-                    );
-
-                    if (assignment != null)
-                    {
-                        _logger.LogInformation(
-                            "Application {ApplicationId} auto-assigned to Clerk officer {OfficerId}",
-                            application.Id, assignment.AssignedToOfficerId);
-                    }
-                    else
-                    {
-                        _logger.LogWarning(
-                            "No available Clerk found for application {ApplicationId}. Status set to CLERK_PENDING.",
-                            application.Id);
-                    }
-                }
-                catch (Exception assignEx)
-                {
-                    _logger.LogWarning(assignEx, 
-                        "Failed to auto-assign to Clerk for application {ApplicationId}. Status set to CLERK_PENDING.",
-                        application.Id);
-                }
-
                 await _context.SaveChangesAsync();
 
-                // Send email notification to applicant
+                // Send email notification to applicant about payment requirement
                 await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
                     application.Id,
-                    ApplicationCurrentStatus.CLERK_PENDING
+                    ApplicationCurrentStatus.PaymentPending
                 );
 
                 _logger.LogInformation(
-                    "Application {ApplicationId} approved by City Engineer - Forwarded to Clerk for officer {OfficerId}", 
+                    "Application {ApplicationId} approved by City Engineer - Routed to Payment for officer {OfficerId}. User must complete payment before Clerk assignment.", 
                     applicationId, officerId);
 
                 return new WorkflowActionResultDto
                 {
                     Success = true,
-                    Message = "Documents verified and approved by City Engineer. Application forwarded to Clerk for certificate generation.",
+                    Message = "Documents verified and approved by City Engineer. Please complete payment to proceed.",
                     NewStatus = application.Status
                 };
             }
