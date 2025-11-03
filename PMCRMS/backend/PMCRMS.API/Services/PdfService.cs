@@ -872,8 +872,9 @@ namespace PMCRMS.API.Services
         {
             container.Column(column =>
             {
-                column.Spacing(10);
+                column.Spacing(5);
 
+                // Top header
                 column.Item().Row(row =>
                 {
                     row.RelativeItem()
@@ -881,147 +882,130 @@ namespace PMCRMS.API.Services
                         .Text("मा. शहर अभियंता\nपुणे महानगरपालिका")
                         .Bold()
                         .FontFamily(MarathiFont)
-                        .FontSize(12)
-                        .LineHeight(0.8f);
+                        .FontSize(11)
+                        .LineHeight(1.4f);
 
                     row.RelativeItem();
                 });
 
+                column.Item().PaddingTop(15);
+
                 column.Item()
-                    .PaddingLeft(20)
-                    .PaddingRight(20)
-                    .AlignLeft()
-                    .Text(text =>
+                    .AlignCenter()
+                    .Text("यांजकडे सादर....")
+                    .FontSize(13)
+                    .FontFamily(MarathiFont);
+
+                DateTime date = _model.Date;
+                int year = date.Year;
+                int toYear = year + 2;
+
+                column.Item().PaddingTop(8).AlignLeft().Text($"विषय:- जानेवारी {year} ते डिसेंबर {toYear} करीता {_model.Position} नवीन परवान्याबाबत.")
+                    .FontSize(11)
+                    .FontFamily(MarathiFont)
+                    .LineHeight(1.4f);
+
+                column.Item().PaddingTop(10).AlignLeft().Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने जानेवारी {year} ते डिसेंबर {toYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
+                    .FontSize(11)
+                    .FontFamily(MarathiFont)
+                    .LineHeight(1.5f);
+
+                column.Item().PaddingTop(10).Text(text =>
+                {
+                    text.Span("अर्जदाराचे नाव - ")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
+
+                    text.Span(_model.Name)
+                        .FontSize(11)
+                        .FontFamily(EnglishFont)
+                        .Bold();
+                });
+
+                column.Item().PaddingTop(6).Text(text =>
+                {
+                    text.Span("अर्जदाराचे शिक्षण - ")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
+
+                    if (_model.Qualification.Count > 0)
                     {
-                        text.Span($"                   यांजकडे सादर....")
-                            .FontSize(14)
-                            .FontFamily(MarathiFont);
-
-                        DateTime date = _model.Date;
-                        int year = date.Year;
-                        int toYear = year + 2;
-
-                        text.Span($"\n    विषय:- जानेवारी {year} ते डिसेंबर {toYear} करीता {_model.Position} नवीन परवान्याबाबत.")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont);
-
-                        text.Span($"\n    विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने जानेवारी {year} ते डिसेंबर {toYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता  अर्ज केला आहे.\n")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont)
-                            .LineHeight(0.8f);
-
-                        text.Span($"          अर्जदाराचे नाव - ")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont)
-                            .LineHeight(0.8f);
-
-                        text.Span(_model.Name)
-                            .FontSize(12)
-                            .FontFamily(EnglishFont)
-                            .Bold()
-                            .LineHeight(0.8f);
-
-                        text.Span($"\n          अर्जदाराचे शिक्षण - ")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont)
-                            .LineHeight(0.8f);
-
-                        if (_model.Qualification.Count > 0)
-                        {
-                            text.Span($"1) {_model.Qualification[0]}")
-                                .FontSize(12)
-                                .FontFamily(EnglishFont)
-                                .Bold()
-                                .LineHeight(0.8f);
-
-                            if (_model.Qualification.Count > 1 && !string.IsNullOrWhiteSpace(_model.Qualification[1]))
-                            {
-                                text.Span($"\n                                                     2) {_model.Qualification[1]}")
-                                    .FontSize(12)
-                                    .FontFamily(EnglishFont)
-                                    .Bold()
-                                    .LineHeight(0.8f);
-                            }
-                            else
-                            {
-                                text.Span($"\n")
-                                    .FontSize(12)
-                                    .FontFamily(EnglishFont)
-                                    .Bold();
-                            }
-                        }
-
-                        text.Span($"\n          पत्ता : ")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont);
-
-                        text.Span($"1) {_model.Address1}")
-                            .FontSize(12)
+                        text.Span($"1) {_model.Qualification[0]}")
+                            .FontSize(11)
                             .FontFamily(EnglishFont)
                             .Bold();
+                    }
 
-                        if (!_model.IsBothAddressSame)
-                        {
-                            text.Span($"\n                                2) {_model.Address2}")
-                                .FontSize(12)
-                                .FontFamily(EnglishFont)
-                                .Bold();
-                        }
-                        else
-                        {
-                            text.Span($"\n ")
-                                .FontSize(12)
-                                .FontFamily(EnglishFont)
-                                .Bold();
-                        }
-
-                        text.Span($"\n          मोबाईलनं.- ")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont);
-
-                        text.Span(_model.MobileNumber)
-                            .FontSize(12)
-                            .FontFamily(EnglishFont)
-                            .Bold()
-                            .LineHeight(0.8f);
-
-                        text.Span("\n          आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१")
-                            .FontFamily(MarathiFont)
-                            .FontSize(12)
-                            .LineHeight(0.8f);
-
-                        text.Span("(ii)")
-                            .FontFamily(EnglishFont)
-                            .FontSize(12);
-
-                        text.Span(" नुसार)")
-                            .FontFamily(MarathiFont)
-                            .FontSize(12)
-                            .LineHeight(0.8f);
-
-                        text.Span($"\n          अनुभव- ")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont)
-                            .LineHeight(0.8f);
-
-                        text.Span(_model.YearDifference ?? "0")
-                            .FontSize(12)
+                    if (_model.Qualification.Count > 1 && !string.IsNullOrWhiteSpace(_model.Qualification[1]))
+                    {
+                        text.Span($"\n                                        2) {_model.Qualification[1]}")
+                            .FontSize(11)
                             .FontFamily(EnglishFont)
                             .Bold();
+                    }
+                });
 
-                        text.Span($" वर्षे ")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont);
+                column.Item().PaddingTop(6).Text(text =>
+                {
+                    text.Span("पत्ता : 1) ")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
 
-                        text.Span(_model.MonthDifference ?? "0")
-                            .FontSize(12)
+                    text.Span(_model.Address1)
+                        .FontSize(11)
+                        .FontFamily(EnglishFont)
+                        .Bold();
+
+                    if (!_model.IsBothAddressSame && !string.IsNullOrWhiteSpace(_model.Address2))
+                    {
+                        text.Span($"\n             2) {_model.Address2}")
+                            .FontSize(11)
                             .FontFamily(EnglishFont)
                             .Bold();
+                    }
+                });
 
-                        text.Span($" महिने")
-                            .FontSize(12)
-                            .FontFamily(MarathiFont);
-                    });
+                column.Item().PaddingTop(6).Text(text =>
+                {
+                    text.Span("मोबाईलनं.- ")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
+
+                    text.Span(_model.MobileNumber)
+                        .FontSize(11)
+                        .FontFamily(EnglishFont)
+                        .Bold();
+                });
+
+                column.Item().PaddingTop(6).Text("आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
+                    .FontFamily(MarathiFont)
+                    .FontSize(11)
+                    .LineHeight(1.4f);
+
+                column.Item().PaddingTop(6).Text(text =>
+                {
+                    text.Span("अनुभव- ")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
+
+                    text.Span(_model.YearDifference ?? "0")
+                        .FontSize(11)
+                        .FontFamily(EnglishFont)
+                        .Bold();
+
+                    text.Span(" वर्षे ")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
+
+                    text.Span(_model.MonthDifference ?? "0")
+                        .FontSize(11)
+                        .FontFamily(EnglishFont)
+                        .Bold();
+
+                    text.Span(" महिने")
+                        .FontSize(11)
+                        .FontFamily(MarathiFont);
+                });
             });
         }
 
@@ -1029,159 +1013,111 @@ namespace PMCRMS.API.Services
         {
             container.Column(column =>
             {
-                column.Item().PaddingTop(5).PaddingLeft(20).PaddingRight(20).Text(text =>
+                var num = _model.Position switch
                 {
-                    var num = _model.Position switch
-                    {
-                        "स्ट्रक्चरल इंजिनिअर" => "4",
-                        "लायसन्स इंजिनिअर" => "3",
-                        "सुपरवायझर1" => "5.1",
-                        "सुपरवायझर2" => "5.1",
-                        _ => "4"
-                    };
+                    "स्ट्रक्चरल इंजिनिअर" => "4",
+                    "लायसन्स इंजिनिअर" => "3",
+                    "सुपरवायझर1" => "5.1",
+                    "सुपरवायझर2" => "5.1",
+                    _ => "4"
+                };
 
-                    text.Line($"    उपरोक्त नमूद केलेल्या व्यक्तीचा मागणी अर्ज, शैक्षणिक पात्रता, अनुभव व पत्त्याचा पुरावा इ. कागदपत्राची तपासणी केली ती बरोबर व नियमानुसार आहेत. त्यानुसार वरील अर्जदाराची मान्य युडीसीपीआर २०२० मधील अपेंडिक्स सी, सी-{num} नुसार पुणे महानगरपालिकेच्या {_model.Position} (नवीन) परवाना धारण करण्यास आवश्यक शैक्षणिक पात्रता व अनुभव असल्याने त्यांचा अर्ज आपले मान्यतेकरिता सादर करीत आहोत.")
-                        .FontFamily(MarathiFont)
-                        .FontSize(12)
-                        .LineHeight(0.8f);
+                column.Item().PaddingTop(12).Text($"उपरोक्त नमूद केलेल्या व्यक्तीचा मागणी अर्ज, शैक्षणिक पात्रता, अनुभव व पत्त्याचा पुरावा इ. कागदपत्राची तपासणी केली ती बरोबर व नियमानुसार आहेत. त्यानुसार वरील अर्जदाराची मान्य युडीसीपीआर २०२० मधील अपेंडिक्स सी, सी-{num} नुसार पुणे महानगरपालिकेच्या {_model.Position} (नवीन) परवाना धारण करण्यास आवश्यक शैक्षणिक पात्रता व अनुभव असल्याने त्यांचा अर्ज आपले मान्यतेकरिता सादर करीत आहोत.")
+                    .FontFamily(MarathiFont)
+                    .FontSize(11)
+                    .LineHeight(1.5f);
 
+                column.Item().PaddingTop(8).Text(text =>
+                {
                     DateTime date = _model.Date;
                     int year = date.Year;
                     int toYear = year + 2;
 
-                    text.Span("     तरी सदर प्रकरणी ")
+                    text.Span("तरी सदर प्रकरणी ")
                         .FontFamily(MarathiFont)
-                        .FontSize(12)
-                        .LineHeight(0.8f);
+                        .FontSize(11);
 
-                    text.Span(_model.Name + " ")
-                        .FontSize(12)
+                    text.Span(_model.Name)
+                        .FontSize(11)
                         .FontFamily(EnglishFont)
-                        .Bold()
-                        .LineHeight(0.8f);
+                        .Bold();
 
                     text.Span($" यांचेकडून जानेवारी {year} ते डिसेंबर {toYear} या कालावधी करिता आवश्यक ती फी भरून घेवून {_model.Position} (नवीन) परवाना देणेबाबत मान्यता मिळणेस विनंती आहे.")
                         .FontFamily(MarathiFont)
-                        .FontSize(12)
-                        .LineHeight(0.8f);
+                        .FontSize(11);
                 });
 
-                column.Item().PaddingLeft(20).PaddingRight(20).Text(text =>
-                {
-                    text.Line("मा.स.कळावे.")
-                        .FontFamily(MarathiFont)
-                        .FontSize(12)
-                        .LineHeight(0.8f);
-                });
+                column.Item().PaddingTop(12).Text("मा.स.कळावे.")
+                    .FontFamily(MarathiFont)
+                    .FontSize(11);
 
-                // Fixed-position signature/footer section
-                column.Item().Extend().AlignBottom().Column(column =>
+                // Signature/footer section - positioned at bottom
+                column.Item().Extend().AlignBottom().Column(bottomColumn =>
                 {
-                    column.Item().PaddingLeft(20).PaddingRight(20).Column(column2 =>
+                    // First row of signatures (JE and AE)
+                    bottomColumn.Item().Row(row =>
                     {
-                        column2.Item().PaddingTop(80).Row(row =>
+                        // JE signature
+                        row.RelativeItem().Column(col =>
                         {
-                            row.RelativeItem(1).Column(col =>
+                            col.Item().Height(50); // Space for signature
+                            col.Item().AlignCenter().Column(c =>
                             {
-                                col.Item().PaddingTop(10).Height(60);
-                                col.Item().AlignCenter().Text(text =>
-                                {
-                                    text.Line($"({_model.JrEnggName ?? ""})")
-                                        .FontFamily(EnglishFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("शाखा अभियंता")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("शहर-अभियंता कार्यालय")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("पुणे महानगरपालिका")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                });
-                            });
-
-                            row.RelativeItem(1).Column(col =>
-                            {
-                                col.Item().PaddingTop(20).Height(60);
-                                col.Item().AlignCenter().Text(text =>
-                                {
-                                    text.Line($"({_model.AssEnggName ?? ""})")
-                                        .FontFamily(EnglishFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("उपअभियंता")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("पुणे महानगरपालिका")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                });
+                                c.Item().Text($"({_model.JrEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Item().Text("शाखा अभियंता").FontFamily(MarathiFont).FontSize(10);
+                                c.Item().Text("शहर-अभियंता कार्यालय").FontFamily(MarathiFont).FontSize(10);
+                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
                         });
 
-                        column2.Item().AlignLeft().Text(text =>
+                        // AE signature
+                        row.RelativeItem().Column(col =>
                         {
-                            text.Line("प्रस्तुत प्रकरणी उपरोक्त प्रमाणे छाननी झाली असल्याने मान्यतेस शिफारस आहे.")
-                                .FontFamily(MarathiFont)
-                                .FontSize(12)
-                                .LineHeight(0.8f);
-                        });
-
-                        column2.Item().AlignRight().PaddingRight(110).PaddingTop(30).PaddingBottom(0).Text(text =>
-                        {
-                            text.Line("क्ष मान्य")
-                                .FontFamily(MarathiFont)
-                                .FontSize(12)
-                                .LineHeight(0.2f);
-                        });
-
-                        column2.Item().Row(row =>
-                        {
-                            row.RelativeItem(1).Column(col =>
+                            col.Item().Height(50); // Space for signature
+                            col.Item().AlignCenter().Column(c =>
                             {
-                                col.Item().PaddingTop(10).Height(60);
-                                col.Item().AlignCenter().Text(text =>
-                                {
-                                    text.Line($"({_model.ExeEnggName ?? ""})")
-                                        .FontFamily(EnglishFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("कार्यकारी अभियंता")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("पुणे महानगरपालिका")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                });
+                                c.Item().Text($"({_model.AssEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Item().Text("उपअभियंता").FontFamily(MarathiFont).FontSize(10);
+                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
+                        });
+                    });
 
-                            row.RelativeItem(1).Column(col =>
+                    // Recommendation text
+                    bottomColumn.Item().PaddingTop(15).AlignLeft().Text("प्रस्तुत प्रकरणी उपरोक्त प्रमाणे छाननी झाली असल्याने मान्यतेस शिफारस आहे.")
+                        .FontFamily(MarathiFont)
+                        .FontSize(11)
+                        .LineHeight(1.4f);
+
+                    // "क्ष मान्य" text aligned to right
+                    bottomColumn.Item().PaddingTop(25).AlignRight().PaddingRight(100).Text("क्ष मान्य")
+                        .FontFamily(MarathiFont)
+                        .FontSize(11);
+
+                    // Second row of signatures (EE and CE)
+                    bottomColumn.Item().PaddingTop(5).Row(row =>
+                    {
+                        // EE signature
+                        row.RelativeItem().Column(col =>
+                        {
+                            col.Item().Height(50); // Space for signature
+                            col.Item().AlignCenter().Column(c =>
                             {
-                                col.Item().PaddingTop(10).Height(60);
-                                col.Item().AlignCenter().Text(text =>
-                                {
-                                    text.Line($"({_model.CityEnggName ?? ""})")
-                                        .FontFamily(EnglishFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("शहर अभियंता ")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                    text.Line("पुणे महानगरपालिका")
-                                        .FontFamily(MarathiFont)
-                                        .FontSize(12)
-                                        .LineHeight(0.8f);
-                                });
+                                c.Item().Text($"({_model.ExeEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Item().Text("कार्यकारी अभियंता").FontFamily(MarathiFont).FontSize(10);
+                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
+                            });
+                        });
+
+                        // CE signature
+                        row.RelativeItem().Column(col =>
+                        {
+                            col.Item().Height(50); // Space for signature
+                            col.Item().AlignCenter().Column(c =>
+                            {
+                                c.Item().Text($"({_model.CityEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Item().Text("शहर अभियंता").FontFamily(MarathiFont).FontSize(10);
+                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
                         });
                     });
