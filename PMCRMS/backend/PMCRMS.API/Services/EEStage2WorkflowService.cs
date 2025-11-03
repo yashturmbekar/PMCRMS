@@ -427,7 +427,7 @@ namespace PMCRMS.API.Services
 
         private string GetBaseUrl()
         {
-            return Environment.GetEnvironmentVariable("FRONTEND_URL") ?? "http://localhost:5173";
+            return Environment.GetEnvironmentVariable("FRONTEND_URL") ?? throw new InvalidOperationException("FRONTEND_URL environment variable not configured");
         }
     }
 

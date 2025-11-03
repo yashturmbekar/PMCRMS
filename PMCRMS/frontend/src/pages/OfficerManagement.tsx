@@ -7,6 +7,7 @@ import {
   type InviteOfficerRequest,
 } from "../services/adminService";
 import { useAuth } from "../hooks/useAuth";
+import { SUCCESS_MESSAGE_TIMEOUT } from "../constants";
 import {
   Users,
   Mail,
@@ -129,7 +130,7 @@ const OfficerManagement: React.FC = () => {
       if (response.success) {
         setSuccess("Invitation resent successfully!");
         loadData();
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), SUCCESS_MESSAGE_TIMEOUT);
       } else {
         setError(response.message || "Failed to resend invitation");
       }
@@ -148,7 +149,7 @@ const OfficerManagement: React.FC = () => {
       if (response.success) {
         setSuccess("Invitation deleted successfully!");
         loadData();
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), SUCCESS_MESSAGE_TIMEOUT);
       } else {
         setError(response.message || "Failed to delete invitation");
       }
@@ -167,7 +168,7 @@ const OfficerManagement: React.FC = () => {
       if (response.success) {
         setSuccess("Officer deactivated successfully!");
         loadData();
-        setTimeout(() => setSuccess(""), 3000);
+        setTimeout(() => setSuccess(""), SUCCESS_MESSAGE_TIMEOUT);
       } else {
         setError(response.message || "Failed to deactivate officer");
       }
@@ -445,7 +446,7 @@ const OfficerManagement: React.FC = () => {
             setShowInviteModal(false);
             setSuccess("Officer invitation sent successfully!");
             loadData();
-            setTimeout(() => setSuccess(""), 3000);
+            setTimeout(() => setSuccess(""), SUCCESS_MESSAGE_TIMEOUT);
           }}
           onError={(msg) => setError(msg)}
         />

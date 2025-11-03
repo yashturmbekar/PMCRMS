@@ -13,6 +13,7 @@ import {
   CreditCard,
   Info,
 } from "lucide-react";
+import { MAX_POLL_ATTEMPTS } from "../constants";
 import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
@@ -210,7 +211,6 @@ const ViewPositionApplication: React.FC = () => {
     }
 
     let pollCount = 0;
-    const MAX_POLL_ATTEMPTS = 40; // Poll for max 2 minutes (40 * 3 seconds)
 
     const fetchCertificateStatus = async () => {
       if (!id || !application || !application.isPaymentComplete) {

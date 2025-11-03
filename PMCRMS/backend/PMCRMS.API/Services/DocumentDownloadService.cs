@@ -16,10 +16,6 @@ namespace PMCRMS.API.Services
         private readonly IEmailService _emailService;
         private readonly IWebHostEnvironment _env;
         private readonly IConfiguration _configuration;
-        private const int OTP_EXPIRY_MINUTES = 30;
-        private const int TOKEN_EXPIRY_HOURS = 48;
-        private const int MAX_DAILY_OTP_REQUESTS = 3;
-        private const int MAX_FAILED_ATTEMPTS = 5;
 
         public DocumentDownloadService(
             PMCRMSDbContext context,
@@ -77,14 +73,15 @@ namespace PMCRMS.API.Services
                     return (false, "Certificate has not been issued yet. Please wait for approval.");
                 }
 
-                // Rate limiting: Check daily OTP request count
+                // Rate limiting: Check daily OTP request limit
                 var today = DateTime.UtcNow.Date;
                 var todayRequests = await _context.DownloadTokens
                     .Where(t => t.ApplicationId == application.Id &&
                                 t.CreatedAt >= today)
                     .CountAsync();
 
-                if (todayRequests >= MAX_DAILY_OTP_REQUESTS)
+                var maxDailyRequests = int.Parse(_configuration["AppSettings:MaxDailyOtpRequests"] ?? "3");
+                if (todayRequests >= maxDailyRequests)
                 {
                     _logger.LogWarning("Daily OTP request limit exceeded for application {ApplicationNumber}", applicationNumber);
                     return (false, "Daily OTP request limit reached. Please try again tomorrow or contact support.");
@@ -96,6 +93,9 @@ namespace PMCRMS.API.Services
                 // Generate cryptographically secure token (will be activated after OTP verification)
                 string downloadToken = GenerateSecureToken();
 
+                var tokenExpiryHours = int.Parse(_configuration["AppSettings:DocumentTokenExpiryHours"] ?? "48");
+                var otpExpiryMinutes = int.Parse(_configuration["AppSettings:DocumentOtpExpiryMinutes"] ?? "30");
+
                 // Create download token record
                 var tokenRecord = new DownloadToken
                 {
@@ -103,8 +103,8 @@ namespace PMCRMS.API.Services
                     Token = downloadToken,
                     Otp = otp,
                     Email = email,
-                    ExpiresAt = DateTime.UtcNow.AddHours(TOKEN_EXPIRY_HOURS),
-                    OtpExpiresAt = DateTime.UtcNow.AddMinutes(OTP_EXPIRY_MINUTES),
+                    ExpiresAt = DateTime.UtcNow.AddHours(tokenExpiryHours),
+                    OtpExpiresAt = DateTime.UtcNow.AddMinutes(otpExpiryMinutes),
                     IsOtpVerified = false,
                     IsRevoked = false,
                     CreatedAt = DateTime.UtcNow,
@@ -186,7 +186,8 @@ namespace PMCRMS.API.Services
                 }
 
                 // Check failed attempts (brute force protection)
-                if (tokenRecord.FailedAttempts >= MAX_FAILED_ATTEMPTS)
+                var maxFailedAttempts = int.Parse(_configuration["AppSettings:MaxFailedAttempts"] ?? "5");
+                if (tokenRecord.FailedAttempts >= maxFailedAttempts)
                 {
                     _logger.LogWarning("Maximum failed OTP attempts reached for application {ApplicationNumber}", applicationNumber);
                     tokenRecord.IsRevoked = true;
@@ -200,7 +201,8 @@ namespace PMCRMS.API.Services
                     tokenRecord.FailedAttempts++;
                     await _context.SaveChangesAsync();
 
-                    int attemptsLeft = MAX_FAILED_ATTEMPTS - tokenRecord.FailedAttempts;
+                    maxFailedAttempts = int.Parse(_configuration["AppSettings:MaxFailedAttempts"] ?? "5");
+                    int attemptsLeft = maxFailedAttempts - tokenRecord.FailedAttempts;
                     _logger.LogWarning("Invalid OTP for application {ApplicationNumber}. Attempts left: {AttemptsLeft}",
                         applicationNumber, attemptsLeft);
 
@@ -478,6 +480,8 @@ namespace PMCRMS.API.Services
         {
             string subject = $"OTP for Certificate Download - Application {applicationNumber}";
 
+            var otpExpiryMinutes = int.Parse(_configuration["AppSettings:DocumentOtpExpiryMinutes"] ?? "30");
+            
             string body = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>
@@ -489,7 +493,7 @@ namespace PMCRMS.API.Services
                         <div style='background-color: #f0f8ff; padding: 20px; border-radius: 5px; text-align: center; margin: 20px 0;'>
                             <p style='margin: 0; font-size: 14px; color: #666;'>Your One-Time Password (OTP) is:</p>
                             <p style='font-size: 32px; font-weight: bold; color: #0066cc; margin: 10px 0; letter-spacing: 5px;'>{otp}</p>
-                            <p style='margin: 0; font-size: 12px; color: #999;'>This OTP is valid for {OTP_EXPIRY_MINUTES} minutes</p>
+                            <p style='margin: 0; font-size: 12px; color: #999;'>This OTP is valid for {otpExpiryMinutes} minutes</p>
                         </div>
                         <p style='color: #d9534f;'><strong>Important:</strong> Do not share this OTP with anyone. PMC officials will never ask you for your OTP.</p>
                         <p>If you did not request this OTP, please ignore this email or contact our support team immediately.</p>

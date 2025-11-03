@@ -1266,8 +1266,8 @@ namespace PMCRMS.API.Services
         /// </summary>
         private async Task GenerateAndSaveRecommendationFormAsync(int applicationId)
         {
-            const int MAX_RETRY_ATTEMPTS = 3;
-            const int RETRY_DELAY_MS = 2000; // 2 seconds between retries
+            var maxRetryAttempts = int.Parse(_configuration["RetrySettings:MaxAttempts"] ?? "3");
+            var retryDelayMs = int.Parse(_configuration["RetrySettings:DelayMilliseconds"] ?? "2000");
 
             var application = await _context.PositionApplications
                 .FirstOrDefaultAsync(a => a.Id == applicationId);
@@ -1293,12 +1293,12 @@ namespace PMCRMS.API.Services
             Exception? lastException = null;
             bool success = false;
 
-            for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++)
+            for (int attempt = 1; attempt <= maxRetryAttempts; attempt++)
             {
                 try
                 {
                     _logger.LogInformation("Attempting to generate recommendation form for application {ApplicationId} (Attempt {Attempt}/{MaxAttempts})", 
-                        applicationId, attempt, MAX_RETRY_ATTEMPTS);
+                        applicationId, attempt, maxRetryAttempts);
 
                     // Generate PDF
                     var pdfResult = await _pdfService.GenerateApplicationPdfAsync(applicationId);
@@ -1349,15 +1349,15 @@ namespace PMCRMS.API.Services
                 {
                     lastException = ex;
                     _logger.LogError(ex, "❌ Failed to generate recommendation form for application {ApplicationId} on attempt {Attempt}/{MaxAttempts}", 
-                        applicationId, attempt, MAX_RETRY_ATTEMPTS);
+                        applicationId, attempt, maxRetryAttempts);
 
                     // Save error details
                     application.RecommendationFormGenerationError = $"Attempt {attempt}: {ex.Message}";
 
-                    if (attempt < MAX_RETRY_ATTEMPTS)
+                    if (attempt < maxRetryAttempts)
                     {
-                        _logger.LogWarning("Retrying recommendation form generation after {Delay}ms delay...", RETRY_DELAY_MS);
-                        await Task.Delay(RETRY_DELAY_MS);
+                        _logger.LogWarning("Retrying recommendation form generation after {Delay}ms delay...", retryDelayMs);
+                        await Task.Delay(retryDelayMs);
                     }
                 }
             }
@@ -1367,7 +1367,7 @@ namespace PMCRMS.API.Services
 
             if (!success)
             {
-                var errorMessage = $"Failed to generate recommendation form after {MAX_RETRY_ATTEMPTS} attempts: {lastException?.Message}";
+                var errorMessage = $"Failed to generate recommendation form after {maxRetryAttempts} attempts: {lastException?.Message}";
                 _logger.LogError("🔴 CRITICAL: {ErrorMessage} for application {ApplicationId}", errorMessage, applicationId);
                 
                 // Store comprehensive error

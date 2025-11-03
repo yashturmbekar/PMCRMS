@@ -95,7 +95,7 @@ namespace PMCRMS.API.Services
             
             _fromEmail = envFrom 
                 ?? _configuration["EmailSettings:FromEmail"] 
-                ?? "noreply@pmcrms.gov.in";
+                ?? throw new InvalidOperationException("From email not configured");
             
             _fromName = envFromName 
                 ?? _configuration["EmailSettings:FromName"] 
@@ -112,7 +112,7 @@ namespace PMCRMS.API.Services
             // Get base URL for email images
             _baseUrl = Environment.GetEnvironmentVariable("APP_BASE_URL")
                 ?? _configuration["AppSettings:BaseUrl"]
-                ?? "http://localhost:5086";
+                ?? throw new InvalidOperationException("Base URL not configured");
 
             _logger.LogInformation("=== FINAL EMAIL CONFIGURATION ===");
             _logger.LogInformation("Primary Method: {Method}", _useBrevoApi ? "Brevo API" : "SMTP");

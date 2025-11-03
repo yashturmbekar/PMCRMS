@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { notificationService } from "../services/notificationService";
 import { useAuth } from "../hooks/useAuth";
 import type { Notification, NotificationSummary } from "../types";
+import { NOTIFICATION_POLL_INTERVAL } from "../constants";
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -97,7 +98,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
     let interval: number | null = null;
     if (user) {
       fetchSummary();
-      interval = setInterval(fetchSummary, 30000) as unknown as number;
+      interval = setInterval(
+        fetchSummary,
+        NOTIFICATION_POLL_INTERVAL
+      ) as unknown as number;
     }
     return () => {
       if (interval) clearInterval(interval);

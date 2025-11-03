@@ -3,6 +3,7 @@ import {
   adminService,
   type FormConfiguration,
 } from "../../services/adminService";
+import { SUCCESS_MESSAGE_TIMEOUT } from "../../constants";
 import {
   FileText,
   Plus,
@@ -70,7 +71,7 @@ const FormManagementPage: React.FC = () => {
         setSuccessMessage(
           `Form ${!currentStatus ? "activated" : "deactivated"} successfully!`
         );
-        setTimeout(() => setSuccessMessage(""), 3000);
+        setTimeout(() => setSuccessMessage(""), SUCCESS_MESSAGE_TIMEOUT);
         loadForms();
       } else {
         setError(response.message || "Failed to update form status");
@@ -89,7 +90,7 @@ const FormManagementPage: React.FC = () => {
       setSuccessMessage(
         `Form "${formName}" deleted successfully (not implemented)!`
       );
-      setTimeout(() => setSuccessMessage(""), 3000);
+      setTimeout(() => setSuccessMessage(""), SUCCESS_MESSAGE_TIMEOUT);
       loadForms();
     } catch (err) {
       console.error("Error deleting form:", err);

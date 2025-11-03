@@ -48,7 +48,7 @@ namespace PMCRMS.API.Controllers
             _configuration = configuration;
             _certificateGenerationService = certificateGenerationService;
             _serviceScopeFactory = serviceScopeFactory;
-            _baseUrl = _configuration["AppSettings:BaseUrl"] ?? "http://localhost:5173";
+            _baseUrl = _configuration["AppSettings:FrontendUrl"] ?? _configuration["AppSettings:BaseUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
         }
 
         /// <summary>

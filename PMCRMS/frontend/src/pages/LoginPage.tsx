@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../services/apiService";
 import OtpInput from "../components/OtpInput";
+import { REDIRECT_DELAY } from "../constants";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -97,7 +98,7 @@ const LoginPage: React.FC = () => {
 
     try {
       // Simulate API call to resend OTP
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, REDIRECT_DELAY));
       setSuccess("OTP resent successfully to your email!");
     } catch (error: unknown) {
       const errorMessage =

@@ -9,6 +9,7 @@ import { ceWorkflowService } from "../services/ceWorkflowService";
 import ceStage2WorkflowService from "../services/ceStage2WorkflowService";
 import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import positionRegistrationService from "../services/positionRegistrationService";
+import { REDIRECT_DELAY } from "../constants";
 import { Calendar, Clock, Eye, CheckCircle, XCircle, Info } from "lucide-react";
 import { PageLoader, ModalLoader, Pagination } from "../components";
 import {
@@ -598,7 +599,7 @@ const OfficerDashboard: React.FC = () => {
           autoClose: true,
         });
         // Refresh the application list
-        setTimeout(() => window.location.reload(), 1500);
+        setTimeout(() => window.location.reload(), REDIRECT_DELAY);
       } else {
         setNotification({
           isOpen: true,

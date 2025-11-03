@@ -23,10 +23,10 @@ namespace PMCRMS.API.Services
         public string SigningKey => _configuration["BillDesk:SigningKey"] ?? string.Empty;
         public string KeyId => _configuration["BillDesk:KeyId"] ?? string.Empty;
         public string ClientId => _configuration["BillDesk:ClientId"] ?? string.Empty;
-        public string ApiBaseUrl => _configuration["BillDesk:ApiBaseUrl"] ?? "https://api.billdesk.com";
+        public string ApiBaseUrl => _configuration["BillDesk:ApiBaseUrl"] ?? throw new InvalidOperationException("BillDesk API URL not configured");
         public string PaymentGatewayUrl => _configuration["BillDesk:PaymentGatewayUrl"] ?? string.Empty;
         public string ReturnUrlBase => _configuration["BillDesk:ReturnUrlBase"] ?? string.Empty;
-        public string FrontendBaseUrl => _configuration["BillDesk:FrontendBaseUrl"] ?? "http://localhost:5173";
+        public string FrontendBaseUrl => _configuration["BillDesk:FrontendBaseUrl"] ?? _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
 
         /// <summary>
         /// Validates that all required BillDesk configuration values are present

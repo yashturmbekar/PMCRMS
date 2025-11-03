@@ -18,17 +18,20 @@ namespace PMCRMS.API.Services
         private readonly ILogger<SECertificateGenerationService> _logger;
         private readonly IChallanService _challanService;
         private readonly IWebHostEnvironment _environment;
+        private readonly IConfiguration _configuration;
 
         public SECertificateGenerationService(
             PMCRMSDbContext context,
             ILogger<SECertificateGenerationService> logger,
             IChallanService challanService,
-            IWebHostEnvironment environment)
+            IWebHostEnvironment environment,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
             _challanService = challanService;
             _environment = environment;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -37,8 +40,8 @@ namespace PMCRMS.API.Services
         /// </summary>
         public async Task<bool> GenerateAndSaveLicenceCertificateAsync(int applicationId)
         {
-            const int MAX_RETRY_ATTEMPTS = 3;
-            const int RETRY_DELAY_MS = 2000; // 2 seconds between retries
+            var maxRetryAttempts = int.Parse(_configuration["RetrySettings:MaxAttempts"] ?? "3");
+            var retryDelayMs = int.Parse(_configuration["RetrySettings:DelayMilliseconds"] ?? "2000");
 
             var application = await _context.PositionApplications
                 .Include(a => a.Addresses)
@@ -63,12 +66,12 @@ namespace PMCRMS.API.Services
             Exception? lastException = null;
             bool success = false;
 
-            for (int attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++)
+            for (int attempt = 1; attempt <= maxRetryAttempts; attempt++)
             {
                 try
                 {
                     _logger.LogInformation("🔄 Attempting to generate licence certificate for application {ApplicationId} (Attempt {Attempt}/{MaxAttempts})",
-                        applicationId, attempt, MAX_RETRY_ATTEMPTS);
+                        applicationId, attempt, maxRetryAttempts);
 
                     // Generate certificate PDF inline (simplified version)
                     var pdfBytes = await GenerateCertificatePdfInlineAsync(applicationId);
@@ -106,12 +109,12 @@ namespace PMCRMS.API.Services
                 {
                     lastException = ex;
                     _logger.LogError(ex, "❌ Failed to generate licence certificate for application {ApplicationId} on attempt {Attempt}/{MaxAttempts}",
-                        applicationId, attempt, MAX_RETRY_ATTEMPTS);
+                        applicationId, attempt, maxRetryAttempts);
 
-                    if (attempt < MAX_RETRY_ATTEMPTS)
+                    if (attempt < maxRetryAttempts)
                     {
-                        _logger.LogWarning("⏳ Retrying certificate generation after {Delay}ms delay...", RETRY_DELAY_MS);
-                        await Task.Delay(RETRY_DELAY_MS);
+                        _logger.LogWarning("⏳ Retrying certificate generation after {Delay}ms delay...", retryDelayMs);
+                        await Task.Delay(retryDelayMs);
                     }
                 }
             }
@@ -119,7 +122,7 @@ namespace PMCRMS.API.Services
             if (!success && lastException != null)
             {
                 _logger.LogError("❌ Failed to generate licence certificate for application {ApplicationId} after {MaxAttempts} attempts. Last error: {Error}",
-                    applicationId, MAX_RETRY_ATTEMPTS, lastException.Message);
+                    applicationId, maxRetryAttempts, lastException.Message);
             }
 
             return success;

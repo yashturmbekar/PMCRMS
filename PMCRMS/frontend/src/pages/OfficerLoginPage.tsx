@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../services/apiService";
+import { ADMIN_EMAILS } from "../constants";
 
 const OfficerLoginPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -28,8 +29,7 @@ const OfficerLoginPage: React.FC = () => {
 
     try {
       // Try admin login first if email is admin email
-      const adminEmails = ["admin@gmail.com", "pmc@mailinator.com"];
-      const isAdminEmail = adminEmails.includes(formData.email.toLowerCase());
+      const isAdminEmail = ADMIN_EMAILS.includes(formData.email.toLowerCase());
 
       const response = isAdminEmail
         ? await apiService.auth.adminLogin(formData.email, formData.password)

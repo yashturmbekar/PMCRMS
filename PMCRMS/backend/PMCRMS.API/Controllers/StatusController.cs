@@ -414,7 +414,7 @@ namespace PMCRMS.API.Controllers
                         var applicant = await _context.Users.FindAsync(application.ApplicantId);
                         if (applicant != null)
                         {
-                            var frontendUrl = _configuration["CorsSettings:AllowedOrigins:0"] ?? "http://localhost:5173";
+                            var frontendUrl = _configuration["AppSettings:FrontendUrl"] ?? _configuration["CorsSettings:AllowedOrigins:0"] ?? throw new InvalidOperationException("Frontend URL not configured");
                             var viewUrl = $"{frontendUrl}/applications/{application.Id}";
 
                             await _emailService.SendApplicationSubmissionEmailAsync(

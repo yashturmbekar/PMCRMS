@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import { adminService, type Officer } from "../../services/adminService";
 import { UserPlus, Search, Edit2, Mail, User, Shield } from "lucide-react";
 import { PageLoader } from "../../components";
+import {
+  SUCCESS_MESSAGE_TIMEOUT,
+  ERROR_MESSAGE_TIMEOUT,
+} from "../../constants";
 
 // Available officer designations
 const OFFICER_DESIGNATIONS = [
@@ -106,7 +110,7 @@ const OfficerManagementPage: React.FC = () => {
           role: "",
           employeeId: "",
         });
-        setTimeout(() => setSuccessMessage(""), 3000);
+        setTimeout(() => setSuccessMessage(""), SUCCESS_MESSAGE_TIMEOUT);
         loadOfficers();
       } else {
         setError(response.message || "Failed to invite officer");
@@ -149,7 +153,7 @@ const OfficerManagementPage: React.FC = () => {
           name: "",
           email: "",
         });
-        setTimeout(() => setSuccessMessage(""), 5000);
+        setTimeout(() => setSuccessMessage(""), ERROR_MESSAGE_TIMEOUT);
         loadOfficers();
       } else {
         setError(response.message || "Failed to update officer");

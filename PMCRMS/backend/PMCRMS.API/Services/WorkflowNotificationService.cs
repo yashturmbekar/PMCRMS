@@ -52,7 +52,7 @@ namespace PMCRMS.API.Services
 
                 var (stageName, stageDescription) = GetStageInfo(newStatus, remarks);
                 
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var viewUrl = $"{baseUrl}/applications/{applicationId}";
 
                 var applicantName = $"{application.FirstName} {application.LastName}";

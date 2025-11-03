@@ -121,12 +121,7 @@ builder.Services.AddAuthorization();
 
 // Configure CORS
 var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL");
-var origins = new List<string>
-{
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:5000"
-};
+var origins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<List<string>>() ?? new List<string>();
 
 // Add frontend URL from environment if available
 if (!string.IsNullOrEmpty(frontendUrl))

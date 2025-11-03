@@ -8,6 +8,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { getApiUrl } from "../services/apiClient";
+import { ERROR_MESSAGE_TIMEOUT } from "../constants";
 
 interface DownloadAccessRequest {
   applicationNumber: string;
@@ -54,7 +55,10 @@ const CertificateDownloadPortal: React.FC = () => {
 
   useEffect(() => {
     if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      const timer = setTimeout(
+        () => setSuccessMessage(null),
+        ERROR_MESSAGE_TIMEOUT
+      );
       return () => clearTimeout(timer);
     }
   }, [successMessage]);

@@ -286,7 +286,7 @@ namespace PMCRMS.API.Controllers
                 _logger.LogInformation("Officer invitation record created with ID: {InvitationId}", invitation.Id);
 
                 // Send invitation email
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var loginUrl = $"{baseUrl}/officer-login";
                 
                 var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
@@ -441,7 +441,7 @@ namespace PMCRMS.API.Controllers
                 await _context.SaveChangesAsync();
 
                 // Resend email
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var loginUrl = $"{baseUrl}/officer-login";
 
                 await _emailService.SendOfficerInvitationEmailAsync(

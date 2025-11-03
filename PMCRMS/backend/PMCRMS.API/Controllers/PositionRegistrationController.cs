@@ -469,7 +469,7 @@ namespace PMCRMS.API.Controllers
                 {
                     try
                     {
-                        var frontendUrl = _configuration["CorsSettings:AllowedOrigins:0"] ?? "http://localhost:5173";
+                        var frontendUrl = _configuration["AppSettings:FrontendUrl"] ?? _configuration["CorsSettings:AllowedOrigins:0"] ?? throw new InvalidOperationException("Frontend URL not configured");
                         var viewUrl = $"{frontendUrl}/applications/{application.Id}";
                         var applicantName = $"{application.FirstName} {application.LastName}";
                         var positionTypeName = application.PositionType.ToString();
@@ -970,7 +970,7 @@ namespace PMCRMS.API.Controllers
                 {
                     try
                     {
-                        var frontendUrl = _configuration["CorsSettings:AllowedOrigins:0"] ?? "http://localhost:5173";
+                        var frontendUrl = _configuration["AppSettings:FrontendUrl"] ?? _configuration["CorsSettings:AllowedOrigins:0"] ?? throw new InvalidOperationException("Frontend URL not configured");
                         var viewUrl = $"{frontendUrl}/applications/{application.Id}";
                         var applicantName = $"{application.FirstName} {application.LastName}";
                         var positionTypeName = application.PositionType.ToString();

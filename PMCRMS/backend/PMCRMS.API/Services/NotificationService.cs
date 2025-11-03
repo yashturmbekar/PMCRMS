@@ -129,7 +129,7 @@ namespace PMCRMS.API.Services
                 var user = await _context.Users.FindAsync(applicantId);
                 if (user == null) return;
 
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var viewUrl = $"{baseUrl}/applications/{applicationId}";
 
                 // Create in-app notification
@@ -183,7 +183,7 @@ namespace PMCRMS.API.Services
                 var user = await _context.Users.FindAsync(applicantId);
                 if (user == null) return;
 
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var viewUrl = $"{baseUrl}/applications/{applicationId}";
 
                 // Create in-app notification
@@ -236,7 +236,7 @@ namespace PMCRMS.API.Services
                 var user = await _context.Users.FindAsync(applicantId);
                 if (user == null) return;
 
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var viewUrl = $"{baseUrl}/applications/{applicationId}";
 
                 // Create in-app notification
@@ -289,7 +289,7 @@ namespace PMCRMS.API.Services
                 var officer = await _context.Users.FindAsync(officerId);
                 if (officer == null) return;
 
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
                 var viewUrl = $"{baseUrl}/applications/{applicationId}";
 
                 // Create in-app notification
