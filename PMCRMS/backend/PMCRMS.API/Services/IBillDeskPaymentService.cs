@@ -32,5 +32,19 @@ namespace PMCRMS.API.Services
         /// Process payment callback from BillDesk
         /// </summary>
         Task<PaymentCallbackResult> ProcessPaymentCallbackAsync(PaymentCallbackRequest request);
+
+        /// <summary>
+        /// Process encrypted payment callback from BillDesk (handles decryption)
+        /// </summary>
+        Task<PaymentCallbackResult> ProcessEncryptedCallbackAsync(
+            int applicationId,
+            string encryptedResponse,
+            Guid? txnEntityId,
+            string? bdOrderId);
+
+        /// <summary>
+        /// Decrypt BillDesk encrypted response (for testing/debugging)
+        /// </summary>
+        Task<DecryptionResult> DecryptPaymentResponseAsync(string encryptedResponse);
     }
 }

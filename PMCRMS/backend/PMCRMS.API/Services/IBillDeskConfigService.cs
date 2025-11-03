@@ -44,5 +44,10 @@ namespace PMCRMS.API.Services
         /// Base URL for payment callback/return URL
         /// </summary>
         string ReturnUrlBase { get; }
+
+        /// <summary>
+        /// Frontend application base URL for redirects
+        /// </summary>
+        string FrontendBaseUrl { get; }
     }
 }

@@ -378,6 +378,170 @@ namespace PMCRMS.API.Services
             }
         }
 
+        /// <summary>
+        /// Process encrypted payment callback from BillDesk
+        /// Decrypts the BillDesk response and processes payment status
+        /// </summary>
+        public async Task<PaymentCallbackResult> ProcessEncryptedCallbackAsync(
+            int applicationId,
+            string encryptedResponse,
+            Guid? txnEntityId,
+            string? bdOrderId)
+        {
+            try
+            {
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Processing encrypted callback for application: {applicationId}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Encrypted Response Length: {encryptedResponse.Length}");
+
+                // Step 1: Decrypt the BillDesk response
+                var decryptResult = await DecryptPaymentResponseAsync(encryptedResponse);
+
+                if (!decryptResult.Success)
+                {
+                    _logger.LogError($"[BILLDESK-CALLBACK] Decryption failed: {decryptResult.Message}");
+                    return new PaymentCallbackResult
+                    {
+                        Success = false,
+                        Message = $"Decryption failed: {decryptResult.Message}",
+                        PaymentStatus = "FAILED"
+                    };
+                }
+
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Response decrypted successfully");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] ========== FULL DECRYPTED RESPONSE ==========");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] {decryptResult.DecryptedData}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] ========== END OF DECRYPTED RESPONSE ==========");
+
+                // Step 2: Parse the decrypted response
+                using (JsonDocument doc = JsonDocument.Parse(decryptResult.DecryptedData))
+                {
+                    var root = doc.RootElement;
+
+                    // Extract payment details from decrypted response
+                    string? transactionId = root.TryGetProperty("transaction_id", out var txnId) ? txnId.GetString() : null;
+                    string? orderStatus = root.TryGetProperty("transaction_status", out var status) ? status.GetString() : null;
+                    string? amount = root.TryGetProperty("amount", out var amt) ? amt.GetString() : null;
+                    string? authStatus = root.TryGetProperty("auth_status", out var authSt) ? authSt.GetString() : null;
+                    string? transactionDate = root.TryGetProperty("transaction_date", out var txnDate) ? txnDate.GetString() : null;
+                    string? paymentMethod = root.TryGetProperty("payment_method_type", out var pmt) ? pmt.GetString() : null;
+                    string? errorCode = root.TryGetProperty("transaction_error_code", out var errCode) ? errCode.GetString() : null;
+                    string? errorDesc = root.TryGetProperty("transaction_error_desc", out var errDesc) ? errDesc.GetString() : null;
+
+                    // Extract bdOrderId from response if not provided
+                    if (string.IsNullOrEmpty(bdOrderId))
+                    {
+                        bdOrderId = root.TryGetProperty("bdorderid", out var bdOrdId) ? bdOrdId.GetString() : null;
+                    }
+
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] === DECRYPTED PAYMENT DETAILS ===");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Transaction ID: {transactionId}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Order Status: {orderStatus}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Auth Status: {authStatus}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Amount: {amount}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] BdOrderId: {bdOrderId}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Payment Method: {paymentMethod}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Error Code: {errorCode}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Error Desc: {errorDesc}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] === END OF PAYMENT DETAILS ===");
+
+                    // Step 3: Get application
+                    var application = await _context.PositionApplications.FindAsync(applicationId);
+                    if (application == null)
+                    {
+                        _logger.LogError($"[BILLDESK-CALLBACK] Application not found: {applicationId}");
+                        return new PaymentCallbackResult
+                        {
+                            Success = false,
+                            Message = "Application not found",
+                            PaymentStatus = "FAILED"
+                        };
+                    }
+
+                    // Step 4: Update transaction if txnEntityId is provided
+                    Transaction? transaction = null;
+                    if (txnEntityId.HasValue)
+                    {
+                        transaction = await _context.Transactions.FindAsync(txnEntityId.Value);
+                        if (transaction != null)
+                        {
+                            transaction.Status = (authStatus?.ToUpper() == "0300" || orderStatus?.ToUpper() == "SUCCESS") ? "SUCCESS" : "FAILED";
+                            transaction.TransactionId = transactionId ?? transaction.TransactionId;
+                            transaction.BdOrderId = bdOrderId ?? transaction.BdOrderId;
+                            transaction.PaymentGatewayResponse = decryptResult.DecryptedData;
+                            transaction.ErrorMessage = errorDesc;
+                            transaction.Mode = paymentMethod;
+                            transaction.UpdatedAt = DateTime.UtcNow;
+
+                            if (decimal.TryParse(amount, out var parsedAmount))
+                            {
+                                transaction.AmountPaid = parsedAmount / 100; // Convert paise to rupees
+                            }
+
+                            _logger.LogInformation($"[BILLDESK-CALLBACK] Updated transaction {transaction.Id} - Status: {transaction.Status}");
+                        }
+                    }
+
+                    // Step 5: Determine if payment was successful
+                    // BillDesk auth_status: 0300 = Success, 0399 = Failed
+                    // transaction_status: SUCCESS or FAILURE
+                    bool paymentSuccess = (authStatus == "0300" || orderStatus?.ToUpper() == "SUCCESS");
+
+                    // Step 6: Update application status
+                    if (paymentSuccess)
+                    {
+                        _logger.LogInformation($"[BILLDESK-CALLBACK] Payment successful for application {applicationId}");
+                        application.Status = ApplicationCurrentStatus.PaymentCompleted;
+                        application.UpdatedDate = DateTime.UtcNow;
+                        application.Remarks = $"Payment completed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Amount: ₹{amount}. Transaction ID: {transactionId}.";
+                        await _context.SaveChangesAsync();
+
+                        // Note: Clerk assignment will be handled by PaymentService.ProcessPaymentSuccessAsync
+                        // or WorkflowProgressionService.ProgressToClerkAsync after this callback completes
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"[BILLDESK-CALLBACK] Payment failed for application {applicationId}");
+                        _logger.LogWarning($"[BILLDESK-CALLBACK] Failure reason: {errorDesc} (Code: {errorCode})");
+                        application.Status = ApplicationCurrentStatus.PaymentPending;
+                        application.UpdatedDate = DateTime.UtcNow;
+                        application.Remarks = $"Payment failed on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. Reason: {errorDesc}. Please try again.";
+                        await _context.SaveChangesAsync();
+                    }
+
+                    return new PaymentCallbackResult
+                    {
+                        Success = true,
+                        Message = paymentSuccess ? "Payment processed successfully" : $"Payment failed: {errorDesc}",
+                        PaymentStatus = paymentSuccess ? "SUCCESS" : "FAILED",
+                        TransactionId = transactionId,
+                        Amount = amount,
+                        ApplicationStatus = application.Status.ToString(),
+                        RedirectUrl = paymentSuccess ? "/payment/success" : "/payment/failure"
+                    };
+                }
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogError(jsonEx, "[BILLDESK-CALLBACK] Error parsing decrypted JSON response");
+                return new PaymentCallbackResult
+                {
+                    Success = false,
+                    Message = $"JSON parsing error: {jsonEx.Message}",
+                    PaymentStatus = "FAILED"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[BILLDESK-CALLBACK] Error processing encrypted callback");
+                return new PaymentCallbackResult
+                {
+                    Success = false,
+                    Message = $"Error processing callback: {ex.Message}",
+                    PaymentStatus = "FAILED"
+                };
+            }
+        }
+
         #region Private Helper Methods
 
         private async Task<EncryptionResult> EncryptPaymentDataAsync(
@@ -531,7 +695,7 @@ namespace PMCRMS.API.Services
             }
         }
 
-        private async Task<DecryptionResult> DecryptPaymentResponseAsync(string encryptedResponse)
+        public async Task<DecryptionResult> DecryptPaymentResponseAsync(string encryptedResponse)
         {
             try
             {
@@ -759,20 +923,7 @@ namespace PMCRMS.API.Services
             public bool Success { get; set; }
             public string Message { get; set; } = string.Empty;
             public string EncryptedBody { get; set; } = string.Empty;
-        }
-
-        private class PaymentApiResult
-        {
-            public bool Success { get; set; }
-            public string Message { get; set; } = string.Empty;
-            public string EncryptedResponse { get; set; } = string.Empty;
-        }
-
-        private class DecryptionResult
-        {
-            public bool Success { get; set; }
-            public string Message { get; set; } = string.Empty;
-            public string DecryptedData { get; set; } = string.Empty;
+            public string EncryptedData { get; set; } = string.Empty;
         }
 
         #endregion

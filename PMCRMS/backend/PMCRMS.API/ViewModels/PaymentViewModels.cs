@@ -103,5 +103,28 @@ namespace PMCRMS.API.ViewModels
         public string Message { get; set; } = string.Empty;
         public string? RedirectUrl { get; set; }
         public string? ApplicationStatus { get; set; }
+        public string? PaymentStatus { get; set; }
+        public string? TransactionId { get; set; }
+        public string? Amount { get; set; }
+    }
+
+    /// <summary>
+    /// Result of BillDesk response decryption
+    /// </summary>
+    public class DecryptionResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string DecryptedData { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Result of BillDesk Payment API call
+    /// </summary>
+    public class PaymentApiResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public string EncryptedResponse { get; set; } = string.Empty;
     }
 }

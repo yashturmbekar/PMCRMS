@@ -489,7 +489,143 @@ namespace PMCRMS.API.Controllers
         }
 
         /// <summary>
-        /// Payment callback endpoint from BillDesk
+        /// BillDesk Payment Callback Endpoint (Primary - Handles encrypted response from BillDesk)
+        /// GET /api/Payment/BillDeskCallback/{applicationId}
+        /// BillDesk will POST the transaction response to this endpoint after payment
+        /// </summary>
+        [HttpGet("BillDeskCallback/{applicationId}")]
+        [HttpPost("BillDeskCallback/{applicationId}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> BillDeskCallback(int applicationId)
+        {
+            try
+            {
+                _logger.LogInformation($"[BILLDESK-CALLBACK] ========================================");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] BILLDESK PAYMENT CALLBACK RECEIVED");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] ========================================");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Application ID: {applicationId}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Method: {HttpContext.Request.Method}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Path: {HttpContext.Request.Path}");
+                
+                // Log all query parameters
+                _logger.LogInformation($"[BILLDESK-CALLBACK] === ALL QUERY PARAMETERS ===");
+                foreach (var param in HttpContext.Request.Query)
+                {
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] {param.Key}: {param.Value}");
+                }
+                _logger.LogInformation($"[BILLDESK-CALLBACK] === END OF QUERY PARAMETERS ===");
+
+                // Log all form parameters (BillDesk typically sends as form data)
+                if (HttpContext.Request.HasFormContentType)
+                {
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] === ALL FORM PARAMETERS ===");
+                    foreach (var param in HttpContext.Request.Form)
+                    {
+                        _logger.LogInformation($"[BILLDESK-CALLBACK] {param.Key}: {param.Value}");
+                    }
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] === END OF FORM PARAMETERS ===");
+                }
+
+                // Read body content
+                string bodyContent = "";
+                using (var reader = new StreamReader(HttpContext.Request.Body))
+                {
+                    bodyContent = await reader.ReadToEndAsync();
+                }
+                
+                if (!string.IsNullOrEmpty(bodyContent))
+                {
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Body Content Length: {bodyContent.Length}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Body Content (first 200 chars): {bodyContent.Substring(0, Math.Min(200, bodyContent.Length))}");
+                }
+
+                // Extract transaction ID from query parameters
+                Guid? txnEntityId = null;
+                if (HttpContext.Request.Query.TryGetValue("txnEntityId", out var txnEntityIdStr))
+                {
+                    if (Guid.TryParse(txnEntityIdStr, out var parsedGuid))
+                    {
+                        txnEntityId = parsedGuid;
+                    }
+                }
+
+                // Get bd_order_id from query or form
+                string? bdOrderId = HttpContext.Request.Query["bdorderid"].FirstOrDefault() 
+                    ?? HttpContext.Request.Query["bd_order_id"].FirstOrDefault()
+                    ?? HttpContext.Request.Form["bdorderid"].FirstOrDefault()
+                    ?? HttpContext.Request.Form["bd_order_id"].FirstOrDefault();
+
+                // Get encrypted response (msg parameter from BillDesk)
+                string? encryptedResponse = HttpContext.Request.Query["msg"].FirstOrDefault()
+                    ?? HttpContext.Request.Form["msg"].FirstOrDefault();
+
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Extracted txnEntityId: {txnEntityId}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Extracted bdOrderId: {bdOrderId}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Encrypted Response Present: {!string.IsNullOrEmpty(encryptedResponse)}");
+                if (!string.IsNullOrEmpty(encryptedResponse))
+                {
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] ========== RAW ENCRYPTED RESPONSE ==========");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Length: {encryptedResponse.Length} characters");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] First 200 chars: {encryptedResponse.Substring(0, Math.Min(200, encryptedResponse.Length))}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Full Encrypted Response: {encryptedResponse}");
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] ========== END OF ENCRYPTED RESPONSE ==========");
+                }
+
+                if (string.IsNullOrEmpty(encryptedResponse))
+                {
+                    _logger.LogError($"[BILLDESK-CALLBACK] No encrypted response (msg parameter) found in callback");
+                    return Redirect($"{_configuration["BillDesk:FrontendBaseUrl"]}/#/payment/failure?applicationId={applicationId}&error=no_response");
+                }
+
+                // Process the callback with encrypted response decryption
+                var result = await _billDeskPaymentService.ProcessEncryptedCallbackAsync(
+                    applicationId, 
+                    encryptedResponse, 
+                    txnEntityId, 
+                    bdOrderId);
+
+                _logger.LogInformation($"[BILLDESK-CALLBACK] === CALLBACK PROCESSING RESULT ===");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Success: {result.Success}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Message: {result.Message}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Payment Status: {result.PaymentStatus}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Application Status: {result.ApplicationStatus}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] === END OF RESULT ===");
+
+                // Redirect to frontend based on payment status
+                var frontendUrl = _configuration["BillDesk:FrontendBaseUrl"];
+                string redirectUrl;
+
+                if (result.Success && result.PaymentStatus?.ToUpper() == "SUCCESS")
+                {
+                    redirectUrl = $"{frontendUrl}/#/payment/success?applicationId={applicationId}&txnId={result.TransactionId}&amount={result.Amount}";
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Payment SUCCESS - Redirecting to success page");
+                }
+                else
+                {
+                    redirectUrl = $"{frontendUrl}/#/payment/failure?applicationId={applicationId}&reason={Uri.EscapeDataString(result.Message ?? "Payment failed")}";
+                    _logger.LogInformation($"[BILLDESK-CALLBACK] Payment FAILED - Redirecting to failure page");
+                }
+
+                _logger.LogInformation($"[BILLDESK-CALLBACK] Redirect URL: {redirectUrl}");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] ========================================");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] CALLBACK PROCESSING COMPLETED");
+                _logger.LogInformation($"[BILLDESK-CALLBACK] ========================================");
+
+                return Redirect(redirectUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[BILLDESK-CALLBACK] Error in BillDeskCallback");
+                _logger.LogError($"[BILLDESK-CALLBACK] Exception Details: {ex.ToString()}");
+                _logger.LogError($"[BILLDESK-CALLBACK] ========================================");
+
+                var frontendUrl = _configuration["BillDesk:FrontendBaseUrl"];
+                return Redirect($"{frontendUrl}/#/payment/failure?applicationId={applicationId}&error=exception");
+            }
+        }
+
+        /// <summary>
+        /// Payment callback endpoint from BillDesk (Legacy - for backward compatibility)
         /// GET /api/Payment/Callback/{applicationId}
         /// </summary>
         [HttpGet("Callback/{applicationId}")]
@@ -504,7 +640,7 @@ namespace PMCRMS.API.Controllers
             try
             {
                 _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
-                _logger.LogInformation($"[PAYMENT-CALLBACK] PAYMENT CALLBACK RECEIVED");
+                _logger.LogInformation($"[PAYMENT-CALLBACK] PAYMENT CALLBACK RECEIVED (LEGACY)");
                 _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
                 _logger.LogInformation($"[PAYMENT-CALLBACK] Application ID: {applicationId}");
                 
@@ -548,9 +684,10 @@ namespace PMCRMS.API.Controllers
                     _logger.LogInformation($"[PAYMENT-CALLBACK] Callback processed successfully");
                     
                     // Redirect to frontend success/failure page
+                    var frontendUrl = _configuration["BillDesk:FrontendBaseUrl"];
                     var redirectUrl = status?.ToUpper() == "SUCCESS" 
-                        ? $"{Request.Scheme}://{Request.Host}/#/payment/success?applicationId={applicationId}"
-                        : $"{Request.Scheme}://{Request.Host}/#/payment/failure?applicationId={applicationId}";
+                        ? $"{frontendUrl}/#/payment/success?applicationId={applicationId}"
+                        : $"{frontendUrl}/#/payment/failure?applicationId={applicationId}";
                     
                     _logger.LogInformation($"[PAYMENT-CALLBACK] Redirecting to: {redirectUrl}");
                     _logger.LogInformation($"[PAYMENT-CALLBACK] ========================================");
@@ -911,6 +1048,71 @@ namespace PMCRMS.API.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// Test endpoint to decrypt BillDesk response (for debugging)
+        /// POST /api/Payment/DecryptTest
+        /// </summary>
+        [HttpPost("DecryptTest")]
+        [AllowAnonymous]
+        public async Task<IActionResult> DecryptTest([FromBody] DecryptTestRequest request)
+        {
+            try
+            {
+                _logger.LogInformation($"[DECRYPT-TEST] Decrypting BillDesk response");
+                _logger.LogInformation($"[DECRYPT-TEST] Encrypted Response Length: {request.EncryptedResponse?.Length ?? 0}");
+
+                if (string.IsNullOrEmpty(request.EncryptedResponse))
+                {
+                    return BadRequest(new { success = false, message = "Encrypted response is required" });
+                }
+
+                // Use the BillDesk service to decrypt
+                var decryptResult = await _billDeskPaymentService.DecryptPaymentResponseAsync(request.EncryptedResponse);
+
+                if (!decryptResult.Success)
+                {
+                    _logger.LogError($"[DECRYPT-TEST] Decryption failed: {decryptResult.Message}");
+                    return Ok(new
+                    {
+                        success = false,
+                        message = decryptResult.Message,
+                        error = decryptResult.Message
+                    });
+                }
+
+                _logger.LogInformation($"[DECRYPT-TEST] ========== DECRYPTED RESPONSE ==========");
+                _logger.LogInformation($"[DECRYPT-TEST] {decryptResult.DecryptedData}");
+                _logger.LogInformation($"[DECRYPT-TEST] ========== END OF DECRYPTED RESPONSE ==========");
+
+                // Parse JSON to make it readable
+                var jsonDocument = System.Text.Json.JsonDocument.Parse(decryptResult.DecryptedData);
+                var formattedJson = System.Text.Json.JsonSerializer.Serialize(
+                    jsonDocument, 
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true }
+                );
+
+                return Ok(new
+                {
+                    success = true,
+                    message = "Decryption successful",
+                    decryptedData = decryptResult.DecryptedData,
+                    formattedJson = formattedJson,
+                    parsedData = jsonDocument.RootElement
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[DECRYPT-TEST] Error in DecryptTest");
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Error decrypting response",
+                    error = ex.Message,
+                    stackTrace = ex.ToString()
+                });
+            }
+        }
     }
 
     /// <summary>
@@ -929,4 +1131,13 @@ namespace PMCRMS.API.Controllers
         public string TransactionId { get; set; } = string.Empty;
         public string BdOrderId { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// Request model for decrypt test
+    /// </summary>
+    public class DecryptTestRequest
+    {
+        public string EncryptedResponse { get; set; } = string.Empty;
+    }
 }
+

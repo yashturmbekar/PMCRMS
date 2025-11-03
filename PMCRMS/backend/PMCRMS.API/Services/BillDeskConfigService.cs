@@ -26,6 +26,7 @@ namespace PMCRMS.API.Services
         public string ApiBaseUrl => _configuration["BillDesk:ApiBaseUrl"] ?? "https://api.billdesk.com";
         public string PaymentGatewayUrl => _configuration["BillDesk:PaymentGatewayUrl"] ?? string.Empty;
         public string ReturnUrlBase => _configuration["BillDesk:ReturnUrlBase"] ?? string.Empty;
+        public string FrontendBaseUrl => _configuration["BillDesk:FrontendBaseUrl"] ?? "http://localhost:5173";
 
         /// <summary>
         /// Validates that all required BillDesk configuration values are present
@@ -42,7 +43,8 @@ namespace PMCRMS.API.Services
                 "BillDesk:ClientId",
                 "BillDesk:ApiBaseUrl",
                 "BillDesk:PaymentGatewayUrl",
-                "BillDesk:ReturnUrlBase"
+                "BillDesk:ReturnUrlBase",
+                "BillDesk:FrontendBaseUrl"
             };
 
             var missingKeys = new List<string>();
