@@ -53,10 +53,21 @@ namespace PMCRMS.API.Services
         // Signature coordinates for each officer on recommendation form
         private static class SignatureCoordinates
         {
-            public const string JuniorEngineer = "117,383,236,324";      // Bottom-left
-            public const string AssistantEngineer = "250,383,369,324";   // Bottom-center-left
-            public const string ExecutiveEngineer = "383,383,502,324";   // Bottom-center-right
-            public const string CityEngineer = "516,383,635,324";        // Bottom-right
+            // PDF coordinates: (llx, lly, urx, ury) where origin (0,0) is bottom-left of page
+            // A4 page dimensions: 595 (width) x 842 (height) points
+            // Bottom section layout (reading from bottom up):
+            //   Row 1 (Y: 60-110):  शाखा अभियंता (JE) left | उपअभियंता (AE) right
+            //   Recommendation text (Y: 120-140)
+            //   "क्ष मान्य" text (Y: 150-170)
+            //   Row 2 (Y: 180-230): कार्यकारी अभियंता (EE) left | शहर अभियंता (CE) right
+            
+            // First row signatures (JE and AE) - BOTTOM row
+            public const string JuniorEngineer = "70,60,220,110";         // Bottom-most row, left side
+            public const string AssistantEngineer = "375,60,525,110";     // Bottom-most row, right side
+            
+            // Second row signatures (EE and CE) - UPPER row (after recommendation text)
+            public const string ExecutiveEngineer = "70,180,220,230";     // Upper row, left side
+            public const string CityEngineer = "375,180,525,230";         // Upper row, right side
         }
 
         public SignatureWorkflowService(

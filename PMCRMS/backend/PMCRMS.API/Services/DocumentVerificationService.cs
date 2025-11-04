@@ -11,15 +11,18 @@ namespace PMCRMS.API.Services
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<DocumentVerificationService> _logger;
         private readonly INotificationService _notificationService;
+        private readonly IWorkflowNotificationService _workflowNotificationService;
 
         public DocumentVerificationService(
             PMCRMSDbContext context,
             ILogger<DocumentVerificationService> logger,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IWorkflowNotificationService workflowNotificationService)
         {
             _context = context;
             _logger = logger;
             _notificationService = notificationService;
+            _workflowNotificationService = workflowNotificationService;
         }
 
         public async Task<VerificationResult> StartVerificationAsync(
@@ -330,6 +333,29 @@ namespace PMCRMS.API.Services
                 }
 
                 await _context.SaveChangesAsync();
+
+                // Send email notification to applicant when all documents are verified
+                if (allVerified)
+                {
+                    try
+                    {
+                        await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(
+                            verification.ApplicationId,
+                            ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED
+                        );
+                        
+                        _logger.LogInformation(
+                            "Email notification sent for application {ApplicationId} - Document verification completed",
+                            verification.ApplicationId);
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError(emailEx, 
+                            "Failed to send email notification for application {ApplicationId} after document verification completion",
+                            verification.ApplicationId);
+                        // Don't fail the entire operation if email fails
+                    }
+                }
 
                 // Send notification
                 await SendVerificationNotificationAsync(verification, "completed");

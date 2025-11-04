@@ -1510,6 +1510,8 @@ namespace PMCRMS.API.Controllers
                 IsPaymentComplete = application.Status == ApplicationCurrentStatus.PaymentCompleted || 
                                    application.Status > ApplicationCurrentStatus.PaymentCompleted,
                 PaymentCompletedDate = GetPaymentCompletedDate(application),
+                ChallanAmount = GetChallanAmount(application),
+                ChallanNumber = GetChallanNumber(application),
                 
                 AssignedJuniorEngineerId = application.AssignedJuniorEngineerId,
                 AssignedJuniorEngineerName = application.AssignedJuniorEngineer?.Name,
@@ -1949,6 +1951,46 @@ namespace PMCRMS.API.Controllers
                 .FirstOrDefault();
 
             return successfulTransaction?.UpdatedAt;
+        }
+
+        /// <summary>
+        /// Get challan amount from Challan table or calculate based on position type
+        /// </summary>
+        private decimal? GetChallanAmount(PositionApplication application)
+        {
+            // Get amount from Challan table if challan was generated
+            var challan = _context.Challans
+                .Where(c => c.ApplicationId == application.Id)
+                .FirstOrDefault();
+            
+            if (challan != null)
+            {
+                return challan.Amount;
+            }
+            
+            // Fallback: Calculate expected amount based on position type
+            return application.PositionType switch
+            {
+                PositionType.Architect => 0m,
+                PositionType.LicenceEngineer => 3000m,
+                PositionType.StructuralEngineer => 1500m,
+                PositionType.Supervisor1 => 900m,
+                PositionType.Supervisor2 => 900m,
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// Get challan number from Challan table if generated
+        /// </summary>
+        private string? GetChallanNumber(PositionApplication application)
+        {
+            // Get challan number from Challan table if challan was generated
+            var challan = _context.Challans
+                .Where(c => c.ApplicationId == application.Id)
+                .FirstOrDefault();
+            
+            return challan?.ChallanNumber;
         }
 
         #endregion

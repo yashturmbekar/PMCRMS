@@ -15,6 +15,7 @@ interface PaymentButtonProps {
   applicationId: number;
   applicationStatus: number | string; // Can be number or string from API
   isPaymentComplete: boolean;
+  challanAmount?: number; // Amount to be paid
   onPaymentInitiated?: () => void;
   onPaymentSuccess?: () => void;
   className?: string;
@@ -24,6 +25,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   applicationId,
   applicationStatus,
   isPaymentComplete,
+  challanAmount = 0,
   onPaymentInitiated,
   onPaymentSuccess,
   className = "",
@@ -228,7 +230,8 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         ) : (
           <>
             <CreditCard size={20} />
-            Pay ₹3,000 - Proceed to Secure Payment
+            Pay ₹{challanAmount?.toLocaleString("en-IN") || "0"} - Proceed to
+            Secure Payment
           </>
         )}
       </button>
@@ -411,7 +414,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
             <p
               style={{
                 margin: 0,
-                fontSize: "11px",
+                fontSize: "13px",
                 color: "#6b7280",
                 fontWeight: 500,
               }}
@@ -426,7 +429,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
                 fontWeight: 600,
               }}
             >
-              ₹3,000
+              ₹{challanAmount?.toLocaleString("en-IN") || "0"}
             </p>
           </div>
         </div>

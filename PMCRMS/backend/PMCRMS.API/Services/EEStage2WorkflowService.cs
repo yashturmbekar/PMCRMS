@@ -16,19 +16,22 @@ namespace PMCRMS.API.Services
         private readonly IEmailService _emailService;
         private readonly IDigitalSignatureService _digitalSignatureService;
         private readonly IAutoAssignmentService _autoAssignmentService;
+        private readonly IConfiguration _configuration;
 
         public EEStage2WorkflowService(
             PMCRMSDbContext context,
             ILogger<EEStage2WorkflowService> logger,
             IEmailService emailService,
             IDigitalSignatureService digitalSignatureService,
-            IAutoAssignmentService autoAssignmentService)
+            IAutoAssignmentService autoAssignmentService,
+            IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
             _digitalSignatureService = digitalSignatureService;
             _autoAssignmentService = autoAssignmentService;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -185,15 +188,21 @@ namespace PMCRMS.API.Services
                 // Save certificate temporarily for signing
                 var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
                 await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
+
+                // Get EE signature coordinates from configuration for license certificate
+                var eeCoordinates = _configuration["HSM:LicenseCertificateSignatureCoordinates:ExecutiveEngineer"] 
+                    ?? "100,50,250,110,1";
+                
+                _logger.LogInformation($"[EEStage2Workflow] Using EE signature coordinates for license certificate: {eeCoordinates}");
                 
                 var otpResult = await _digitalSignatureService.InitiateSignatureAsync(
                     applicationId,
                     eeUserId,
                     SignatureType.ExecutiveEngineer,
                     tempCertPath,
-                    "50,50,180,60,1", // EE signature coordinates on LEFT side of license certificate (x,y,width,height,page)
-                    null, // IP address (optional)
-                    null  // User agent (optional)
+                    eeCoordinates,
+                    null,
+                    null
                 );
                 
                 if (!otpResult.Success)
@@ -281,18 +290,25 @@ namespace PMCRMS.API.Services
                     };
                 }
 
+                // Save certificate temporarily for signing
+                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
+                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
+
+                // Get EE signature coordinates from configuration for license certificate
+                var eeCoordinates = _configuration["HSM:LicenseCertificateSignatureCoordinates:ExecutiveEngineer"] 
+                    ?? "100,50,250,110,1";
+                
+                _logger.LogInformation($"[EEStage2Workflow] Using EE signature coordinates for license certificate: {eeCoordinates}");
+
                 // Initiate signature on license certificate
-                // Coordinates: Executive Engineer signature (left side at bottom)
-                // Format: x,y,width,height,page
-                // Position: Left side, 50 points from left, 50 points from bottom
                 var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
                     applicationId,
                     eeUserId,
                     SignatureType.ExecutiveEngineer,
-                    $"LICENSE_CERT_{application.ApplicationNumber}",
-                    "50,50,180,60,1", // Left signature box (x=50, y=50 from bottom, width=180, height=60, page=1)
-                    null, // IP address
-                    null  // User agent
+                    tempCertPath,
+                    eeCoordinates,
+                    null,
+                    null
                 );
 
                 if (!initiateResult.Success || !initiateResult.SignatureId.HasValue)
@@ -313,6 +329,7 @@ namespace PMCRMS.API.Services
 
                 if (!completeResult.Success)
                 {
+                    _logger.LogError($"[EEStage2Workflow] CompleteSignature failed: {completeResult.Message}");
                     return new EEStage2SignResult
                     {
                         Success = false,
@@ -320,22 +337,47 @@ namespace PMCRMS.API.Services
                     };
                 }
 
+                _logger.LogInformation($"[EEStage2Workflow] CompleteSignature SUCCESS. SignedDocumentPath: {completeResult.SignedDocumentPath}");
+
                 // Update the license certificate in database with signed version
+                if (string.IsNullOrEmpty(completeResult.SignedDocumentPath))
+                {
+                    _logger.LogError($"[EEStage2Workflow] SignedDocumentPath is null or empty for application {applicationId}");
+                    return new EEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "Signed document path is missing"
+                    };
+                }
+
+                if (!File.Exists(completeResult.SignedDocumentPath))
+                {
+                    _logger.LogError($"[EEStage2Workflow] Signed document file does not exist at path: {completeResult.SignedDocumentPath}");
+                    return new EEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "Signed document file not found"
+                    };
+                }
+
                 try
                 {
-                    if (!string.IsNullOrEmpty(completeResult.SignedDocumentPath) && File.Exists(completeResult.SignedDocumentPath))
-                    {
-                        var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
-                        licenseCertificate.FileContent = signedPdfBytes;
-                        licenseCertificate.UpdatedDate = DateTime.UtcNow;
-                        
-                        _logger.LogInformation($"[EEStage2Workflow] Updated license certificate in database with EE signature for application {applicationId}");
-                    }
+                    var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
+                    _logger.LogInformation($"[EEStage2Workflow] Read {signedPdfBytes.Length} bytes from signed PDF");
+                    
+                    licenseCertificate.FileContent = signedPdfBytes;
+                    licenseCertificate.UpdatedDate = DateTime.UtcNow;
+                    
+                    _logger.LogInformation($"[EEStage2Workflow] Updated license certificate FileContent in memory ({signedPdfBytes.Length} bytes) for application {applicationId}");
                 }
                 catch (Exception certEx)
                 {
-                    _logger.LogError(certEx, $"[EEStage2Workflow] Failed to update license certificate in database for application {applicationId}");
-                    // Don't fail the entire operation if this fails
+                    _logger.LogError(certEx, $"[EEStage2Workflow] CRITICAL: Failed to read/update license certificate for application {applicationId}");
+                    return new EEStage2SignResult
+                    {
+                        Success = false,
+                        Message = $"Failed to update certificate: {certEx.Message}"
+                    };
                 }
 
                 // Update application status to CITY_ENGINEER_SIGN_PENDING and mark EE Stage 2 signature complete
@@ -346,13 +388,17 @@ namespace PMCRMS.API.Services
                 application.EEStage2ApprovalDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
 
+                _logger.LogInformation($"[EEStage2Workflow] BEFORE SaveChanges - Application Status: {application.Status}, Certificate bytes: {licenseCertificate.FileContent?.Length ?? 0}");
+
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"[EEStage2Workflow] Digital signature applied successfully for application {applicationId}");
+                _logger.LogInformation($"[EEStage2Workflow] AFTER SaveChanges - Digital signature applied successfully for application {applicationId}. Status: {application.Status}");
 
                 // Auto-assign to City Engineer for final signature
                 try
                 {
+                    _logger.LogInformation($"[EEStage2Workflow] Attempting auto-assignment to City Engineer for application {applicationId}");
+                    
                     var assignmentResult = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
                         applicationId,
                         ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING,
@@ -370,14 +416,14 @@ namespace PMCRMS.API.Services
                     else
                     {
                         _logger.LogWarning(
-                            "[EEStage2Workflow] Application {ApplicationId} status updated to CITY_ENGINEER_SIGN_PENDING but no City Engineer available for auto-assignment",
+                            "[EEStage2Workflow] Application {ApplicationId} status updated to CITY_ENGINEER_SIGN_PENDING but no City Engineer available for auto-assignment. Application will appear as unassigned on CE dashboard.",
                             applicationId
                         );
                     }
                 }
                 catch (Exception assignEx)
                 {
-                    _logger.LogError(assignEx, "[EEStage2Workflow] Failed to auto-assign to City Engineer for application {ApplicationId}", applicationId);
+                    _logger.LogError(assignEx, "[EEStage2Workflow] Failed to auto-assign to City Engineer for application {ApplicationId}. Application will appear as unassigned on CE dashboard.", applicationId);
                     // Don't fail the signature operation if assignment fails
                 }
 

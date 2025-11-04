@@ -223,6 +223,8 @@ namespace PMCRMS.API.DTOs
         // Payment Information
         public bool IsPaymentComplete { get; set; }
         public DateTime? PaymentCompletedDate { get; set; }
+        public decimal? ChallanAmount { get; set; } // Fee amount from Challan table
+        public string? ChallanNumber { get; set; } // Challan number if generated
         
         // Assigned Officer Information
         public int? AssignedJuniorEngineerId { get; set; }

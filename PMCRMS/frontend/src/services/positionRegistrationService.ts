@@ -101,6 +101,8 @@ export interface PositionRegistrationResponse {
   assignedJuniorEngineerName?: string;
   isPaymentComplete?: boolean;
   paymentCompletedDate?: string;
+  challanAmount?: number;
+  challanNumber?: string;
   addresses: AddressResponse[];
   qualifications: QualificationResponse[];
   experiences: ExperienceResponse[];

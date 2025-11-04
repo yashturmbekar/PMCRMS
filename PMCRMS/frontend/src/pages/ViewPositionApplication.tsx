@@ -1410,8 +1410,10 @@ const ViewPositionApplication: React.FC = () => {
           </div>
         )}
 
-        {/* License Certificate - Separate Section (only after payment AND for specific roles) */}
-        {application.isPaymentComplete &&
+        {/* License Certificate - Separate Section */}
+        {/* Show for: (1) Payment complete OR (2) Architect position at Clerk stage or beyond */}
+        {(application.isPaymentComplete ||
+          (application.positionType === 0 && application.status >= 35)) && // Architect at CLERK_PENDING (35) or beyond
           (isClerkOfficer ||
             (isEEOfficer && application.status >= 19) || // EE Stage 2 (Digital Signature stages)
             (isCEOfficer && application.status >= 21) || // CE Stage 2 (Final Approval stages)
@@ -1567,10 +1569,13 @@ const ViewPositionApplication: React.FC = () => {
           )}
 
         {/* Payment Section - Only show for regular users after CE Stage 1, or for Stage 2 officers (EE/CE), Clerk */}
+        {/* Don't show for Architect position (positionType = 0) as it has no fees */}
         {!isJEOfficer &&
           !user?.role.includes("Assistant") &&
           !user?.role.includes("Executive") &&
-          !user?.role.includes("City") && (
+          !user?.role.includes("City") &&
+          application.positionType !== 0 &&
+          (application.challanAmount ?? 0) > 0 && (
             <div
               className="pmc-card"
               style={{
@@ -1770,7 +1775,10 @@ const ViewPositionApplication: React.FC = () => {
                               color: "#78350f",
                             }}
                           >
-                            ₹3,000
+                            ₹
+                            {application?.challanAmount?.toLocaleString(
+                              "en-IN"
+                            ) || "0"}
                           </p>
                         </div>
                         <div
@@ -1831,6 +1839,7 @@ const ViewPositionApplication: React.FC = () => {
                       applicationId={application.id}
                       applicationStatus={application.status}
                       isPaymentComplete={application.isPaymentComplete || false}
+                      challanAmount={application.challanAmount}
                       onPaymentInitiated={() => {
                         console.log(
                           "Payment initiated for application:",
@@ -1936,7 +1945,10 @@ const ViewPositionApplication: React.FC = () => {
                               color: "#047857",
                             }}
                           >
-                            ₹3,000
+                            ₹
+                            {application?.challanAmount?.toLocaleString(
+                              "en-IN"
+                            ) || "0"}
                           </p>
                         </div>
 
