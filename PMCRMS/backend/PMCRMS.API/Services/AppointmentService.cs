@@ -644,6 +644,15 @@ namespace PMCRMS.API.Services
             var appointmentDate = appointment.ReviewDate.ToLocalTime();
             var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "https://pmcrms.punemunicipal.gov.in";
             
+            // Get logo as base64
+            var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+            var logoDataUri = "";
+            if (File.Exists(logoPath))
+            {
+                var imageBytes = File.ReadAllBytes(logoPath);
+                logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+            }
+            
             return $@"
 <!DOCTYPE html>
 <html>
@@ -776,7 +785,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -854,6 +863,15 @@ namespace PMCRMS.API.Services
         private string BuildConfirmedEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
             var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            
+            var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+            var logoDataUri = "";
+            if (File.Exists(logoPath))
+            {
+                var imageBytes = File.ReadAllBytes(logoPath);
+                logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+            }
+            
             return $@"
 Dear {application.FirstName} {application.LastName},
 
@@ -876,6 +894,14 @@ Pune Municipal Corporation";
 
         private string BuildCancelledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
+            var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+            var logoDataUri = "";
+            if (File.Exists(logoPath))
+            {
+                var imageBytes = File.ReadAllBytes(logoPath);
+                logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+            }
+            
             return $@"
 Dear {application.FirstName} {application.LastName},
 
@@ -895,6 +921,14 @@ Pune Municipal Corporation";
         {
             var appointmentDate = appointment.ReviewDate.ToLocalTime();
             var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "https://pmcrms.punemunicipal.gov.in";
+            
+            var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+            var logoDataUri = "";
+            if (File.Exists(logoPath))
+            {
+                var imageBytes = File.ReadAllBytes(logoPath);
+                logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+            }
             
             return $@"
 <!DOCTYPE html>
@@ -1028,7 +1062,7 @@ Pune Municipal Corporation";
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -1107,6 +1141,15 @@ Pune Municipal Corporation";
         {
             var appointmentDate = appointment.ReviewDate.ToLocalTime();
             var hoursUntil = (appointment.ReviewDate - DateTime.UtcNow).TotalHours;
+            
+            var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+            var logoDataUri = "";
+            if (File.Exists(logoPath))
+            {
+                var imageBytes = File.ReadAllBytes(logoPath);
+                logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+            }
+            
             return $@"
 Dear {application.FirstName} {application.LastName},
 

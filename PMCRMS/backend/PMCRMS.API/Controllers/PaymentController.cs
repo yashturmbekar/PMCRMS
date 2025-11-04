@@ -271,6 +271,15 @@ namespace PMCRMS.API.Controllers
                 // 8. Send email notification
                 try
                 {
+                    // Get logo as base64
+                    var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                    var logoDataUri = "";
+                    if (File.Exists(logoPath))
+                    {
+                        var imageBytes = File.ReadAllBytes(logoPath);
+                        logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                    }
+                    
                     var emailBody = $@"
 <!DOCTYPE html>
 <html>
@@ -383,7 +392,7 @@ namespace PMCRMS.API.Controllers
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>

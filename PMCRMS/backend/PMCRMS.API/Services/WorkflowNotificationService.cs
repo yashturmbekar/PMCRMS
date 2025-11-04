@@ -60,8 +60,8 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("[WorkflowNotification] Sending email to {Email} for application {ApplicationNumber} - Stage: {Stage}", 
                     application.EmailAddress, application.ApplicationNumber, stageName);
 
-                // Send email notification asynchronously (fire and forget)
-                _ = _emailService.SendWorkflowStageEmailAsync(
+                // Send email notification asynchronously with proper error handling
+                var emailSent = await _emailService.SendWorkflowStageEmailAsync(
                     application.EmailAddress,
                     applicantName,
                     application.ApplicationNumber ?? "N/A",
@@ -69,6 +69,17 @@ namespace PMCRMS.API.Services
                     stageDescription,
                     viewUrl
                 );
+
+                if (emailSent)
+                {
+                    _logger.LogInformation("[WorkflowNotification] Email sent successfully to {Email} for application {ApplicationNumber}", 
+                        application.EmailAddress, application.ApplicationNumber);
+                }
+                else
+                {
+                    _logger.LogWarning("[WorkflowNotification] Failed to send email to {Email} for application {ApplicationNumber}", 
+                        application.EmailAddress, application.ApplicationNumber);
+                }
             }
             catch (Exception ex)
             {

@@ -128,6 +128,35 @@ namespace PMCRMS.API.Services
             _logger.LogInformation("=================================");
         }
 
+        /// <summary>
+        /// Get PMC logo as base64 data URI for embedding in emails
+        /// </summary>
+        private string GetPmcLogoDataUri()
+        {
+            try
+            {
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    var base64String = Convert.ToBase64String(imageBytes);
+                    return $"data:image/png;base64,{base64String}";
+                }
+                else
+                {
+                    _logger.LogWarning("PMC logo not found at path: {Path}", logoPath);
+                    // Return a placeholder or empty string
+                    return "";
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading PMC logo file");
+                return "";
+            }
+        }
+
         public async Task<bool> SendOtpEmailAsync(string toEmail, string otpCode, string purpose)
         {
             try
@@ -421,6 +450,7 @@ namespace PMCRMS.API.Services
         private string GenerateOtpEmailBody(string otpCode, string purpose)
         {
             var actionText = purpose == "LOGIN" ? "login" : "registration";
+            var logoDataUri = GetPmcLogoDataUri();
             
             return $@"
 <!DOCTYPE html>
@@ -510,7 +540,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -558,6 +588,7 @@ namespace PMCRMS.API.Services
             string applicationId, 
             string viewUrl)
         {
+            var logoDataUri = GetPmcLogoDataUri();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -684,7 +715,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -758,6 +789,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
+            var logoDataUri = GetPmcLogoDataUri();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -768,7 +800,7 @@ namespace PMCRMS.API.Services
 </head>
 <body>
     <div class='container'>
-        {GetEmailHeader()}
+        {GetEmailHeader(logoDataUri)}
         <div class='content'>
             <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>🔄</div>
             <div class='status-badge' style='background-color: #3b82f6; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Status Updated</div>
@@ -824,6 +856,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
+            var logoDataUri = GetPmcLogoDataUri();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -834,7 +867,7 @@ namespace PMCRMS.API.Services
 </head>
 <body>
     <div class='container'>
-        {GetEmailHeader()}
+        {GetEmailHeader(logoDataUri)}
         <div class='content'>
             <div class='checkmark' style='font-size: 64px; color: #10b981; text-align: center; margin: 10px 0;'>✓</div>
             <div class='success-badge' style='background-color: #10b981; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Application Approved</div>
@@ -899,6 +932,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
+            var logoDataUri = GetPmcLogoDataUri();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -909,7 +943,7 @@ namespace PMCRMS.API.Services
 </head>
 <body>
     <div class='container'>
-        {GetEmailHeader()}
+        {GetEmailHeader(logoDataUri)}
         <div class='content'>
             <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>⚠️</div>
             <div class='warning-badge' style='background-color: #ef4444; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>Action Required</div>
@@ -974,6 +1008,7 @@ namespace PMCRMS.API.Services
             string assignedBy,
             string viewUrl)
         {
+            var logoDataUri = GetPmcLogoDataUri();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -984,7 +1019,7 @@ namespace PMCRMS.API.Services
 </head>
 <body>
     <div class='container'>
-        {GetEmailHeader()}
+        {GetEmailHeader(logoDataUri)}
         <div class='content'>
             <div class='status-icon' style='text-align: center; font-size: 48px; margin: 10px 0;'>📋</div>
             <div class='assignment-badge' style='background-color: #8b5cf6; color: white; display: inline-block; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: bold; margin: 15px 0;'>New Assignment</div>
@@ -1048,6 +1083,7 @@ namespace PMCRMS.API.Services
             string temporaryPassword,
             string loginUrl)
         {
+            var logoDataUri = GetPmcLogoDataUri();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1169,7 +1205,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -1344,12 +1380,12 @@ namespace PMCRMS.API.Services
         }";
         }
 
-        private string GetEmailHeader()
+        private string GetEmailHeader(string logoDataUri)
         {
             return $@"
         <div class='header'>
             <div class='logo-container'>
-                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
@@ -1381,6 +1417,14 @@ namespace PMCRMS.API.Services
             {
                 var subject = $"Application {applicationNumber} - Processed by Clerk";
                 
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
+                
                 var body = $@"
                 <!DOCTYPE html>
                 <html>
@@ -1388,7 +1432,7 @@ namespace PMCRMS.API.Services
                     <style>{GetCommonEmailStyles()}</style>
                 </head>
                 <body>
-                    {GetEmailHeader()}
+                    {GetEmailHeader(logoDataUri)}
                     
                     <div class='content'>
                         <p>Dear {applicantName},</p>
@@ -1449,6 +1493,14 @@ namespace PMCRMS.API.Services
             {
                 var subject = $"Application {applicationNumber} - Rejected by Clerk";
                 
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
+                
                 var body = $@"
                 <!DOCTYPE html>
                 <html>
@@ -1456,7 +1508,7 @@ namespace PMCRMS.API.Services
                     <style>{GetCommonEmailStyles()}</style>
                 </head>
                 <body>
-                    {GetEmailHeader()}
+                    {GetEmailHeader(logoDataUri)}
                     
                     <div class='content'>
                         <p>Dear {applicantName},</p>
@@ -1522,6 +1574,14 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Action Required: Digital Signature - Application {applicationNumber}";
 
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
+
                 string body = $@"
                 <!DOCTYPE html>
                 <html>
@@ -1529,7 +1589,7 @@ namespace PMCRMS.API.Services
                     <style>{GetCommonEmailStyles()}</style>
                 </head>
                 <body>
-                    {GetEmailHeader()}
+                    {GetEmailHeader(logoDataUri)}
                     
                     <div class='content'>
                         <p>Dear {eeOfficerName},</p>
@@ -1598,6 +1658,14 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Progress Update: Certificate Signed by Executive Engineer - {applicationNumber}";
 
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
+
                 string body = $@"
                 <!DOCTYPE html>
                 <html>
@@ -1605,7 +1673,7 @@ namespace PMCRMS.API.Services
                     <style>{GetCommonEmailStyles()}</style>
                 </head>
                 <body>
-                    {GetEmailHeader()}
+                    {GetEmailHeader(logoDataUri)}
                     
                     <div class='content'>
                         <p>Dear {applicantName},</p>
@@ -1673,6 +1741,14 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Action Required: Final Certificate Signature - Application {applicationNumber}";
 
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
+
                 string body = $@"
                 <!DOCTYPE html>
                 <html>
@@ -1680,7 +1756,7 @@ namespace PMCRMS.API.Services
                     <style>{GetCommonEmailStyles()}</style>
                 </head>
                 <body>
-                    {GetEmailHeader()}
+                    {GetEmailHeader(logoDataUri)}
                     
                     <div class='content'>
                         <p>Dear {ceOfficerName},</p>
@@ -1750,6 +1826,14 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"🎉 Certificate Issued! Download Your Building Permission Certificate - {applicationNumber}";
 
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
+
                 string body = $@"
                 <!DOCTYPE html>
                 <html>
@@ -1757,7 +1841,7 @@ namespace PMCRMS.API.Services
                     <style>{GetCommonEmailStyles()}</style>
                 </head>
                 <body>
-                    {GetEmailHeader()}
+                    {GetEmailHeader(logoDataUri)}
                     
                     <div class='content'>
                         <p>Dear {applicantName},</p>
@@ -1844,6 +1928,14 @@ namespace PMCRMS.API.Services
             try
             {
                 string subject = $"Application Update - {stageName} - {applicationNumber}";
+
+                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                var logoDataUri = "";
+                if (File.Exists(logoPath))
+                {
+                    var imageBytes = File.ReadAllBytes(logoPath);
+                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
+                }
 
                 string body = $@"
 <!DOCTYPE html>
@@ -1967,7 +2059,7 @@ namespace PMCRMS.API.Services
     <div class='container'>
         <div class='header'>
             <div class='logo-container'>
-                <img src='{_baseUrl}/pmc-logo.png' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
             </div>
             <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
             <h1>Pune Municipal Corporation</h1>
