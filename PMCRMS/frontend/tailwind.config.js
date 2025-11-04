@@ -43,6 +43,17 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      animation: {
+        "skeleton-wave":
+          "skeleton-wave 2s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+        "spin-smooth": "spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite",
+      },
+      keyframes: {
+        "skeleton-wave": {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+      },
     },
   },
   plugins: [],

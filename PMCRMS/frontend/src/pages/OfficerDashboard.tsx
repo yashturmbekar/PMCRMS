@@ -1113,18 +1113,17 @@ const OfficerDashboard: React.FC = () => {
                         officerConfig.type === "EE" ||
                         officerConfig.type === "CE" ||
                         officerConfig.type === "Clerk") && (
-                        <th>Position Type</th>
+                        <>
+                          <th>Position Type</th>
+                          <th>Approved by</th>
+                        </>
                       )}
-                      {(officerConfig.type === "AE" ||
-                        officerConfig.type === "EE" ||
-                        officerConfig.type === "CE" ||
-                        officerConfig.type === "Clerk") && <th>Approved by</th>}
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {getCurrentPageData().map((app) => (
-                      <tr key={app.applicationId}>
+                      <tr key={app.applicationId || app.applicationNumber}>
                         <td>
                           <span className="pmc-badge pmc-badge-primary">
                             {app.applicationNumber}
@@ -1134,7 +1133,8 @@ const OfficerDashboard: React.FC = () => {
                           {app.applicantName ||
                             `${app.firstName || ""} ${
                               app.lastName || ""
-                            }`.trim()}
+                            }`.trim() ||
+                            "N/A"}
                         </td>
                         <td>{formatDate(app.createdDate)}</td>
                         {officerConfig.type === "JE" &&
@@ -1157,21 +1157,18 @@ const OfficerDashboard: React.FC = () => {
                           officerConfig.type === "EE" ||
                           officerConfig.type === "CE" ||
                           officerConfig.type === "Clerk") && (
-                          <td>
-                            {getPositionLabel(
-                              app.positionType || app.position || ""
-                            )}
-                          </td>
-                        )}
-                        {(officerConfig.type === "AE" ||
-                          officerConfig.type === "EE" ||
-                          officerConfig.type === "CE" ||
-                          officerConfig.type === "Clerk") && (
-                          <td>
-                            {app.assignedAEName ||
-                              app.assignedToAEName ||
-                              "N/A"}
-                          </td>
+                          <>
+                            <td>
+                              {getPositionLabel(
+                                app.positionType || app.position || ""
+                              )}
+                            </td>
+                            <td>
+                              {app.assignedAEName ||
+                                app.assignedToAEName ||
+                                "N/A"}
+                            </td>
+                          </>
                         )}
                         <td>
                           <div
