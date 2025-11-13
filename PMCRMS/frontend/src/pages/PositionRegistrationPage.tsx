@@ -764,7 +764,7 @@ export const PositionRegistrationPage = () => {
     // Convert documents to base64 format
     const documents = await Promise.all(
       data.documents.map(async (d) => {
-        // If file exists, convert it to base64
+        // If file exists (newly uploaded), convert it to base64
         if (d.file) {
           const uploadedDoc = await positionRegistrationService.uploadDocument(
             d.file,
@@ -772,16 +772,26 @@ export const PositionRegistrationPage = () => {
           );
           return uploadedDoc;
         }
-        // Otherwise, assume it's already in the correct format with base64
-        return {
-          fileId: d.fileId,
-          documentType: d.documentType,
-          fileName: d.fileName,
-          fileBase64: "", // Empty for existing documents (shouldn't happen in create flow)
-          fileSize: undefined,
-          contentType: undefined,
-        };
+        // For existing documents (edit/resubmit mode), preserve the existing data
+        // Check if document has base64 content (not just empty string) or filePath
+        if ((d.fileBase64 && d.fileBase64.length > 0) || d.filePath) {
+          return {
+            fileId: d.fileId,
+            documentType: d.documentType,
+            fileName: d.fileName,
+            fileBase64: d.fileBase64 || "", // Preserve existing base64 data
+            fileSize: d.fileSize,
+            contentType: d.contentType,
+          };
+        }
+        // Skip documents without any file data
+        return null;
       })
+    );
+
+    // Filter out null documents and ensure type safety
+    const validDocuments = documents.filter(
+      (d): d is NonNullable<typeof d> => d !== null
     );
 
     // Build request (handle empty/partial data for drafts)
@@ -805,7 +815,7 @@ export const PositionRegistrationPage = () => {
       permanentAddress,
       qualifications,
       experiences,
-      documents,
+      documents: validDocuments, // Use filtered documents
     };
 
     return request;
@@ -1247,9 +1257,7 @@ export const PositionRegistrationPage = () => {
       (sum, exp) => sum + exp.yearsOfExperience,
       0
     );
-    const years = Math.floor(total);
-    const months = Math.round((total - years) * 12);
-    return `${years} years and ${months} months`;
+    return `${total.toFixed(2)} years`;
   };
 
   // Date validation helpers
@@ -1344,16 +1352,31 @@ export const PositionRegistrationPage = () => {
           (a: { addressType: string }) => a.addressType === "Permanent"
         );
 
-        setFormData({
+        // Convert position type from backend (could be string or number)
+        let loadedPositionType = selectedPositionType;
+        if (typeof response.positionType === "number") {
+          loadedPositionType = response.positionType as PositionTypeValue;
+        } else if (typeof response.positionType === "string") {
+          // Map string name to enum value
+          const positionTypeMap: { [key: string]: PositionTypeValue } = {
+            Architect: PositionType.Architect,
+            LicenceEngineer: PositionType.LicenceEngineer,
+            StructuralEngineer: PositionType.StructuralEngineer,
+            Supervisor1: PositionType.Supervisor1,
+            Supervisor2: PositionType.Supervisor2,
+          };
+          loadedPositionType =
+            positionTypeMap[response.positionType] ?? selectedPositionType;
+        }
+
+        const newFormData = {
           firstName: response.firstName || "",
           middleName: response.middleName || "",
           lastName: response.lastName || "",
           motherName: response.motherName || "",
           mobileNumber: response.mobileNumber || "",
           emailAddress: response.emailAddress || "",
-          positionType:
-            (response.positionType as PositionTypeValue) ??
-            selectedPositionType,
+          positionType: loadedPositionType,
           bloodGroup: response.bloodGroup || "",
           height: response.height || 0,
           gender: (response.gender as GenderValue) ?? 0,
@@ -1421,24 +1444,35 @@ export const PositionRegistrationPage = () => {
               toDate: e.toDate ? e.toDate.split("T")[0] : "",
             })) || [],
           documents:
-            response.documents?.map((d) => ({
-              fileId: d.fileId || `DOC_${Date.now()}_${Math.random()}`,
-              documentType: (d.documentType as SEDocumentTypeValue) ?? 0,
-              fileName: d.fileName || "",
-              filePath: d.filePath || "",
-              fileBase64: d.fileBase64 || "", // Keep existing file content
-              fileSize: d.fileSize || 0,
-              contentType: d.contentType || "application/pdf",
-            })) || [],
-        });
+            response.documents?.map((d) => {
+              // Convert document type from string name to enum number
+              let docType = 0;
+              if (typeof d.documentType === "number") {
+                docType = d.documentType;
+              } else if (typeof d.documentType === "string") {
+                // Map string name to enum value
+                docType =
+                  SEDocumentType[
+                    d.documentType as keyof typeof SEDocumentType
+                  ] ?? 0;
+              }
 
-        // Update position type if different
-        if (
-          response.positionType !== undefined &&
-          response.positionType !== selectedPositionType
-        ) {
-          setSelectedPositionType(response.positionType as PositionTypeValue);
-        }
+              return {
+                fileId: d.fileId || `DOC_${Date.now()}_${Math.random()}`,
+                documentType: docType as SEDocumentTypeValue,
+                fileName: d.fileName || "",
+                filePath: d.filePath || "",
+                fileBase64: d.fileBase64 ?? "", // Keep existing file content (use ?? to preserve empty strings)
+                fileSize: d.fileSize || 0,
+                contentType: d.contentType || "application/pdf",
+              };
+            }) || [],
+        };
+
+        setFormData(newFormData);
+
+        // Update the selected position type state to trigger config update
+        setSelectedPositionType(loadedPositionType);
 
         setSuccess(
           `Editing ${response.status === 1 ? "Draft" : "Application"} #${
@@ -4600,6 +4634,48 @@ export const PositionRegistrationPage = () => {
               }}
             >
               {loading ? "⏳ Saving..." : "💾 SAVE AS DRAFT"}
+            </button>
+
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={() => navigate("/dashboard")}
+              className="pmc-button pmc-button-lg"
+              disabled={loading}
+              style={{
+                minWidth: "180px",
+                background: loading
+                  ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+                  : "linear-gradient(135deg, #64748b 0%, #475569 100%)",
+                border: "none",
+                color: "white",
+                fontWeight: "700",
+                fontSize: "15px",
+                padding: "12px 28px",
+                borderRadius: "10px",
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: loading
+                  ? "none"
+                  : "0 8px 20px rgba(100, 116, 139, 0.3)",
+                transition: "all 0.3s ease",
+                transform: loading ? "none" : "translateY(0)",
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 25px rgba(100, 116, 139, 0.4)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 20px rgba(100, 116, 139, 0.3)";
+                }
+              }}
+            >
+              ❌ CANCEL
             </button>
 
             {/* Submit Button */}
