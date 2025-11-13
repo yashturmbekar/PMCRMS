@@ -11,7 +11,12 @@ import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import positionRegistrationService from "../services/positionRegistrationService";
 import { REDIRECT_DELAY } from "../constants";
 import { Calendar, Clock, Eye, CheckCircle, XCircle, Info } from "lucide-react";
-import { PageLoader, ModalLoader, Pagination } from "../components";
+import {
+  PageLoader,
+  ModalLoader,
+  Pagination,
+  FullScreenLoader,
+} from "../components";
 import {
   DocumentApprovalModal,
   OTPVerificationModal,
@@ -2035,31 +2040,13 @@ const OfficerDashboard: React.FC = () => {
                     borderRadius: "8px",
                     cursor: isApprovingClerk ? "not-allowed" : "pointer",
                     transition: "all 0.2s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
                   }}
                 >
-                  {isApprovingClerk ? (
-                    <>
-                      <div
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          border: "2px solid white",
-                          borderTopColor: "transparent",
-                          borderRadius: "50%",
-                          animation: "spin 0.6s linear infinite",
-                        }}
-                      />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={16} />
-                      Approve Application
-                    </>
-                  )}
+                  <CheckCircle
+                    size={16}
+                    style={{ display: "inline", marginRight: "6px" }}
+                  />
+                  Approve Application
                 </button>
               </div>
             </div>
@@ -2180,22 +2167,43 @@ const OfficerDashboard: React.FC = () => {
                   style={{
                     padding: "8px 20px",
                     fontSize: "14px",
+                    fontWeight: 600,
                     background:
-                      "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                      isRejecting || !rejectionComments.trim()
+                        ? "#9ca3af"
+                        : "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
-                    cursor: "pointer",
-                    fontWeight: 600,
+                    cursor:
+                      isRejecting || !rejectionComments.trim()
+                        ? "not-allowed"
+                        : "pointer",
+                    transition: "all 0.2s",
                   }}
                 >
-                  {isRejecting ? "Rejecting..." : "Reject Application"}
+                  Reject Application
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Full Screen Loaders */}
+      {isApprovingClerk && (
+        <FullScreenLoader
+          message="Approving Application"
+          submessage="Please wait while we process the approval..."
+        />
+      )}
+
+      {isRejecting && (
+        <FullScreenLoader
+          message="Rejecting Application"
+          submessage="Please wait while we process the rejection..."
+        />
+      )}
     </>
   );
 };

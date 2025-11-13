@@ -17,7 +17,7 @@ import {
 import positionRegistrationService, {
   type PositionRegistrationResponse,
 } from "../services/positionRegistrationService";
-import { PageLoader } from "../components";
+import { PageLoader, FullScreenLoader } from "../components";
 import {
   DocumentApprovalModal,
   OTPVerificationModal,
@@ -2782,31 +2782,13 @@ const ViewPositionApplication: React.FC = () => {
                     borderRadius: "8px",
                     cursor: isApprovingClerk ? "not-allowed" : "pointer",
                     transition: "all 0.2s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
                   }}
                 >
-                  {isApprovingClerk ? (
-                    <>
-                      <div
-                        style={{
-                          width: "16px",
-                          height: "16px",
-                          border: "2px solid white",
-                          borderTopColor: "transparent",
-                          borderRadius: "50%",
-                          animation: "spin 0.6s linear infinite",
-                        }}
-                      />
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle size={18} />
-                      Approve & Forward
-                    </>
-                  )}
+                  <CheckCircle
+                    size={18}
+                    style={{ display: "inline", marginRight: "6px" }}
+                  />
+                  Approve & Forward
                 </button>
               </div>
 
@@ -4284,6 +4266,14 @@ const ViewPositionApplication: React.FC = () => {
           onClose={() => setShowPaymentModal(false)}
         />
       </div>
+
+      {/* Full Screen Loader */}
+      {isApprovingClerk && (
+        <FullScreenLoader
+          message="Approving Application"
+          submessage="Please wait while we process the approval..."
+        />
+      )}
     </>
   );
 };

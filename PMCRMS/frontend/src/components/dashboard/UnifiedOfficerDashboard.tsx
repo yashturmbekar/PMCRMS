@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { Calendar, Clock, Eye, CheckCircle, XCircle } from "lucide-react";
-import { PageLoader } from "../../components";
+import { PageLoader, FullScreenLoader } from "../../components";
 import { OTPVerificationModal, DocumentApprovalModal } from "../workflow";
 import NotificationModal from "../common/NotificationModal";
 import type { NotificationType } from "../common/NotificationModal";
@@ -582,15 +582,20 @@ const UnifiedOfficerDashboard: React.FC<UnifiedOfficerDashboardProps> = ({
                     padding: "8px 20px",
                     fontSize: "14px",
                     background:
-                      "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                      isRejecting || !rejectionComments.trim()
+                        ? "#9ca3af"
+                        : "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
                     color: "white",
                     border: "none",
                     borderRadius: "6px",
-                    cursor: "pointer",
+                    cursor:
+                      isRejecting || !rejectionComments.trim()
+                        ? "not-allowed"
+                        : "pointer",
                     fontWeight: 600,
                   }}
                 >
-                  {isRejecting ? "Rejecting..." : "Reject Application"}
+                  Reject Application
                 </button>
               </div>
             </div>
@@ -1448,6 +1453,14 @@ const UnifiedOfficerDashboard: React.FC<UnifiedOfficerDashboardProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Full Screen Loader */}
+      {isRejecting && (
+        <FullScreenLoader
+          message="Rejecting Application"
+          submessage="Please wait while we process the rejection..."
+        />
+      )}
     </>
   );
 };

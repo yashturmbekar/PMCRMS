@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import NotificationModal from "../common/NotificationModal";
 import type { NotificationType } from "../common/NotificationModal";
 import OtpInput from "../OtpInput";
+import FullScreenLoader from "../FullScreenLoader";
 
 interface OTPVerificationModalProps {
   isOpen: boolean;
@@ -507,6 +508,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Full Screen Loader */}
+      {isSubmitting && (
+        <FullScreenLoader
+          message="Processing Signature"
+          submessage="Please wait while we verify and sign the application..."
+        />
+      )}
     </>
   );
 };

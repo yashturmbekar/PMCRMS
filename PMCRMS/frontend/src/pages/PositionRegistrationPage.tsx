@@ -7,7 +7,7 @@ import positionRegistrationService, {
   type Experience as ApiExperience,
   type Address as ApiAddress,
 } from "../services/positionRegistrationService";
-import { PageLoader, SectionLoader } from "../components";
+import { PageLoader, FullScreenLoader } from "../components";
 
 // Enums matching backend
 const PositionType = {
@@ -1312,9 +1312,6 @@ export const PositionRegistrationPage = () => {
           parseInt(applicationId)
         );
 
-        console.log("[DEBUG] Application status:", response.status);
-        console.log("[DEBUG] Full response:", response);
-
         // Store rejection comments if application is rejected
         // Status can be either number 37 or string "REJECTED"
         if (response.status === 37 || response.status === "REJECTED") {
@@ -1345,13 +1342,7 @@ export const PositionRegistrationPage = () => {
           } else {
             comments = response.remarks || "No rejection comments provided";
           }
-          console.log("[DEBUG] Rejection comments set to:", comments);
           setRejectionComments(comments);
-        } else {
-          console.log(
-            "[DEBUG] Application status is not REJECTED, it is:",
-            response.status
-          );
         }
 
         // Map API response to form data
@@ -5111,7 +5102,7 @@ export const PositionRegistrationPage = () => {
                 style={{
                   padding: "12px 32px",
                   background: isSubmitting
-                    ? "linear-gradient(135deg, #94a3b8 0%, #64748b 100%)"
+                    ? "#9ca3af"
                     : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                   border: "none",
                   borderRadius: "8px",
@@ -5123,9 +5114,6 @@ export const PositionRegistrationPage = () => {
                     ? "none"
                     : "0 4px 12px rgba(16, 185, 129, 0.3)",
                   transition: "all 0.2s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
                 }}
                 onMouseEnter={(e) =>
                   !isSubmitting &&
@@ -5135,10 +5123,7 @@ export const PositionRegistrationPage = () => {
                   (e.currentTarget.style.transform = "translateY(0)")
                 }
               >
-                {isSubmitting && (
-                  <SectionLoader variant="minimal" size="small" inline />
-                )}
-                {isSubmitting ? "Submitting..." : "✅ Confirm & Submit"}
+                ✅ Confirm & Submit
               </button>
             </div>
           </div>
@@ -5398,6 +5383,14 @@ export const PositionRegistrationPage = () => {
             </style>
           </div>
         </div>
+      )}
+
+      {/* Full Screen Loader */}
+      {isSubmitting && (
+        <FullScreenLoader
+          message="Submitting Application"
+          submessage="Please wait while we process your application..."
+        />
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 import { jeWorkflowService } from "../../services/jeWorkflowService";
 import NotificationModal from "../common/NotificationModal";
-import ModalLoader from "../ModalLoader";
+import FullScreenLoader from "../FullScreenLoader";
 import type { NotificationType } from "../common/NotificationModal";
 
 interface Document {
@@ -494,13 +494,21 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
             {/* ========== END TESTING MODE ========== */}
           </div>
 
-          {/* Modal Loader Overlay */}
-          <ModalLoader
+          {/* Modal Loader Overlay - Kept for backwards compatibility but replaced by FullScreenLoader */}
+          {/* <ModalLoader
             isVisible={isSubmitting}
             message="Adding digital signature..."
-          />
+          /> */}
         </div>
       </div>
+
+      {/* Full Screen Loader */}
+      {isSubmitting && (
+        <FullScreenLoader
+          message="Adding Digital Signature"
+          submessage="Please wait while we process and sign the documents..."
+        />
+      )}
     </>
   );
 };
