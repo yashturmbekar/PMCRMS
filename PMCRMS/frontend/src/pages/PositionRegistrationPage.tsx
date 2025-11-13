@@ -1263,14 +1263,6 @@ export const PositionRegistrationPage = () => {
     }
   };
 
-  const getTotalExperience = () => {
-    const total = formData.experiences.reduce(
-      (sum, exp) => sum + exp.yearsOfExperience,
-      0
-    );
-    return `${total.toFixed(2)} years`;
-  };
-
   // Date validation helpers
   const getMaxBirthDate = () => {
     const today = new Date();
@@ -4420,22 +4412,6 @@ export const PositionRegistrationPage = () => {
                     )}
                   </div>
                 ))}
-
-                {formData.experiences.length > 0 && (
-                  <div
-                    style={{
-                      padding: "16px",
-                      background: "#dcfce7",
-                      borderRadius: "8px",
-                      fontSize: "16px",
-                      fontWeight: 600,
-                      color: "#166534",
-                      textAlign: "center",
-                    }}
-                  >
-                    Total Experience: {getTotalExperience()}
-                  </div>
-                )}
               </div>
             </div>
           )}
