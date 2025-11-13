@@ -298,6 +298,7 @@ interface Document {
   documentType: SEDocumentTypeValue;
   filePath: string;
   fileName: string;
+  documentName?: string; // Custom name for the document (e.g., "Tax Receipt")
   fileId: string;
   file?: File;
   fileBase64?: string;
@@ -357,6 +358,8 @@ export const PositionRegistrationPage = () => {
   const [isResubmitMode, setIsResubmitMode] = useState(false);
   const [rejectionComments, setRejectionComments] = useState("");
   const [additionalDocumentName, setAdditionalDocumentName] = useState("");
+  const [selectedAdditionalFile, setSelectedAdditionalFile] =
+    useState<File | null>(null);
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
@@ -679,7 +682,8 @@ export const PositionRegistrationPage = () => {
     documentType: SEDocumentTypeValue,
     fileId: string,
     file: File,
-    customFileName?: string
+    customFileName?: string,
+    documentName?: string
   ) => {
     // TODO: Implement actual file upload to server
     // For now, create a local URL
@@ -687,6 +691,7 @@ export const PositionRegistrationPage = () => {
       documentType,
       filePath: URL.createObjectURL(file),
       fileName: customFileName || file.name, // Use custom name if provided
+      documentName: documentName, // Store custom document name separately
       fileId,
       file,
     };
@@ -772,16 +777,22 @@ export const PositionRegistrationPage = () => {
             d.file,
             d.documentType
           );
-          return uploadedDoc;
+          // Use the custom fileName and documentName from the Document object if available
+          return {
+            ...uploadedDoc,
+            fileName: d.fileName || uploadedDoc.fileName,
+            documentName: d.documentName, // Include custom document name
+          };
         }
-        // For existing documents (edit/resubmit mode), preserve the existing data
-        // Check if document has base64 content (not just empty string) or filePath
+        // For existing documents (edit/resubmit mode), send metadata only - don't resend file content
+        // The backend will keep the existing file content
         if ((d.fileBase64 && d.fileBase64.length > 0) || d.filePath) {
           return {
             fileId: d.fileId,
             documentType: d.documentType,
             fileName: d.fileName,
-            fileBase64: d.fileBase64 || "", // Preserve existing base64 data
+            documentName: d.documentName, // Include custom document name
+            fileBase64: "", // Don't send existing file content - saves bandwidth
             fileSize: d.fileSize,
             contentType: d.contentType,
           };
@@ -1485,6 +1496,7 @@ export const PositionRegistrationPage = () => {
                 fileId: d.fileId || `DOC_${Date.now()}_${Math.random()}`,
                 documentType: docType as SEDocumentTypeValue,
                 fileName: d.fileName || "",
+                documentName: d.documentName, // Load custom document name
                 filePath: d.filePath || "",
                 fileBase64: d.fileBase64 ?? "", // Keep existing file content (use ?? to preserve empty strings)
                 fileSize: d.fileSize || 0,
@@ -2404,7 +2416,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.PropertyTaxReceipt &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file // Only show for existing docs, not newly uploaded ones
                     ) && (
                       <div
                         style={{
@@ -2460,7 +2473,8 @@ export const PositionRegistrationPage = () => {
                         (d) =>
                           d.documentType ===
                             SEDocumentType.PropertyTaxReceipt &&
-                          (d.fileBase64 || d.filePath)
+                          (d.fileBase64 || d.filePath) &&
+                          !d.file
                       )
                         ? " (Upload new file to replace existing)"
                         : ""}
@@ -2487,7 +2501,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.ISSECertificate &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     ) && (
                       <div
                         style={{
@@ -2541,7 +2556,8 @@ export const PositionRegistrationPage = () => {
                       {formData.documents.find(
                         (d) =>
                           d.documentType === SEDocumentType.ISSECertificate &&
-                          (d.fileBase64 || d.filePath)
+                          (d.fileBase64 || d.filePath) &&
+                          !d.file
                       )
                         ? " (Upload new file to replace existing)"
                         : ""}
@@ -2566,7 +2582,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.COACertificate &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     ) && (
                       <div
                         style={{
@@ -2620,7 +2637,8 @@ export const PositionRegistrationPage = () => {
                       {formData.documents.find(
                         (d) =>
                           d.documentType === SEDocumentType.COACertificate &&
-                          (d.fileBase64 || d.filePath)
+                          (d.fileBase64 || d.filePath) &&
+                          !d.file
                       )
                         ? " (Upload new file to replace existing)"
                         : ""}
@@ -2645,7 +2663,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.UGCRecognition &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     ) && (
                       <div
                         style={{
@@ -2699,7 +2718,8 @@ export const PositionRegistrationPage = () => {
                       {formData.documents.find(
                         (d) =>
                           d.documentType === SEDocumentType.UGCRecognition &&
-                          (d.fileBase64 || d.filePath)
+                          (d.fileBase64 || d.filePath) &&
+                          !d.file
                       )
                         ? " (Upload new file to replace existing)"
                         : ""}
@@ -2723,7 +2743,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.AICTEApproval &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     ) && (
                       <div
                         style={{
@@ -2776,7 +2797,8 @@ export const PositionRegistrationPage = () => {
                       {formData.documents.find(
                         (d) =>
                           d.documentType === SEDocumentType.AICTEApproval &&
-                          (d.fileBase64 || d.filePath)
+                          (d.fileBase64 || d.filePath) &&
+                          !d.file
                       )
                         ? " (Upload new file to replace existing)"
                         : ""}
@@ -3357,7 +3379,8 @@ export const PositionRegistrationPage = () => {
                   {formData.documents.find(
                     (d) =>
                       d.documentType === SEDocumentType.PanCard &&
-                      (d.fileBase64 || d.filePath)
+                      (d.fileBase64 || d.filePath) &&
+                      !d.file
                   ) && (
                     <div
                       style={{
@@ -3409,7 +3432,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.PanCard &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     )
                       ? " (Upload new file to replace existing)"
                       : ""}
@@ -3506,7 +3530,8 @@ export const PositionRegistrationPage = () => {
                   {formData.documents.find(
                     (d) =>
                       d.documentType === SEDocumentType.AadharCard &&
-                      (d.fileBase64 || d.filePath)
+                      (d.fileBase64 || d.filePath) &&
+                      !d.file
                   ) && (
                     <div
                       style={{
@@ -3558,7 +3583,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.AadharCard &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     )
                       ? " (Upload new file to replace existing)"
                       : ""}
@@ -3772,7 +3798,8 @@ export const PositionRegistrationPage = () => {
                           const marksheets = formData.documents.filter(
                             (d) =>
                               d.documentType === SEDocumentType.Marksheet &&
-                              (d.fileBase64 || d.filePath)
+                              (d.fileBase64 || d.filePath) &&
+                              !d.file // Only show for existing docs, not newly uploaded ones
                           );
                           // Show the one at this index if available
                           const marksheet = marksheets[index];
@@ -3855,7 +3882,8 @@ export const PositionRegistrationPage = () => {
                             (d) =>
                               d.documentType ===
                                 SEDocumentType.DegreeCertificate &&
-                              (d.fileBase64 || d.filePath)
+                              (d.fileBase64 || d.filePath) &&
+                              !d.file // Only show for existing docs, not newly uploaded ones
                           );
                           // Show the one at this index if available
                           const certificate = certificates[index];
@@ -4301,7 +4329,8 @@ export const PositionRegistrationPage = () => {
                           (d) =>
                             d.documentType ===
                               SEDocumentType.ExperienceCertificate &&
-                            (d.fileBase64 || d.filePath)
+                            (d.fileBase64 || d.filePath) &&
+                            !d.file // Only show for existing docs, not newly uploaded ones
                         );
                         // Show the one at this index if available
                         const certificate = certificates[index];
@@ -4460,7 +4489,8 @@ export const PositionRegistrationPage = () => {
                 {formData.documents.filter(
                   (d) =>
                     d.documentType === SEDocumentType.AdditionalDocument &&
-                    (d.fileBase64 || d.filePath)
+                    (d.fileBase64 || d.filePath) &&
+                    !d.file // Only show existing docs, not newly uploaded ones
                 ).length > 0 && (
                   <div style={{ marginBottom: "16px" }}>
                     <h4
@@ -4478,7 +4508,8 @@ export const PositionRegistrationPage = () => {
                         (d) =>
                           d.documentType ===
                             SEDocumentType.AdditionalDocument &&
-                          (d.fileBase64 || d.filePath)
+                          (d.fileBase64 || d.filePath) &&
+                          !d.file // Only show existing docs, not newly uploaded ones
                       )
                       .map((doc, idx) => (
                         <div
@@ -4497,7 +4528,19 @@ export const PositionRegistrationPage = () => {
                           }}
                         >
                           <span>✓</span>
-                          <span>Document already uploaded: {doc.fileName}</span>
+                          <span>
+                            Document already uploaded: {doc.fileName}
+                            {doc.documentName && (
+                              <span
+                                style={{
+                                  fontStyle: "italic",
+                                  marginLeft: "8px",
+                                }}
+                              >
+                                ({doc.documentName})
+                              </span>
+                            )}
+                          </span>
                         </div>
                       ))}
                   </div>
@@ -4519,32 +4562,58 @@ export const PositionRegistrationPage = () => {
                     <label className="pmc-label">
                       Upload Attachment (Max 500KB)
                     </label>
-                    <input
-                      type="file"
-                      className="pmc-input"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // Use the document name as the fileName if provided, otherwise use the file's name
-                          const customFileName = additionalDocumentName
-                            ? `${additionalDocumentName}.${file.name
-                                .split(".")
-                                .pop()}`
-                            : file.name;
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <input
+                        type="file"
+                        className="pmc-input"
+                        id="additionalDocFileInput"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSelectedAdditionalFile(file);
+                          }
+                        }}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="pmc-btn pmc-btn-primary"
+                        onClick={() => {
+                          if (!selectedAdditionalFile) {
+                            alert("Please select a file first");
+                            return;
+                          }
+
+                          // Use the document name as documentName and keep original filename
+                          const documentName =
+                            additionalDocumentName.trim() || undefined;
 
                           handleFileUpload(
                             SEDocumentType.AdditionalDocument,
                             `DOC_ADD_${Date.now()}`,
-                            file,
-                            customFileName
+                            selectedAdditionalFile,
+                            selectedAdditionalFile.name, // Keep original file name
+                            documentName // Pass custom document name separately
                           );
 
-                          // Clear the document name field after upload
+                          // Clear everything after upload
                           setAdditionalDocumentName("");
-                        }
-                      }}
-                      accept=".pdf,.jpg,.jpeg,.png"
-                    />
+                          setSelectedAdditionalFile(null);
+                          const fileInput = document.getElementById(
+                            "additionalDocFileInput"
+                          ) as HTMLInputElement;
+                          if (fileInput) fileInput.value = "";
+                        }}
+                        style={{
+                          padding: "8px 16px",
+                          whiteSpace: "nowrap",
+                          minWidth: "80px",
+                        }}
+                      >
+                        Upload
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4612,7 +4681,8 @@ export const PositionRegistrationPage = () => {
                   {formData.documents.find(
                     (d) =>
                       d.documentType === SEDocumentType.SelfDeclaration &&
-                      (d.fileBase64 || d.filePath)
+                      (d.fileBase64 || d.filePath) &&
+                      !d.file
                   ) && (
                     <div
                       style={{
@@ -4665,7 +4735,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.SelfDeclaration &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     )
                       ? " (Upload new file to replace existing)"
                       : ""}
@@ -4734,7 +4805,8 @@ export const PositionRegistrationPage = () => {
                   {formData.documents.find(
                     (d) =>
                       d.documentType === SEDocumentType.ProfilePicture &&
-                      (d.fileBase64 || d.filePath)
+                      (d.fileBase64 || d.filePath) &&
+                      !d.file
                   ) && (
                     <div
                       style={{
@@ -4787,7 +4859,8 @@ export const PositionRegistrationPage = () => {
                     {formData.documents.find(
                       (d) =>
                         d.documentType === SEDocumentType.ProfilePicture &&
-                        (d.fileBase64 || d.filePath)
+                        (d.fileBase64 || d.filePath) &&
+                        !d.file
                     )
                       ? " (Upload new file to replace existing)"
                       : ""}

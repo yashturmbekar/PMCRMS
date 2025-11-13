@@ -176,6 +176,9 @@ namespace PMCRMS.API.DTOs
         [Required(ErrorMessage = "File name is required")]
         public string FileName { get; set; } = string.Empty;
 
+        [MaxLength(255)]
+        public string? DocumentName { get; set; } // Custom name for the document (e.g., "Tax Receipt")
+
         // Base64 encoded file content (for binary storage in database)
         [Required(ErrorMessage = "File content is required")]
         public string FileBase64 { get; set; } = string.Empty;
@@ -361,6 +364,7 @@ namespace PMCRMS.API.DTOs
         public SEDocumentType DocumentType { get; set; }
         public string DocumentTypeName { get; set; } = string.Empty;
         public string FileName { get; set; } = string.Empty;
+        public string? DocumentName { get; set; } // Custom name for the document
         public string? FilePath { get; set; } // Deprecated - keeping for backward compatibility
         public decimal? FileSize { get; set; }
         public string? ContentType { get; set; }

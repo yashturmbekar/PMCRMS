@@ -55,6 +55,7 @@ export interface DocumentUpload {
   fileId: string;
   documentType: number;
   fileName: string;
+  documentName?: string; // Custom name for the document (e.g., "Tax Receipt")
   fileBase64: string; // Base64 encoded file content
   fileSize?: number;
   contentType?: string;

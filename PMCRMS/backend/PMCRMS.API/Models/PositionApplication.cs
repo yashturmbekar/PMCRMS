@@ -566,6 +566,9 @@ namespace PMCRMS.API.Models
         [MaxLength(255)]
         public string FileName { get; set; } = string.Empty;
 
+        [MaxLength(255)]
+        public string? DocumentName { get; set; } // Custom name for the document (e.g., "Tax Receipt")
+
         [Required]
         [MaxLength(50)]
         public string FileId { get; set; } = string.Empty;

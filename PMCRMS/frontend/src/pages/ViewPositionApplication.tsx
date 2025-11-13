@@ -1283,6 +1283,7 @@ const ViewPositionApplication: React.FC = () => {
                         )}
                         <button
                           className="pmc-button pmc-button-primary pmc-button-sm"
+                          title="View Document"
                           onClick={() =>
                             setSelectedDocument({
                               fileName: doc.fileName,
@@ -1302,6 +1303,7 @@ const ViewPositionApplication: React.FC = () => {
                         </button>
                         <button
                           className="pmc-button pmc-button-secondary pmc-button-sm"
+                          title="Download Document"
                           onClick={() => {
                             if (doc.fileBase64) {
                               try {
@@ -2413,6 +2415,7 @@ const ViewPositionApplication: React.FC = () => {
           >
             <button
               className="pmc-button pmc-button-secondary"
+              title="Back to Dashboard"
               onClick={() => navigate(getDashboardRoute())}
               style={{
                 display: "flex",
@@ -2425,6 +2428,7 @@ const ViewPositionApplication: React.FC = () => {
             </button>
             <button
               className="pmc-button pmc-button-danger"
+              title="Reject Application"
               onClick={handleRejectApplication}
               style={{
                 display: "flex",
@@ -2439,6 +2443,7 @@ const ViewPositionApplication: React.FC = () => {
             "Appointment Scheduled" ? (
               <button
                 className="pmc-button pmc-button-success"
+                title="Document Approve"
                 onClick={() => setShowDocumentApprovalModal(true)}
                 style={{
                   display: "flex",
@@ -2452,6 +2457,7 @@ const ViewPositionApplication: React.FC = () => {
             ) : (
               <button
                 className="pmc-button pmc-button-success"
+                title="Schedule Appointment"
                 onClick={handleScheduleAppointment}
                 style={{
                   display: "flex",
@@ -2480,6 +2486,7 @@ const ViewPositionApplication: React.FC = () => {
           >
             <button
               className="pmc-button pmc-button-secondary"
+              title="Back to Dashboard"
               onClick={() => navigate(getDashboardRoute())}
               style={{
                 display: "flex",
@@ -2492,6 +2499,7 @@ const ViewPositionApplication: React.FC = () => {
             </button>
             <button
               className="pmc-button pmc-button-danger"
+              title="Reject Application"
               onClick={handleRejectApplication}
               style={{
                 display: "flex",
@@ -2504,6 +2512,7 @@ const ViewPositionApplication: React.FC = () => {
             </button>
             <button
               className="pmc-button pmc-button-success"
+              title="Verify & Approve Documents"
               onClick={handleVerifyDocuments}
               style={{
                 display: "flex",
@@ -2529,6 +2538,7 @@ const ViewPositionApplication: React.FC = () => {
           >
             <button
               className="pmc-button pmc-button-secondary"
+              title="Back to Dashboard"
               onClick={() => navigate(getDashboardRoute())}
               style={{
                 display: "flex",
@@ -2541,6 +2551,7 @@ const ViewPositionApplication: React.FC = () => {
             </button>
             <button
               className="pmc-button pmc-button-danger"
+              title="Reject Application"
               onClick={handleRejectApplication}
               style={{
                 display: "flex",
@@ -2553,6 +2564,7 @@ const ViewPositionApplication: React.FC = () => {
             </button>
             <button
               className="pmc-button pmc-button-success"
+              title="Approve Application"
               onClick={handleClerkApprove}
               style={{
                 display: "flex",
