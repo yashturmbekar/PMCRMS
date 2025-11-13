@@ -1705,12 +1705,6 @@ export const PositionRegistrationPage = () => {
         </button>
 
         {/* Rejection Banner - Shown at the top when application is rejected */}
-        {console.log(
-          "[DEBUG RENDER] rejectionComments:",
-          rejectionComments,
-          "Length:",
-          rejectionComments?.length
-        )}
         {rejectionComments && (
           <div
             className="pmc-fadeIn"
