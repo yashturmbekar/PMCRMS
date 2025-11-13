@@ -97,6 +97,9 @@ const ViewPositionApplication: React.FC = () => {
   const [showClerkApprovalModal, setShowClerkApprovalModal] = useState(false);
   const [clerkRemarks, setClerkRemarks] = useState("");
   const [isApprovingClerk, setIsApprovingClerk] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionComments, setRejectionComments] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // Certificate state
   const [certificateStatus, setCertificateStatus] = useState<{
@@ -641,10 +644,19 @@ const ViewPositionApplication: React.FC = () => {
   const handleRejectApplication = async () => {
     if (!application) return;
 
-    const remarks = prompt("Please provide a reason for rejection:");
-    if (!remarks) {
-      return; // User cancelled
+    // Validate rejection comments
+    if (!rejectionComments.trim()) {
+      setNotification({
+        isOpen: true,
+        message: "Rejection comments are mandatory",
+        type: "error",
+        title: "Validation Error",
+        autoClose: false,
+      });
+      return;
     }
+
+    setIsRejecting(true);
 
     try {
       let result;
@@ -653,10 +665,11 @@ const ViewPositionApplication: React.FC = () => {
       if (user?.role.includes("Clerk")) {
         result = await clerkWorkflowService.rejectApplication(
           application.id,
-          remarks
+          rejectionComments
         );
 
         if (result.success) {
+          setShowRejectModal(false);
           setNotification({
             isOpen: true,
             message: "Application rejected successfully!",
@@ -677,26 +690,157 @@ const ViewPositionApplication: React.FC = () => {
             autoClose: false,
           });
         }
+        setIsRejecting(false);
         return;
       }
 
-      // For other officers (JE, AE, EE, CE) - keep existing TODO logic
+      // Junior Engineer rejection
+      if (user?.role.includes("Junior")) {
+        result = await jeWorkflowService.rejectApplication({
+          applicationId: application.id,
+          rejectionComments: rejectionComments,
+        });
+
+        if (result.success) {
+          setShowRejectModal(false);
+          setNotification({
+            isOpen: true,
+            message: "Application rejected successfully!",
+            type: "success",
+            title: "Rejection Successful",
+            autoClose: true,
+          });
+
+          setTimeout(() => {
+            navigate(getDashboardRoute());
+          }, 2000);
+        } else {
+          setNotification({
+            isOpen: true,
+            message: result.message || "Failed to reject application",
+            type: "error",
+            title: "Rejection Failed",
+            autoClose: false,
+          });
+        }
+        setIsRejecting(false);
+        return;
+      }
+
+      // Assistant Engineer rejection
+      if (user?.role.includes("Assistant")) {
+        result = await aeWorkflowService.rejectApplication({
+          applicationId: application.id,
+          positionType: application.positionType as PositionType,
+          rejectionComments: rejectionComments,
+        });
+
+        if (result.success) {
+          setShowRejectModal(false);
+          setNotification({
+            isOpen: true,
+            message: "Application rejected successfully!",
+            type: "success",
+            title: "Rejection Successful",
+            autoClose: true,
+          });
+
+          setTimeout(() => {
+            navigate(getDashboardRoute());
+          }, 2000);
+        } else {
+          setNotification({
+            isOpen: true,
+            message: result.message || "Failed to reject application",
+            type: "error",
+            title: "Rejection Failed",
+            autoClose: false,
+          });
+        }
+        setIsRejecting(false);
+        return;
+      }
+
+      // Executive Engineer rejection
+      if (user?.role.includes("Executive")) {
+        result = await eeWorkflowService.rejectApplication({
+          applicationId: application.id,
+          rejectionComments: rejectionComments,
+        });
+
+        if (result.success) {
+          setShowRejectModal(false);
+          setNotification({
+            isOpen: true,
+            message: "Application rejected successfully!",
+            type: "success",
+            title: "Rejection Successful",
+            autoClose: true,
+          });
+
+          setTimeout(() => {
+            navigate(getDashboardRoute());
+          }, 2000);
+        } else {
+          setNotification({
+            isOpen: true,
+            message: result.message || "Failed to reject application",
+            type: "error",
+            title: "Rejection Failed",
+            autoClose: false,
+          });
+        }
+        setIsRejecting(false);
+        return;
+      }
+
+      // City Engineer rejection
+      if (user?.role.includes("City")) {
+        result = await ceWorkflowService.rejectApplication({
+          applicationId: application.id,
+          rejectionComments: rejectionComments,
+        });
+
+        if (result.success) {
+          setShowRejectModal(false);
+          setNotification({
+            isOpen: true,
+            message: "Application rejected successfully!",
+            type: "success",
+            title: "Rejection Successful",
+            autoClose: true,
+          });
+
+          setTimeout(() => {
+            navigate(getDashboardRoute());
+          }, 2000);
+        } else {
+          setNotification({
+            isOpen: true,
+            message: result.message || "Failed to reject application",
+            type: "error",
+            title: "Rejection Failed",
+            autoClose: false,
+          });
+        }
+        setIsRejecting(false);
+        return;
+      }
+
+      // Fallback for unrecognized roles
       console.log("🚫 Rejecting application:", {
         applicationId: application.id,
-        remarks,
+        remarks: rejectionComments,
       });
 
       setNotification({
         isOpen: true,
-        message: "The application has been rejected successfully!",
-        type: "success",
-        title: "Application Rejected Successfully!",
-        autoClose: true,
+        message: "Rejection not supported for this role.",
+        type: "error",
+        title: "Rejection Failed",
+        autoClose: false,
       });
-
-      setTimeout(() => {
-        navigate(backPath);
-      }, 2000);
+      setIsRejecting(false);
     } catch (error) {
       console.error("❌ Error rejecting application:", error);
       setNotification({
@@ -706,7 +850,13 @@ const ViewPositionApplication: React.FC = () => {
         title: "Rejection Failed",
         autoClose: false,
       });
+      setIsRejecting(false);
     }
+  };
+
+  const openRejectModal = () => {
+    setRejectionComments("");
+    setShowRejectModal(true);
   };
 
   // OTP Verification Functions for AE, EE, CE Officers
@@ -2444,7 +2594,7 @@ const ViewPositionApplication: React.FC = () => {
             <button
               className="pmc-button pmc-button-danger"
               title="Reject Application"
-              onClick={handleRejectApplication}
+              onClick={openRejectModal}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -2524,7 +2674,7 @@ const ViewPositionApplication: React.FC = () => {
             <button
               className="pmc-button pmc-button-danger"
               title="Reject Application"
-              onClick={handleRejectApplication}
+              onClick={openRejectModal}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -2583,7 +2733,7 @@ const ViewPositionApplication: React.FC = () => {
             <button
               className="pmc-button pmc-button-danger"
               title="Reject Application"
-              onClick={handleRejectApplication}
+              onClick={openRejectModal}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -4312,6 +4462,138 @@ const ViewPositionApplication: React.FC = () => {
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
         />
+
+        {/* Reject Modal */}
+        {showRejectModal && application && (
+          <div
+            className="pmc-modal-overlay"
+            onClick={() => setShowRejectModal(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+          >
+            <div
+              className="pmc-modal pmc-slideInUp"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "white",
+                borderRadius: "8px",
+                maxWidth: "500px",
+                width: "100%",
+              }}
+            >
+              <div
+                style={{
+                  padding: "16px 20px",
+                  borderBottom: "1px solid #e5e7eb",
+                  background:
+                    "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                }}
+              >
+                <h3 style={{ color: "white", margin: 0, fontSize: "17px" }}>
+                  Reject Application
+                </h3>
+              </div>
+
+              <div style={{ padding: "20px" }}>
+                <p style={{ marginBottom: "12px", color: "#475569" }}>
+                  <strong>Application:</strong> {application.applicationNumber}
+                </p>
+                <p style={{ marginBottom: "16px", color: "#475569" }}>
+                  <strong>Applicant:</strong>{" "}
+                  {`${application.firstName || ""} ${
+                    application.lastName || ""
+                  }`.trim()}
+                </p>
+
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "8px",
+                    fontWeight: 600,
+                    color: "#334155",
+                  }}
+                >
+                  Rejection Comments <span style={{ color: "#dc2626" }}>*</span>
+                </label>
+                <textarea
+                  placeholder="Enter detailed rejection comments (mandatory)"
+                  value={rejectionComments}
+                  onChange={(e) => setRejectionComments(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: "100px",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    fontFamily: "inherit",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  padding: "14px 20px",
+                  borderTop: "1px solid #e5e7eb",
+                  display: "flex",
+                  gap: "10px",
+                  justifyContent: "flex-end",
+                  background: "#f9fafb",
+                }}
+              >
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  disabled={isRejecting}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: "14px",
+                    background: "white",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    cursor: isRejecting ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRejectApplication}
+                  disabled={isRejecting || !rejectionComments.trim()}
+                  style={{
+                    padding: "8px 20px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    background:
+                      isRejecting || !rejectionComments.trim()
+                        ? "#9ca3af"
+                        : "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor:
+                      isRejecting || !rejectionComments.trim()
+                        ? "not-allowed"
+                        : "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  Reject Application
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Full Screen Loader */}
