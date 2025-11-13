@@ -12,6 +12,7 @@ import {
   Eye,
   CreditCard,
   Info,
+  AlertCircle,
 } from "lucide-react";
 import positionRegistrationService, {
   type PositionRegistrationResponse,
@@ -818,16 +819,19 @@ const ViewPositionApplication: React.FC = () => {
     );
   }
 
-  const getStatusBadge = (status: number, statusName: string) => {
+  const getStatusBadge = (status: number | string, statusName: string) => {
     // Use statusName from backend for display
     const displayText = statusName || "Under Review";
+
+    // Convert status to number for comparison
+    const statusNum = typeof status === "string" ? parseInt(status) : status;
 
     // Determine badge class based on status code
     let badgeClass = "pmc-badge pmc-status-under-review";
 
-    if (status === 1) {
+    if (statusNum === 1) {
       badgeClass = "pmc-badge pmc-status-pending"; // Draft
-    } else if (status === 23) {
+    } else if (statusNum === 23) {
       badgeClass = "pmc-badge pmc-status-approved"; // Completed
     }
 
@@ -882,6 +886,92 @@ const ViewPositionApplication: React.FC = () => {
             {getStatusBadge(application.status, application.statusName)}
           </div>
         </div>
+
+        {/* Rejection Banner - Only show if application is rejected */}
+        {(application.status === 37 || application.status === "REJECTED") && (
+          <div
+            className="pmc-fadeIn"
+            style={{
+              padding: "16px 20px",
+              marginBottom: "20px",
+              background: "linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)",
+              border: "2px solid #fca5a5",
+              borderRadius: "10px",
+              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.1)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "flex-start",
+                marginBottom: "12px",
+              }}
+            >
+              <AlertCircle
+                size={24}
+                style={{ color: "#dc2626", flexShrink: 0, marginTop: "2px" }}
+              />
+              <div style={{ flex: 1 }}>
+                <h3
+                  className="pmc-text-lg pmc-font-bold"
+                  style={{ color: "#dc2626", marginBottom: "8px" }}
+                >
+                  Application Rejected
+                </h3>
+                <p
+                  className="pmc-text-sm pmc-font-semibold"
+                  style={{ color: "#7f1d1d", marginBottom: "6px" }}
+                >
+                  Rejection Reason:
+                </p>
+                <p
+                  className="pmc-text-sm"
+                  style={{
+                    color: "#7f1d1d",
+                    lineHeight: "1.7",
+                    background: "rgba(127, 29, 29, 0.05)",
+                    padding: "10px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid rgba(127, 29, 29, 0.15)",
+                  }}
+                >
+                  {application.jeRejectionStatus &&
+                  application.jeRejectionComments
+                    ? `Junior Engineer: ${application.jeRejectionComments}`
+                    : application.aeArchitectRejectionStatus &&
+                      application.aeArchitectRejectionComments
+                    ? `Assistant Engineer (Architect): ${application.aeArchitectRejectionComments}`
+                    : application.aeStructuralRejectionStatus &&
+                      application.aeStructuralRejectionComments
+                    ? `Assistant Engineer (Structural): ${application.aeStructuralRejectionComments}`
+                    : application.executiveEngineerRejectionStatus &&
+                      application.executiveEngineerRejectionComments
+                    ? `Executive Engineer: ${application.executiveEngineerRejectionComments}`
+                    : application.cityEngineerRejectionStatus &&
+                      application.cityEngineerRejectionComments
+                    ? `City Engineer: ${application.cityEngineerRejectionComments}`
+                    : application.remarks || "No rejection comments provided"}
+                </p>
+              </div>
+            </div>
+            <div
+              style={{
+                paddingTop: "12px",
+                borderTop: "1px solid rgba(220, 38, 38, 0.2)",
+              }}
+            >
+              <p
+                className="pmc-text-sm pmc-font-medium"
+                style={{ color: "#991b1b" }}
+              >
+                📝 Please review the rejection comments above and make necessary
+                corrections. You can resubmit your application from the
+                dashboard.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Basic Information */}
         <div className="pmc-card" style={{ marginBottom: "16px" }}>
@@ -1413,10 +1503,19 @@ const ViewPositionApplication: React.FC = () => {
         {/* License Certificate - Separate Section */}
         {/* Show for: (1) Payment complete OR (2) Architect position at Clerk stage or beyond */}
         {(application.isPaymentComplete ||
-          (application.positionType === 0 && application.status >= 35)) && // Architect at CLERK_PENDING (35) or beyond
+          (application.positionType === 0 &&
+            (typeof application.status === "number"
+              ? application.status
+              : parseInt(application.status)) >= 35)) && // Architect at CLERK_PENDING (35) or beyond
           (isClerkOfficer ||
-            (isEEOfficer && application.status >= 19) || // EE Stage 2 (Digital Signature stages)
-            (isCEOfficer && application.status >= 21) || // CE Stage 2 (Final Approval stages)
+            (isEEOfficer &&
+              (typeof application.status === "number"
+                ? application.status
+                : parseInt(application.status)) >= 19) || // EE Stage 2 (Digital Signature stages)
+            (isCEOfficer &&
+              (typeof application.status === "number"
+                ? application.status
+                : parseInt(application.status)) >= 21) || // CE Stage 2 (Final Approval stages)
             (!isJEOfficer &&
               !isAEOfficer &&
               !isEEOfficer &&

@@ -968,8 +968,10 @@ namespace PMCRMS.API.Services
             {
                 // ✅ Only show applications that are still pending JE action
                 // Exclude applications where JE has completed verification and digital signature
+                // Exclude REJECTED applications
                 var applications = await _context.PositionApplications
                     .Where(a => a.AssignedJuniorEngineerId == officerId 
+                        && a.Status != ApplicationCurrentStatus.REJECTED
                         && (!a.JEDigitalSignatureApplied || a.Status != ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING))
                     .ToListAsync();
 

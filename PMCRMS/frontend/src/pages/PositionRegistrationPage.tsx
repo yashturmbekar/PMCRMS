@@ -36,6 +36,8 @@ const POSITION_CONFIG = {
       experience: false,
       coaCertificate: true, // Council of Architecture Certificate
       isseCertificate: false,
+      ugcRecognition: false,
+      aicteApproval: false,
       propertyTaxReceipt: true,
       additionalDocuments: true,
       selfDeclaration: true,
@@ -48,9 +50,10 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
       "Council of Architecture Certificate",
       "Degree Certificate",
       "Marksheet",
-      "Address Proof",
-      "Identity Proof",
+      "Address Proof (Aadhar Card)",
+      "Identity Proof (PAN Card)",
       "Self Declaration Form",
+      "Photo",
     ],
   },
   [PositionType.LicenceEngineer]: {
@@ -69,6 +72,8 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
       experience: true,
       coaCertificate: false,
       isseCertificate: false,
+      ugcRecognition: true, // For out of Maharashtra degrees
+      aicteApproval: true, // AICTE approval required
       propertyTaxReceipt: true,
       additionalDocuments: true,
       selfDeclaration: true,
@@ -81,12 +86,12 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
     documentsRequired: [
       "Degree Certificate",
       "Marksheet",
-      "Address Proof - Aadhar Card",
-      "Identity Proof - PAN Card",
+      "Address Proof (Aadhar Card)",
+      "Identity Proof (PAN Card)",
       "Self Declaration Form",
-      "Experience Certificate",
+      "Experience Certificate (10 years in land and building planning)",
       "Degree out of Maharashtra - UGC Recognition",
-      "A.I.C.T.E Approved",
+      "AICTE Approval",
     ],
   },
   [PositionType.StructuralEngineer]: {
@@ -105,6 +110,8 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
       experience: true,
       coaCertificate: false,
       isseCertificate: true, // Indian Society of Structural Engineers
+      ugcRecognition: true, // For degree recognition
+      aicteApproval: true, // AICTE approval required
       propertyTaxReceipt: true,
       additionalDocuments: true,
       selfDeclaration: true,
@@ -123,11 +130,11 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
       "Degree Certificate",
       "Marksheet",
       "I.S.S.E Certificate",
-      "Experience Certificate (BE: 3 years, ME: 2 years, PhD: 1 year)",
-      "Address Proof - Aadhar Card",
-      "Identity Proof - PAN Card",
+      "Experience Certificate - BE: 3 years, ME/M.Tech/M.S: 2 years, PhD: 1 year in structural designing",
+      "Address Proof (Aadhar Card)",
+      "Identity Proof (PAN Card)",
       "Degree from UGC recognized University",
-      "AICTE Approved",
+      "AICTE Approval",
       "Self Declaration Form",
       "Photo",
     ],
@@ -148,6 +155,8 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
       experience: true,
       coaCertificate: false,
       isseCertificate: false,
+      ugcRecognition: false,
+      aicteApproval: false,
       propertyTaxReceipt: true,
       additionalDocuments: true,
       selfDeclaration: true,
@@ -165,10 +174,11 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
     documentsRequired: [
       "Diploma / I.T.I Certificate",
       "Marksheet",
-      "Experience Certificate (Diploma: 2 years, ITI: 10 years)",
-      "Address Proof",
-      "Identity Proof",
-      "Self Declaration Form + Photo",
+      "Experience Certificate - Diploma in Civil/Equivalent: 2 years, ITI in Civil/Equivalent: 10 years (5 years under Architect/Engineer)",
+      "Address Proof (Aadhar Card)",
+      "Identity Proof (PAN Card)",
+      "Self Declaration Form",
+      "Photo",
     ],
   },
   [PositionType.Supervisor2]: {
@@ -187,6 +197,8 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
       experience: true,
       coaCertificate: false,
       isseCertificate: false,
+      ugcRecognition: false,
+      aicteApproval: false,
       propertyTaxReceipt: true,
       additionalDocuments: true,
       selfDeclaration: true,
@@ -204,10 +216,11 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
     documentsRequired: [
       "Diploma / I.T.I Certificate",
       "Marksheet",
-      "Experience Certificate (Diploma: 2 years, ITI: 10 years)",
-      "Address Proof",
-      "Identity Proof",
-      "Self Declaration Form + Photo",
+      "Experience Certificate - Diploma in Civil/Equivalent: 2 years, ITI in Civil/Equivalent: 10 years (5 years under Architect/Engineer)",
+      "Address Proof (Aadhar Card)",
+      "Identity Proof (PAN Card)",
+      "Self Declaration Form",
+      "Photo",
     ],
   },
 };
@@ -238,6 +251,13 @@ const SEDocumentType = {
   SelfDeclaration: 9,
   COACertificate: 10,
   AdditionalDocument: 11,
+  RecommendedForm: 12,
+  PaymentChallan: 13,
+  LicenceCertificate: 14,
+  UGCRecognition: 15,
+  AICTEApproval: 16,
+  ITICertificate: 17,
+  DiplomaCertificate: 18,
 } as const;
 
 type PositionTypeValue = (typeof PositionType)[keyof typeof PositionType];
@@ -280,6 +300,9 @@ interface Document {
   fileName: string;
   fileId: string;
   file?: File;
+  fileBase64?: string;
+  fileSize?: number;
+  contentType?: string;
 }
 
 interface FormData {
@@ -839,14 +862,28 @@ export const PositionRegistrationPage = () => {
     const panDoc = formData.documents.find(
       (d) => d.documentType === SEDocumentType.PanCard
     );
-    if (!panDoc) errors.push("PAN card document upload is required");
+    // Only require upload if document doesn't already exist (resubmit mode keeps existing docs)
+    if (
+      !panDoc ||
+      ((!panDoc.fileBase64 || panDoc.fileBase64.trim() === "") &&
+        (!panDoc.filePath || panDoc.filePath.trim() === ""))
+    ) {
+      errors.push("PAN card document upload is required");
+    }
 
     // Aadhar validation
     if (!formData.aadharCardNumber) errors.push("Aadhar number is required");
     const aadharDoc = formData.documents.find(
       (d) => d.documentType === SEDocumentType.AadharCard
     );
-    if (!aadharDoc) errors.push("Aadhar card document upload is required");
+    // Only require upload if document doesn't already exist (resubmit mode keeps existing docs)
+    if (
+      !aadharDoc ||
+      ((!aadharDoc.fileBase64 || aadharDoc.fileBase64.trim() === "") &&
+        (!aadharDoc.filePath || aadharDoc.filePath.trim() === ""))
+    ) {
+      errors.push("Aadhar card document upload is required");
+    }
 
     // Qualifications validation
     if (config.sections.qualifications) {
@@ -883,10 +920,16 @@ export const PositionRegistrationPage = () => {
       const propertyTaxDoc = formData.documents.find(
         (d) => d.documentType === SEDocumentType.PropertyTaxReceipt
       );
-      if (!propertyTaxDoc)
+      if (
+        !propertyTaxDoc ||
+        ((!propertyTaxDoc.fileBase64 ||
+          propertyTaxDoc.fileBase64.trim() === "") &&
+          (!propertyTaxDoc.filePath || propertyTaxDoc.filePath.trim() === ""))
+      ) {
         errors.push(
           "Property tax receipt / rent agreement / electricity bill is required"
         );
+      }
     }
 
     // ISSE Certificate validation
@@ -894,7 +937,13 @@ export const PositionRegistrationPage = () => {
       const isseDoc = formData.documents.find(
         (d) => d.documentType === SEDocumentType.ISSECertificate
       );
-      if (!isseDoc) errors.push("ISSE certificate is required");
+      if (
+        !isseDoc ||
+        ((!isseDoc.fileBase64 || isseDoc.fileBase64.trim() === "") &&
+          (!isseDoc.filePath || isseDoc.filePath.trim() === ""))
+      ) {
+        errors.push("ISSE certificate is required");
+      }
     }
 
     // COA Certificate validation
@@ -902,8 +951,41 @@ export const PositionRegistrationPage = () => {
       const coaDoc = formData.documents.find(
         (d) => d.documentType === SEDocumentType.COACertificate
       );
-      if (!coaDoc)
-        errors.push("Council of Architecture certificate is required");
+      if (
+        !coaDoc ||
+        ((!coaDoc.fileBase64 || coaDoc.fileBase64.trim() === "") &&
+          (!coaDoc.filePath || coaDoc.filePath.trim() === ""))
+      ) {
+        errors.push("Council of Architecture (COA) certificate is required");
+      }
+    }
+
+    // UGC Recognition validation
+    if (config.sections.ugcRecognition) {
+      const ugcDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.UGCRecognition
+      );
+      if (
+        !ugcDoc ||
+        ((!ugcDoc.fileBase64 || ugcDoc.fileBase64.trim() === "") &&
+          (!ugcDoc.filePath || ugcDoc.filePath.trim() === ""))
+      ) {
+        errors.push("UGC Recognition certificate is required");
+      }
+    }
+
+    // AICTE Approval validation
+    if (config.sections.aicteApproval) {
+      const aicteDoc = formData.documents.find(
+        (d) => d.documentType === SEDocumentType.AICTEApproval
+      );
+      if (
+        !aicteDoc ||
+        ((!aicteDoc.fileBase64 || aicteDoc.fileBase64.trim() === "") &&
+          (!aicteDoc.filePath || aicteDoc.filePath.trim() === ""))
+      ) {
+        errors.push("AICTE Approval certificate is required");
+      }
     }
 
     // Self Declaration validation
@@ -911,7 +993,13 @@ export const PositionRegistrationPage = () => {
       const selfDecDoc = formData.documents.find(
         (d) => d.documentType === SEDocumentType.SelfDeclaration
       );
-      if (!selfDecDoc) errors.push("Self declaration document is required");
+      if (
+        !selfDecDoc ||
+        ((!selfDecDoc.fileBase64 || selfDecDoc.fileBase64.trim() === "") &&
+          (!selfDecDoc.filePath || selfDecDoc.filePath.trim() === ""))
+      ) {
+        errors.push("Self declaration document is required");
+      }
     }
 
     // Profile Picture validation
@@ -919,7 +1007,14 @@ export const PositionRegistrationPage = () => {
       const profilePicDoc = formData.documents.find(
         (d) => d.documentType === SEDocumentType.ProfilePicture
       );
-      if (!profilePicDoc) errors.push("Profile picture is required");
+      if (
+        !profilePicDoc ||
+        ((!profilePicDoc.fileBase64 ||
+          profilePicDoc.fileBase64.trim() === "") &&
+          (!profilePicDoc.filePath || profilePicDoc.filePath.trim() === ""))
+      ) {
+        errors.push("Profile picture is required");
+      }
     }
 
     if (errors.length > 0) {
@@ -1210,9 +1305,35 @@ export const PositionRegistrationPage = () => {
         );
 
         // Store rejection comments if in resubmit mode
-        if (isResubmit && response.status === 37 && response.remarks) {
-          // Status 37 = REJECTED
-          setRejectionComments(response.remarks);
+        if (isResubmit && response.status === 37) {
+          // Status 37 = REJECTED - Get rejection comments from the officer who rejected
+          let comments = "";
+          if (response.jeRejectionStatus && response.jeRejectionComments) {
+            comments = `Junior Engineer: ${response.jeRejectionComments}`;
+          } else if (
+            response.aeArchitectRejectionStatus &&
+            response.aeArchitectRejectionComments
+          ) {
+            comments = `Assistant Engineer (Architect): ${response.aeArchitectRejectionComments}`;
+          } else if (
+            response.aeStructuralRejectionStatus &&
+            response.aeStructuralRejectionComments
+          ) {
+            comments = `Assistant Engineer (Structural): ${response.aeStructuralRejectionComments}`;
+          } else if (
+            response.executiveEngineerRejectionStatus &&
+            response.executiveEngineerRejectionComments
+          ) {
+            comments = `Executive Engineer: ${response.executiveEngineerRejectionComments}`;
+          } else if (
+            response.cityEngineerRejectionStatus &&
+            response.cityEngineerRejectionComments
+          ) {
+            comments = `City Engineer: ${response.cityEngineerRejectionComments}`;
+          } else {
+            comments = response.remarks || "No rejection comments provided";
+          }
+          setRejectionComments(comments);
         }
 
         // Map API response to form data
@@ -1305,6 +1426,9 @@ export const PositionRegistrationPage = () => {
               documentType: (d.documentType as SEDocumentTypeValue) ?? 0,
               fileName: d.fileName || "",
               filePath: d.filePath || "",
+              fileBase64: d.fileBase64 || "", // Keep existing file content
+              fileSize: d.fileSize || 0,
+              contentType: d.contentType || "application/pdf",
             })) || [],
         });
 
@@ -2213,6 +2337,37 @@ export const PositionRegistrationPage = () => {
                       Upload - Property Tax Receipt / Copy Of Rent Agreement /
                       Electricity Bill
                     </label>
+                    {/* Show existing document if available */}
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.PropertyTaxReceipt &&
+                        (d.fileBase64 || d.filePath)
+                    ) && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          marginBottom: "8px",
+                          background: "#dcfce7",
+                          border: "1px solid #86efac",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          color: "#166534",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>✓</span>
+                        <span>
+                          Document already uploaded:{" "}
+                          {formData.documents.find(
+                            (d) =>
+                              d.documentType ===
+                              SEDocumentType.PropertyTaxReceipt
+                          )?.fileName || "Previous upload"}
+                        </span>
+                      </div>
+                    )}
                     <input
                       type="file"
                       className={`pmc-input ${
@@ -2236,7 +2391,17 @@ export const PositionRegistrationPage = () => {
                       }}
                       accept=".pdf,.jpg,.jpeg,.png"
                     />
-                    <span className="pmc-help-text">Max file size: 500KB</span>
+                    <span className="pmc-help-text">
+                      Max file size: 500KB
+                      {formData.documents.find(
+                        (d) =>
+                          d.documentType ===
+                            SEDocumentType.PropertyTaxReceipt &&
+                          (d.fileBase64 || d.filePath)
+                      )
+                        ? " (Upload new file to replace existing)"
+                        : ""}
+                    </span>
                     {attemptedSubmit &&
                       !formData.documents.find(
                         (d) =>
@@ -2255,6 +2420,36 @@ export const PositionRegistrationPage = () => {
                       Upload - Indian Society Of Structural Engineer Certificate
                       (PDF File Upto 500 KB)
                     </label>
+                    {/* Show existing document if available */}
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.ISSECertificate &&
+                        (d.fileBase64 || d.filePath)
+                    ) && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          marginBottom: "8px",
+                          background: "#dcfce7",
+                          border: "1px solid #86efac",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          color: "#166534",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>✓</span>
+                        <span>
+                          Document already uploaded:{" "}
+                          {formData.documents.find(
+                            (d) =>
+                              d.documentType === SEDocumentType.ISSECertificate
+                          )?.fileName || "Previous upload"}
+                        </span>
+                      </div>
+                    )}
                     <input
                       type="file"
                       className={`pmc-input ${
@@ -2278,7 +2473,16 @@ export const PositionRegistrationPage = () => {
                       }}
                       accept=".pdf"
                     />
-                    <span className="pmc-help-text">Max file size: 500KB</span>
+                    <span className="pmc-help-text">
+                      Max file size: 500KB
+                      {formData.documents.find(
+                        (d) =>
+                          d.documentType === SEDocumentType.ISSECertificate &&
+                          (d.fileBase64 || d.filePath)
+                      )
+                        ? " (Upload new file to replace existing)"
+                        : ""}
+                    </span>
                     {attemptedSubmit &&
                       !formData.documents.find(
                         (d) => d.documentType === SEDocumentType.ISSECertificate
@@ -2295,6 +2499,36 @@ export const PositionRegistrationPage = () => {
                       Upload - Council of Architecture Certificate (PDF File
                       Upto 500 KB)
                     </label>
+                    {/* Show existing document if available */}
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.COACertificate &&
+                        (d.fileBase64 || d.filePath)
+                    ) && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          marginBottom: "8px",
+                          background: "#dcfce7",
+                          border: "1px solid #86efac",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          color: "#166534",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>✓</span>
+                        <span>
+                          Document already uploaded:{" "}
+                          {formData.documents.find(
+                            (d) =>
+                              d.documentType === SEDocumentType.COACertificate
+                          )?.fileName || "Previous upload"}
+                        </span>
+                      </div>
+                    )}
                     <input
                       type="file"
                       className={`pmc-input ${
@@ -2318,13 +2552,178 @@ export const PositionRegistrationPage = () => {
                       }}
                       accept=".pdf"
                     />
-                    <span className="pmc-help-text">Max file size: 500KB</span>
+                    <span className="pmc-help-text">
+                      Max file size: 500KB
+                      {formData.documents.find(
+                        (d) =>
+                          d.documentType === SEDocumentType.COACertificate &&
+                          (d.fileBase64 || d.filePath)
+                      )
+                        ? " (Upload new file to replace existing)"
+                        : ""}
+                    </span>
                     {attemptedSubmit &&
                       !formData.documents.find(
                         (d) => d.documentType === SEDocumentType.COACertificate
                       ) && (
                         <span className="pmc-text-error">
                           Council of Architecture certificate is required
+                        </span>
+                      )}
+                  </div>
+                )}
+                {config.sections.ugcRecognition && (
+                  <div className="pmc-form-group">
+                    <label className="pmc-label pmc-label-required">
+                      Upload - UGC Recognition Certificate (PDF File Upto 500
+                      KB)
+                    </label>
+                    {/* Show existing document if available */}
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.UGCRecognition &&
+                        (d.fileBase64 || d.filePath)
+                    ) && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          marginBottom: "8px",
+                          background: "#dcfce7",
+                          border: "1px solid #86efac",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          color: "#166534",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>✓</span>
+                        <span>
+                          Document already uploaded:{" "}
+                          {formData.documents.find(
+                            (d) =>
+                              d.documentType === SEDocumentType.UGCRecognition
+                          )?.fileName || "Previous upload"}
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      className={`pmc-input ${
+                        attemptedSubmit &&
+                        !formData.documents.find(
+                          (d) =>
+                            d.documentType === SEDocumentType.UGCRecognition
+                        )
+                          ? "pmc-input-error"
+                          : ""
+                      }`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(
+                            SEDocumentType.UGCRecognition,
+                            "DOC_UGC",
+                            file
+                          );
+                        }
+                      }}
+                      accept=".pdf"
+                    />
+                    <span className="pmc-help-text">
+                      Max file size: 500KB
+                      {formData.documents.find(
+                        (d) =>
+                          d.documentType === SEDocumentType.UGCRecognition &&
+                          (d.fileBase64 || d.filePath)
+                      )
+                        ? " (Upload new file to replace existing)"
+                        : ""}
+                    </span>
+                    {attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.UGCRecognition
+                      ) && (
+                        <span className="pmc-text-error">
+                          UGC Recognition certificate is required
+                        </span>
+                      )}
+                  </div>
+                )}
+                {config.sections.aicteApproval && (
+                  <div className="pmc-form-group">
+                    <label className="pmc-label pmc-label-required">
+                      Upload - AICTE Approval Certificate (PDF File Upto 500 KB)
+                    </label>
+                    {/* Show existing document if available */}
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.AICTEApproval &&
+                        (d.fileBase64 || d.filePath)
+                    ) && (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          marginBottom: "8px",
+                          background: "#dcfce7",
+                          border: "1px solid #86efac",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          color: "#166534",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>✓</span>
+                        <span>
+                          Document already uploaded:{" "}
+                          {formData.documents.find(
+                            (d) =>
+                              d.documentType === SEDocumentType.AICTEApproval
+                          )?.fileName || "Previous upload"}
+                        </span>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      className={`pmc-input ${
+                        attemptedSubmit &&
+                        !formData.documents.find(
+                          (d) => d.documentType === SEDocumentType.AICTEApproval
+                        )
+                          ? "pmc-input-error"
+                          : ""
+                      }`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(
+                            SEDocumentType.AICTEApproval,
+                            "DOC_AICTE",
+                            file
+                          );
+                        }
+                      }}
+                      accept=".pdf"
+                    />
+                    <span className="pmc-help-text">
+                      Max file size: 500KB
+                      {formData.documents.find(
+                        (d) =>
+                          d.documentType === SEDocumentType.AICTEApproval &&
+                          (d.fileBase64 || d.filePath)
+                      )
+                        ? " (Upload new file to replace existing)"
+                        : ""}
+                    </span>
+                    {attemptedSubmit &&
+                      !formData.documents.find(
+                        (d) => d.documentType === SEDocumentType.AICTEApproval
+                      ) && (
+                        <span className="pmc-text-error">
+                          AICTE Approval certificate is required
                         </span>
                       )}
                   </div>
@@ -2891,6 +3290,35 @@ export const PositionRegistrationPage = () => {
                   <label className="pmc-label pmc-label-required">
                     Upload PAN Card Attachment (Max 500KB)
                   </label>
+                  {/* Show existing document if available */}
+                  {formData.documents.find(
+                    (d) =>
+                      d.documentType === SEDocumentType.PanCard &&
+                      (d.fileBase64 || d.filePath)
+                  ) && (
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        marginBottom: "8px",
+                        background: "#dcfce7",
+                        border: "1px solid #86efac",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        color: "#166534",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={{ fontSize: "16px" }}>✓</span>
+                      <span>
+                        Document already uploaded:{" "}
+                        {formData.documents.find(
+                          (d) => d.documentType === SEDocumentType.PanCard
+                        )?.fileName || "Previous upload"}
+                      </span>
+                    </div>
+                  )}
                   <input
                     type="file"
                     className={`pmc-input ${
@@ -2912,8 +3340,17 @@ export const PositionRegistrationPage = () => {
                       }
                     }}
                     accept=".pdf,.jpg,.jpeg,.png"
-                    required
                   />
+                  <span className="pmc-help-text">
+                    Max file size: 500KB
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.PanCard &&
+                        (d.fileBase64 || d.filePath)
+                    )
+                      ? " (Upload new file to replace existing)"
+                      : ""}
+                  </span>
                   {attemptedSubmit &&
                     !formData.documents.find(
                       (d) => d.documentType === SEDocumentType.PanCard
@@ -3002,6 +3439,35 @@ export const PositionRegistrationPage = () => {
                   <label className="pmc-label pmc-label-required">
                     Upload Aadhar Attachment (Max 500KB)
                   </label>
+                  {/* Show existing document if available */}
+                  {formData.documents.find(
+                    (d) =>
+                      d.documentType === SEDocumentType.AadharCard &&
+                      (d.fileBase64 || d.filePath)
+                  ) && (
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        marginBottom: "8px",
+                        background: "#dcfce7",
+                        border: "1px solid #86efac",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        color: "#166534",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={{ fontSize: "16px" }}>✓</span>
+                      <span>
+                        Document already uploaded:{" "}
+                        {formData.documents.find(
+                          (d) => d.documentType === SEDocumentType.AadharCard
+                        )?.fileName || "Previous upload"}
+                      </span>
+                    </div>
+                  )}
                   <input
                     type="file"
                     className={`pmc-input ${
@@ -3023,8 +3489,17 @@ export const PositionRegistrationPage = () => {
                       }
                     }}
                     accept=".pdf,.jpg,.jpeg,.png"
-                    required
                   />
+                  <span className="pmc-help-text">
+                    Max file size: 500KB
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.AadharCard &&
+                        (d.fileBase64 || d.filePath)
+                    )
+                      ? " (Upload new file to replace existing)"
+                      : ""}
+                  </span>
                   {attemptedSubmit &&
                     !formData.documents.find(
                       (d) => d.documentType === SEDocumentType.AadharCard
@@ -3877,6 +4352,36 @@ export const PositionRegistrationPage = () => {
                   <label className="pmc-label pmc-label-required">
                     Upload Self Declaration
                   </label>
+                  {/* Show existing document if available */}
+                  {formData.documents.find(
+                    (d) =>
+                      d.documentType === SEDocumentType.SelfDeclaration &&
+                      (d.fileBase64 || d.filePath)
+                  ) && (
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        marginBottom: "8px",
+                        background: "#dcfce7",
+                        border: "1px solid #86efac",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        color: "#166534",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={{ fontSize: "16px" }}>✓</span>
+                      <span>
+                        Document already uploaded:{" "}
+                        {formData.documents.find(
+                          (d) =>
+                            d.documentType === SEDocumentType.SelfDeclaration
+                        )?.fileName || "Previous upload"}
+                      </span>
+                    </div>
+                  )}
                   <input
                     type="file"
                     className={`pmc-input ${
@@ -3898,8 +4403,17 @@ export const PositionRegistrationPage = () => {
                       }
                     }}
                     accept=".pdf"
-                    required
                   />
+                  <span className="pmc-help-text">
+                    Max file size: 500KB
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.SelfDeclaration &&
+                        (d.fileBase64 || d.filePath)
+                    )
+                      ? " (Upload new file to replace existing)"
+                      : ""}
+                  </span>
                   {attemptedSubmit &&
                     !formData.documents.find(
                       (d) => d.documentType === SEDocumentType.SelfDeclaration
@@ -3960,6 +4474,36 @@ export const PositionRegistrationPage = () => {
                   <label className="pmc-label pmc-label-required">
                     Upload ProfilePicture (Max 500KB)
                   </label>
+                  {/* Show existing document if available */}
+                  {formData.documents.find(
+                    (d) =>
+                      d.documentType === SEDocumentType.ProfilePicture &&
+                      (d.fileBase64 || d.filePath)
+                  ) && (
+                    <div
+                      style={{
+                        padding: "8px 12px",
+                        marginBottom: "8px",
+                        background: "#dcfce7",
+                        border: "1px solid #86efac",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        color: "#166534",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={{ fontSize: "16px" }}>✓</span>
+                      <span>
+                        Document already uploaded:{" "}
+                        {formData.documents.find(
+                          (d) =>
+                            d.documentType === SEDocumentType.ProfilePicture
+                        )?.fileName || "Previous upload"}
+                      </span>
+                    </div>
+                  )}
                   <input
                     type="file"
                     className={`pmc-input ${
@@ -3981,8 +4525,17 @@ export const PositionRegistrationPage = () => {
                       }
                     }}
                     accept=".jpg,.jpeg,.png"
-                    required
                   />
+                  <span className="pmc-help-text">
+                    Max file size: 500KB
+                    {formData.documents.find(
+                      (d) =>
+                        d.documentType === SEDocumentType.ProfilePicture &&
+                        (d.fileBase64 || d.filePath)
+                    )
+                      ? " (Upload new file to replace existing)"
+                      : ""}
+                  </span>
                   {attemptedSubmit &&
                     !formData.documents.find(
                       (d) => d.documentType === SEDocumentType.ProfilePicture

@@ -1506,9 +1506,37 @@ namespace PMCRMS.API.Controllers
                 CreatedDate = application.CreatedDate,
                 UpdatedDate = application.UpdatedDate,
                 
+                // Rejection Information (Stage 1 Officers only)
+                JERejectionStatus = application.JERejectionStatus,
+                JERejectionComments = application.JERejectionComments,
+                JERejectionDate = application.JERejectionDate,
+                
+                AEArchitectRejectionStatus = application.AEArchitectRejectionStatus,
+                AEArchitectRejectionComments = application.AEArchitectRejectionComments,
+                AEArchitectRejectionDate = application.AEArchitectRejectionDate,
+                
+                AEStructuralRejectionStatus = application.AEStructuralRejectionStatus,
+                AEStructuralRejectionComments = application.AEStructuralRejectionComments,
+                AEStructuralRejectionDate = application.AEStructuralRejectionDate,
+                
+                ExecutiveEngineerRejectionStatus = application.ExecutiveEngineerRejectionStatus,
+                ExecutiveEngineerRejectionComments = application.ExecutiveEngineerRejectionComments,
+                ExecutiveEngineerRejectionDate = application.ExecutiveEngineerRejectionDate,
+                
+                CityEngineerRejectionStatus = application.CityEngineerRejectionStatus,
+                CityEngineerRejectionComments = application.CityEngineerRejectionComments,
+                CityEngineerRejectionDate = application.CityEngineerRejectionDate,
+                
                 // Payment Information - Derive from status and transaction data
-                IsPaymentComplete = application.Status == ApplicationCurrentStatus.PaymentCompleted || 
-                                   application.Status > ApplicationCurrentStatus.PaymentCompleted,
+                // Check if application has actually completed payment
+                IsPaymentComplete = application.Status == ApplicationCurrentStatus.PaymentCompleted ||
+                                   application.Status == ApplicationCurrentStatus.UnderProcessingByClerk ||
+                                   application.Status == ApplicationCurrentStatus.ProcessedByClerk ||
+                                   application.Status == ApplicationCurrentStatus.UnderDigitalSignatureByEE2 ||
+                                   application.Status == ApplicationCurrentStatus.DigitalSignatureCompletedByEE2 ||
+                                   application.Status == ApplicationCurrentStatus.UnderFinalApprovalByCE2 ||
+                                   application.Status == ApplicationCurrentStatus.CertificateIssued ||
+                                   application.Status == ApplicationCurrentStatus.Completed,
                 PaymentCompletedDate = GetPaymentCompletedDate(application),
                 ChallanAmount = GetChallanAmount(application),
                 ChallanNumber = GetChallanNumber(application),
@@ -1958,7 +1986,29 @@ namespace PMCRMS.API.Controllers
         /// </summary>
         private decimal? GetChallanAmount(PositionApplication application)
         {
-            // Get amount from Challan table if challan was generated
+            // FIRST: Check if application status allows showing payment
+            // Payment section should ONLY show after City Engineer Stage 1 approval
+            // Allowed statuses: ApprovedByCE1 (13), PaymentPending (15), PaymentCompleted (16), and any status after payment
+            var allowedStatuses = new[]
+            {
+                ApplicationCurrentStatus.ApprovedByCE1,
+                ApplicationCurrentStatus.PaymentPending,
+                ApplicationCurrentStatus.PaymentCompleted,
+                ApplicationCurrentStatus.UnderProcessingByClerk,
+                ApplicationCurrentStatus.ProcessedByClerk,
+                ApplicationCurrentStatus.UnderDigitalSignatureByEE2,
+                ApplicationCurrentStatus.DigitalSignatureCompletedByEE2,
+                ApplicationCurrentStatus.UnderFinalApprovalByCE2,
+                ApplicationCurrentStatus.CertificateIssued,
+                ApplicationCurrentStatus.Completed
+            };
+            
+            if (!allowedStatuses.Contains(application.Status))
+            {
+                return null;  // Don't show payment for applications not yet approved by CE Stage 1
+            }
+            
+            // Get amount from Challan table if challan was already generated
             var challan = _context.Challans
                 .Where(c => c.ApplicationId == application.Id)
                 .FirstOrDefault();
@@ -1968,7 +2018,7 @@ namespace PMCRMS.API.Controllers
                 return challan.Amount;
             }
             
-            // Fallback: Calculate expected amount based on position type
+            // Calculate expected payment amount based on position type
             return application.PositionType switch
             {
                 PositionType.Architect => 0m,

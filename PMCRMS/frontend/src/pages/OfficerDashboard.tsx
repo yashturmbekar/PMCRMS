@@ -1269,25 +1269,29 @@ const OfficerDashboard: React.FC = () => {
                                   />
                                   Verify
                                 </button>
-                                <button
-                                  className="pmc-button pmc-button-sm"
-                                  onClick={() => handleRejectClick(app)}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    background:
-                                      "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-                                    color: "white",
-                                  }}
-                                >
-                                  <XCircle
-                                    style={{ width: "16px", height: "16px" }}
-                                  />
-                                  Reject
-                                </button>
+                                {/* Only Stage 1 officers can reject */}
+                                {!app.isStage2 && (
+                                  <button
+                                    className="pmc-button pmc-button-sm"
+                                    onClick={() => handleRejectClick(app)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "4px",
+                                      background:
+                                        "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                                      color: "white",
+                                    }}
+                                  >
+                                    <XCircle
+                                      style={{ width: "16px", height: "16px" }}
+                                    />
+                                    Reject
+                                  </button>
+                                )}
                               </>
                             )}
+                            {/* Clerk cannot reject applications */}
                             {officerConfig.type === "Clerk" && (
                               <>
                                 <button
@@ -1303,23 +1307,6 @@ const OfficerDashboard: React.FC = () => {
                                     style={{ width: "16px", height: "16px" }}
                                   />
                                   Approve
-                                </button>
-                                <button
-                                  className="pmc-button pmc-button-sm"
-                                  onClick={() => handleRejectClick(app)}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "4px",
-                                    background:
-                                      "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
-                                    color: "white",
-                                  }}
-                                >
-                                  <XCircle
-                                    style={{ width: "16px", height: "16px" }}
-                                  />
-                                  Reject
                                 </button>
                               </>
                             )}

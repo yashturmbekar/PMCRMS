@@ -220,6 +220,27 @@ namespace PMCRMS.API.DTOs
         public DateTime CreatedDate { get; set; }
         public DateTime? UpdatedDate { get; set; }
         
+        // Rejection Information (Stage 1 Officers only)
+        public bool? JERejectionStatus { get; set; }
+        public string? JERejectionComments { get; set; }
+        public DateTime? JERejectionDate { get; set; }
+        
+        public bool? AEArchitectRejectionStatus { get; set; }
+        public string? AEArchitectRejectionComments { get; set; }
+        public DateTime? AEArchitectRejectionDate { get; set; }
+        
+        public bool? AEStructuralRejectionStatus { get; set; }
+        public string? AEStructuralRejectionComments { get; set; }
+        public DateTime? AEStructuralRejectionDate { get; set; }
+        
+        public bool? ExecutiveEngineerRejectionStatus { get; set; }
+        public string? ExecutiveEngineerRejectionComments { get; set; }
+        public DateTime? ExecutiveEngineerRejectionDate { get; set; }
+        
+        public bool? CityEngineerRejectionStatus { get; set; }
+        public string? CityEngineerRejectionComments { get; set; }
+        public DateTime? CityEngineerRejectionDate { get; set; }
+        
         // Payment Information
         public bool IsPaymentComplete { get; set; }
         public DateTime? PaymentCompletedDate { get; set; }

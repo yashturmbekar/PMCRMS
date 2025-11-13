@@ -43,7 +43,11 @@ namespace PMCRMS.API.Models
         AdditionalDocument = 11,
         RecommendedForm = 12,
         PaymentChallan = 13,
-        LicenceCertificate = 14
+        LicenceCertificate = 14,
+        UGCRecognition = 15,
+        AICTEApproval = 16,
+        ITICertificate = 17,
+        DiplomaCertificate = 18
     }
 
     public class PositionApplication : BaseEntity

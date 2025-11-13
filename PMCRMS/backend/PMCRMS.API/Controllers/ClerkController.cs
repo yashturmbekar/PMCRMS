@@ -217,69 +217,70 @@ namespace PMCRMS.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Reject application with reason
-        /// POST /api/Clerk/reject/{id}
-        /// </summary>
-        [HttpPost("reject/{id}")]
-        public async Task<IActionResult> RejectApplication(int id, [FromBody] ClerkRejectRequest request)
-        {
-            try
-            {
-                var clerkId = GetCurrentOfficerId();
-                if (clerkId == 0)
-                {
-                    return Unauthorized(new
-                    {
-                        success = false,
-                        message = "Officer ID not found in token"
-                    });
-                }
-
-                if (string.IsNullOrWhiteSpace(request.Reason))
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Rejection reason is required"
-                    });
-                }
-
-                _logger.LogInformation("[ClerkController] Reject application {ApplicationId} by Clerk {ClerkId}", id, clerkId);
-
-                var result = await _clerkService.RejectApplicationAsync(id, request.Reason, clerkId);
-
-                if (!result.Success)
-                {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = result.Message
-                    });
-                }
-
-                return Ok(new
-                {
-                    success = true,
-                    message = result.Message,
-                    data = new
-                    {
-                        applicationId = result.ApplicationId,
-                        newStatus = result.NewStatus
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "[ClerkController] Error rejecting application {ApplicationId}", id);
-                return StatusCode(500, new
-                {
-                    success = false,
-                    message = "Error rejecting application",
-                    error = ex.Message
-                });
-            }
-        }
+        // REMOVED: Clerks should NOT be able to reject applications (Stage 1 officers only)
+        // /// <summary>
+        // /// Reject application with reason
+        // /// POST /api/Clerk/reject/{id}
+        // /// </summary>
+        // [HttpPost("reject/{id}")]
+        // public async Task<IActionResult> RejectApplication(int id, [FromBody] ClerkRejectRequest request)
+        // {
+        //     try
+        //     {
+        //         var clerkId = GetCurrentOfficerId();
+        //         if (clerkId == 0)
+        //         {
+        //             return Unauthorized(new
+        //             {
+        //                 success = false,
+        //                 message = "Officer ID not found in token"
+        //             });
+        //         }
+        //
+        //         if (string.IsNullOrWhiteSpace(request.Reason))
+        //         {
+        //             return BadRequest(new
+        //             {
+        //                 success = false,
+        //                 message = "Rejection reason is required"
+        //             });
+        //         }
+        //
+        //         _logger.LogInformation("[ClerkController] Reject application {ApplicationId} by Clerk {ClerkId}", id, clerkId);
+        //
+        //         var result = await _clerkService.RejectApplicationAsync(id, request.Reason, clerkId);
+        //
+        //         if (!result.Success)
+        //         {
+        //             return BadRequest(new
+        //             {
+        //                 success = false,
+        //                 message = result.Message
+        //             });
+        //         }
+        //
+        //         return Ok(new
+        //         {
+        //             success = true,
+        //             message = result.Message,
+        //             data = new
+        //             {
+        //                 applicationId = result.ApplicationId,
+        //                 newStatus = result.NewStatus
+        //             }
+        //         });
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         _logger.LogError(ex, "[ClerkController] Error rejecting application {ApplicationId}", id);
+        //         return StatusCode(500, new
+        //         {
+        //             success = false,
+        //             message = "Error rejecting application",
+        //             error = ex.Message
+        //         });
+        //     }
+        // }
 
         /// <summary>
         /// Get statistics for clerk dashboard

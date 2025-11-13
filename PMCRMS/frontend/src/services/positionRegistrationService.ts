@@ -90,7 +90,7 @@ export interface PositionRegistrationResponse {
   panCardNumber: string;
   aadharCardNumber: string;
   coaCardNumber?: string;
-  status: number;
+  status: number | string; // Can be number (37) or string ("REJECTED") due to JsonStringEnumConverter
   statusName: string;
   submittedDate?: string;
   approvedDate?: string;
@@ -99,6 +99,29 @@ export interface PositionRegistrationResponse {
   updatedDate?: string;
   assignedJuniorEngineerId?: number;
   assignedJuniorEngineerName?: string;
+
+  // Rejection Information (Stage 1 Officers only)
+  jeRejectionStatus?: boolean;
+  jeRejectionComments?: string;
+  jeRejectionDate?: string;
+
+  aeArchitectRejectionStatus?: boolean;
+  aeArchitectRejectionComments?: string;
+  aeArchitectRejectionDate?: string;
+
+  aeStructuralRejectionStatus?: boolean;
+  aeStructuralRejectionComments?: string;
+  aeStructuralRejectionDate?: string;
+
+  executiveEngineerRejectionStatus?: boolean;
+  executiveEngineerRejectionComments?: string;
+  executiveEngineerRejectionDate?: string;
+
+  cityEngineerRejectionStatus?: boolean;
+  cityEngineerRejectionComments?: string;
+  cityEngineerRejectionDate?: string;
+
+  // Payment Information
   isPaymentComplete?: boolean;
   paymentCompletedDate?: string;
   challanAmount?: number;

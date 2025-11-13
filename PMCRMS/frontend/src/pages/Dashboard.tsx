@@ -13,7 +13,6 @@ import {
   Plus,
   Eye,
   Edit,
-  AlertCircle,
 } from "lucide-react";
 import { PageLoader, SectionLoader, Pagination } from "../components";
 
@@ -101,16 +100,16 @@ const Dashboard: React.FC = () => {
         console.log("✅ Fetched applications:", allApplicationsResponse);
 
         // Separate submitted and draft applications
-        // Draft = 1, all other statuses (2+) are considered "submitted/in-progress"
+        // Draft = 1 or "Draft", all other statuses (2+) are considered "submitted/in-progress"
         const drafts = allApplicationsResponse.filter(
-          (app) => app.status === 1
-        ); // Status 1 = Draft only
+          (app) => app.status === 1 || app.status === "Draft"
+        ); // Status 1 or "Draft" = Draft only
         const submitted = allApplicationsResponse.filter(
-          (app) => app.status !== 1
+          (app) => app.status !== 1 && app.status !== "Draft"
         ); // All non-draft applications (Submitted, Under Review, Approved, etc.)
         const completed = allApplicationsResponse.filter(
-          (app) => app.status === 23
-        ); // Status 23 = Completed
+          (app) => app.status === 23 || app.status === "Completed"
+        ); // Status 23 or "Completed" = Completed
 
         console.log(
           "📋 Submitted/In-Progress:",
@@ -795,11 +794,11 @@ const Dashboard: React.FC = () => {
                         <td>
                           <span
                             className={
-                              app.status === 23
+                              app.status === 23 || app.status === "Completed"
                                 ? "pmc-badge pmc-status-approved"
-                                : app.status === 37 // REJECTED status
+                                : app.status === 37 || app.status === "REJECTED" // REJECTED status
                                 ? "pmc-badge pmc-status-rejected"
-                                : app.status === 2
+                                : app.status === 2 || app.status === "Submitted"
                                 ? "pmc-badge pmc-status-under-review"
                                 : "pmc-badge pmc-status-pending"
                             }
@@ -808,7 +807,7 @@ const Dashboard: React.FC = () => {
                           </span>
                         </td>
                         <td>
-                          {app.status === 37 ? ( // REJECTED status
+                          {app.status === 37 || app.status === "REJECTED" ? ( // REJECTED status
                             <button
                               className="pmc-button pmc-button-primary pmc-button-sm"
                               onClick={() => {
@@ -892,49 +891,6 @@ const Dashboard: React.FC = () => {
                           )}
                         </td>
                       </tr>
-                      {/* Show rejection comments row if application is rejected */}
-                      {app.status === 37 && app.remarks && (
-                        <tr style={{ background: "#fef2f2" }}>
-                          <td colSpan={8} style={{ padding: "12px 16px" }}>
-                            <div
-                              style={{
-                                display: "flex",
-                                gap: "10px",
-                                alignItems: "flex-start",
-                              }}
-                            >
-                              <AlertCircle
-                                size={18}
-                                style={{
-                                  color: "#dc2626",
-                                  flexShrink: 0,
-                                  marginTop: "2px",
-                                }}
-                              />
-                              <div>
-                                <p
-                                  className="pmc-text-sm pmc-font-semibold"
-                                  style={{
-                                    color: "#dc2626",
-                                    marginBottom: "4px",
-                                  }}
-                                >
-                                  Rejection Reason:
-                                </p>
-                                <p
-                                  className="pmc-text-sm"
-                                  style={{
-                                    color: "#7f1d1d",
-                                    lineHeight: "1.6",
-                                  }}
-                                >
-                                  {app.remarks}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   ))}
                 </tbody>
