@@ -4579,12 +4579,8 @@ export const PositionRegistrationPage = () => {
                             documentName // Pass custom document name separately
                           );
 
-                          // Clear everything after upload
+                          // Clear only the document name field, keep the file input showing the filename
                           setAdditionalDocumentName("");
-                          const fileInput = document.getElementById(
-                            "additionalDocFileInput"
-                          ) as HTMLInputElement;
-                          if (fileInput) fileInput.value = "";
                         }
                       }}
                       accept=".pdf,.jpg,.jpeg,.png"
