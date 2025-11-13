@@ -356,6 +356,7 @@ export const PositionRegistrationPage = () => {
   >(null);
   const [isResubmitMode, setIsResubmitMode] = useState(false);
   const [rejectionComments, setRejectionComments] = useState("");
+  const [additionalDocumentName, setAdditionalDocumentName] = useState("");
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
@@ -677,14 +678,15 @@ export const PositionRegistrationPage = () => {
   const handleFileUpload = async (
     documentType: SEDocumentTypeValue,
     fileId: string,
-    file: File
+    file: File,
+    customFileName?: string
   ) => {
     // TODO: Implement actual file upload to server
     // For now, create a local URL
     const document: Document = {
       documentType,
       filePath: URL.createObjectURL(file),
-      fileName: file.name,
+      fileName: customFileName || file.name, // Use custom name if provided
       fileId,
       file,
     };
@@ -4507,6 +4509,10 @@ export const PositionRegistrationPage = () => {
                       type="text"
                       className="pmc-input"
                       placeholder="Enter document name"
+                      value={additionalDocumentName}
+                      onChange={(e) =>
+                        setAdditionalDocumentName(e.target.value)
+                      }
                     />
                   </div>
                   <div className="pmc-form-group">
@@ -4519,11 +4525,22 @@ export const PositionRegistrationPage = () => {
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
+                          // Use the document name as the fileName if provided, otherwise use the file's name
+                          const customFileName = additionalDocumentName
+                            ? `${additionalDocumentName}.${file.name
+                                .split(".")
+                                .pop()}`
+                            : file.name;
+
                           handleFileUpload(
                             SEDocumentType.AdditionalDocument,
                             `DOC_ADD_${Date.now()}`,
-                            file
+                            file,
+                            customFileName
                           );
+
+                          // Clear the document name field after upload
+                          setAdditionalDocumentName("");
                         }
                       }}
                       accept=".pdf,.jpg,.jpeg,.png"
