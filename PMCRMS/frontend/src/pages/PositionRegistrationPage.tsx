@@ -1370,6 +1370,20 @@ export const PositionRegistrationPage = () => {
             positionTypeMap[response.positionType] ?? selectedPositionType;
         }
 
+        // Convert gender from backend (could be string or number)
+        let loadedGender: GenderValue = Gender.Male; // default
+        if (typeof response.gender === "number") {
+          loadedGender = response.gender as GenderValue;
+        } else if (typeof response.gender === "string") {
+          // Map string name to enum value
+          const genderMap: { [key: string]: GenderValue } = {
+            Male: Gender.Male,
+            Female: Gender.Female,
+            Other: Gender.Other,
+          };
+          loadedGender = genderMap[response.gender] ?? Gender.Male;
+        }
+
         const newFormData = {
           firstName: response.firstName || "",
           middleName: response.middleName || "",
@@ -1380,7 +1394,7 @@ export const PositionRegistrationPage = () => {
           positionType: loadedPositionType,
           bloodGroup: response.bloodGroup || "",
           height: response.height || 0,
-          gender: (response.gender as GenderValue) ?? 0,
+          gender: loadedGender,
           dateOfBirth: response.dateOfBirth
             ? response.dateOfBirth.split("T")[0]
             : "",
@@ -1426,26 +1440,33 @@ export const PositionRegistrationPage = () => {
           aadharCardNumber: response.aadharCardNumber || "",
           coaCardNumber: response.coaCardNumber || "",
           qualifications:
-            response.qualifications?.map((q) => ({
-              fileId: q.fileId || `QUAL_${Date.now()}_${Math.random()}`,
-              instituteName: q.instituteName || "",
-              universityName: q.universityName || "",
-              specialization: (q.specialization as SpecializationValue) ?? 0,
-              degreeName: q.degreeName || "",
-              passingMonth: q.passingMonth || 1,
-              yearOfPassing: q.yearOfPassing?.toString() || "",
-            })) || [],
+            response.qualifications?.map((q: any) => {
+              return {
+                fileId: q.fileId || `QUAL_${Date.now()}_${Math.random()}`,
+                instituteName: q.instituteName || "",
+                universityName: q.universityName || "",
+                specialization: (q.specialization as SpecializationValue) ?? 0,
+                degreeName: q.degreeName || "",
+                passingMonth: q.passingMonth || 1,
+                // Backend sends yearOfPassing as int, but frontend expects YYYY-MM-DD format
+                yearOfPassing: q.yearOfPassing
+                  ? `${q.yearOfPassing}-01-01T00:00:00.000Z`
+                  : "",
+              };
+            }) || [],
           experiences:
-            response.experiences?.map((e) => ({
-              fileId: e.fileId || `EXP_${Date.now()}_${Math.random()}`,
-              companyName: e.companyName || "",
-              position: e.position || "",
-              yearsOfExperience: e.yearsOfExperience || 0,
-              fromDate: e.fromDate ? e.fromDate.split("T")[0] : "",
-              toDate: e.toDate ? e.toDate.split("T")[0] : "",
-            })) || [],
+            response.experiences?.map((e: any) => {
+              return {
+                fileId: e.fileId || `EXP_${Date.now()}_${Math.random()}`,
+                companyName: e.companyName || "",
+                position: e.position || "",
+                yearsOfExperience: e.yearsOfExperience || 0,
+                fromDate: e.fromDate ? e.fromDate.split("T")[0] : "",
+                toDate: e.toDate ? e.toDate.split("T")[0] : "",
+              };
+            }) || [],
           documents:
-            response.documents?.map((d) => {
+            response.documents?.map((d: any) => {
               // Convert document type from string name to enum number
               let docType = 0;
               if (typeof d.documentType === "number") {
@@ -3743,6 +3764,38 @@ export const PositionRegistrationPage = () => {
                         <label className="pmc-label pmc-label-required">
                           Upload Last Year Marksheet (Max 500KB)
                         </label>
+                        {/* Show existing document if available - match by type for this qualification index */}
+                        {(() => {
+                          // Find marksheet documents
+                          const marksheets = formData.documents.filter(
+                            (d) =>
+                              d.documentType === SEDocumentType.Marksheet &&
+                              (d.fileBase64 || d.filePath)
+                          );
+                          // Show the one at this index if available
+                          const marksheet = marksheets[index];
+                          return marksheet ? (
+                            <div
+                              style={{
+                                padding: "8px 12px",
+                                marginBottom: "8px",
+                                background: "#dcfce7",
+                                border: "1px solid #86efac",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                color: "#166534",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              <span>✓</span>
+                              <span>
+                                Document already uploaded: {marksheet.fileName}
+                              </span>
+                            </div>
+                          ) : null;
+                        })()}
                         <input
                           type="file"
                           className={`pmc-input ${
@@ -3767,6 +3820,17 @@ export const PositionRegistrationPage = () => {
                           }}
                           accept=".pdf"
                         />
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            marginTop: "4px",
+                            display: "block",
+                          }}
+                        >
+                          Max file size: 500KB (Upload new file to replace
+                          existing)
+                        </span>
                         {attemptedSubmit &&
                           !formData.documents.find(
                             (d) =>
@@ -3782,6 +3846,40 @@ export const PositionRegistrationPage = () => {
                         <label className="pmc-label pmc-label-required">
                           Upload Certificate (Max 500KB)
                         </label>
+                        {/* Show existing document if available - match by type for this qualification index */}
+                        {(() => {
+                          // Find degree certificate documents
+                          const certificates = formData.documents.filter(
+                            (d) =>
+                              d.documentType ===
+                                SEDocumentType.DegreeCertificate &&
+                              (d.fileBase64 || d.filePath)
+                          );
+                          // Show the one at this index if available
+                          const certificate = certificates[index];
+                          return certificate ? (
+                            <div
+                              style={{
+                                padding: "8px 12px",
+                                marginBottom: "8px",
+                                background: "#dcfce7",
+                                border: "1px solid #86efac",
+                                borderRadius: "6px",
+                                fontSize: "13px",
+                                color: "#166534",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                              }}
+                            >
+                              <span>✓</span>
+                              <span>
+                                Document already uploaded:{" "}
+                                {certificate.fileName}
+                              </span>
+                            </div>
+                          ) : null;
+                        })()}
                         <input
                           type="file"
                           className={`pmc-input ${
@@ -3807,6 +3905,17 @@ export const PositionRegistrationPage = () => {
                           }}
                           accept=".pdf"
                         />
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            marginTop: "4px",
+                            display: "block",
+                          }}
+                        >
+                          Max file size: 500KB (Upload new file to replace
+                          existing)
+                        </span>
                         {attemptedSubmit &&
                           !formData.documents.find(
                             (d) =>
@@ -4183,6 +4292,39 @@ export const PositionRegistrationPage = () => {
                       <label className="pmc-label pmc-label-required">
                         Upload Certificate (Max 500KB)
                       </label>
+                      {/* Show existing document if available - match by type for this experience index */}
+                      {(() => {
+                        // Find experience certificate documents
+                        const certificates = formData.documents.filter(
+                          (d) =>
+                            d.documentType ===
+                              SEDocumentType.ExperienceCertificate &&
+                            (d.fileBase64 || d.filePath)
+                        );
+                        // Show the one at this index if available
+                        const certificate = certificates[index];
+                        return certificate ? (
+                          <div
+                            style={{
+                              padding: "8px 12px",
+                              marginBottom: "8px",
+                              background: "#dcfce7",
+                              border: "1px solid #86efac",
+                              borderRadius: "6px",
+                              fontSize: "13px",
+                              color: "#166534",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                            }}
+                          >
+                            <span>✓</span>
+                            <span>
+                              Document already uploaded: {certificate.fileName}
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
                       <input
                         type="file"
                         className={`pmc-input ${
@@ -4208,6 +4350,17 @@ export const PositionRegistrationPage = () => {
                         }}
                         accept=".pdf"
                       />
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#64748b",
+                          marginTop: "4px",
+                          display: "block",
+                        }}
+                      >
+                        Max file size: 500KB (Upload new file to replace
+                        existing)
+                      </span>
                       {attemptedSubmit &&
                         !formData.documents.find(
                           (d) =>
@@ -4301,6 +4454,52 @@ export const PositionRegistrationPage = () => {
                 </p>
               </div>
               <div className="pmc-card-body">
+                {/* Show existing additional documents if any */}
+                {formData.documents.filter(
+                  (d) =>
+                    d.documentType === SEDocumentType.AdditionalDocument &&
+                    (d.fileBase64 || d.filePath)
+                ).length > 0 && (
+                  <div style={{ marginBottom: "16px" }}>
+                    <h4
+                      style={{
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        marginBottom: "8px",
+                        color: "#334155",
+                      }}
+                    >
+                      Existing Additional Documents:
+                    </h4>
+                    {formData.documents
+                      .filter(
+                        (d) =>
+                          d.documentType ===
+                            SEDocumentType.AdditionalDocument &&
+                          (d.fileBase64 || d.filePath)
+                      )
+                      .map((doc, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: "8px 12px",
+                            marginBottom: "8px",
+                            background: "#dcfce7",
+                            border: "1px solid #86efac",
+                            borderRadius: "6px",
+                            fontSize: "13px",
+                            color: "#166534",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                          }}
+                        >
+                          <span>✓</span>
+                          <span>Document already uploaded: {doc.fileName}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
                 <div className="pmc-form-grid pmc-form-grid-2">
                   <div className="pmc-form-group">
                     <label className="pmc-label">Document Name</label>
