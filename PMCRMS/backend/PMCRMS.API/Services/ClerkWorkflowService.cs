@@ -192,6 +192,7 @@ namespace PMCRMS.API.Services
 
                 var application = await _context.PositionApplications
                     .Include(a => a.User)
+                    .Include(a => a.Appointments)
                     .FirstOrDefaultAsync(a => a.Id == applicationId && a.AssignedClerkId == clerkId);
 
                 if (application == null)
@@ -208,20 +209,117 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                application.ClerkRejectionStatus = true;
-                application.ClerkRejectionComments = rejectionReason;
-                application.ClerkRejectionDate = DateTime.UtcNow;
-                application.Status = ApplicationCurrentStatus.RejectedByJE;
+                // Store rejection information
+                var rejectionInfo = $"Rejected by Clerk on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {rejectionReason}";
+                application.Remarks = rejectionInfo;
+
+                // Set status to REJECTED
+                application.Status = ApplicationCurrentStatus.REJECTED;
+                
+                // Clear all officer assignments
+                application.AssignedJuniorEngineerId = null;
+                application.AssignedToJEDate = null;
+                application.AssignedExecutiveEngineerId = null;
+                application.AssignedToExecutiveEngineerDate = null;
+                application.AssignedCityEngineerId = null;
+                application.AssignedToCityEngineerDate = null;
+                application.AssignedAEArchitectId = null;
+                application.AssignedToAEArchitectDate = null;
+                application.AssignedAEStructuralId = null;
+                application.AssignedToAEStructuralDate = null;
+                application.AssignedAELicenceId = null;
+                application.AssignedToAELicenceDate = null;
+                application.AssignedAESupervisor1Id = null;
+                application.AssignedToAESupervisor1Date = null;
+                application.AssignedAESupervisor2Id = null;
+                application.AssignedToAESupervisor2Date = null;
+                application.AssignedEEStage2Id = null;
+                application.AssignedToEEStage2Date = null;
+                application.AssignedCEStage2Id = null;
+                application.AssignedToCEStage2Date = null;
+                application.AssignedClerkId = null;
+                application.AssignedToClerkDate = null;
+
+                // Clear JE workflow fields
+                application.JEDigitalSignatureApplied = false;
+                application.JEDigitalSignatureDate = null;
+                application.JERejectionStatus = null;
+                application.JERejectionComments = null;
+                application.JERejectionDate = null;
+
+                // Clear recommendation form
+                application.IsRecommendationFormGenerated = false;
+                application.RecommendationFormGeneratedDate = null;
+                application.RecommendationFormGenerationAttempts = 0;
+                application.RecommendationFormGenerationError = null;
+
+                // Clear all AE workflow fields
+                application.AEArchitectApprovalStatus = null;
+                application.AEArchitectRejectionStatus = null;
+                application.AEArchitectRejectionComments = null;
+                application.AEArchitectRejectionDate = null;
+                application.AEStructuralApprovalStatus = null;
+                application.AEStructuralRejectionStatus = null;
+                application.AEStructuralRejectionComments = null;
+                application.AEStructuralRejectionDate = null;
+                application.AELicenceApprovalStatus = null;
+                application.AELicenceRejectionStatus = null;
+                application.AELicenceRejectionComments = null;
+                application.AELicenceRejectionDate = null;
+                application.AELicenceDigitalSignatureApplied = false;
+                application.AELicenceDigitalSignatureDate = null;
+                application.AESupervisor1ApprovalStatus = null;
+                application.AESupervisor1RejectionStatus = null;
+                application.AESupervisor1RejectionComments = null;
+                application.AESupervisor1RejectionDate = null;
+                application.AESupervisor2ApprovalStatus = null;
+                application.AESupervisor2RejectionStatus = null;
+                application.AESupervisor2RejectionComments = null;
+                application.AESupervisor2RejectionDate = null;
+
+                // Clear EE workflow fields
+                application.ExecutiveEngineerRejectionStatus = null;
+                application.ExecutiveEngineerRejectionComments = null;
+                application.ExecutiveEngineerRejectionDate = null;
+
+                // Clear CE workflow fields
+                application.CityEngineerRejectionStatus = null;
+                application.CityEngineerRejectionComments = null;
+                application.CityEngineerRejectionDate = null;
+
+                // Clear clerk workflow fields
+                application.ClerkApprovalStatus = null;
+                application.ClerkApprovalComments = null;
+                application.ClerkApprovalDate = null;
+                application.ClerkRejectionStatus = null;
+                application.ClerkRejectionComments = null;
+                application.ClerkRejectionDate = null;
+
+                // Delete all appointments
+                if (application.Appointments != null && application.Appointments.Any())
+                {
+                    _context.Appointments.RemoveRange(application.Appointments);
+                }
+
+                // Delete recommendation form document
+                var recommendationDoc = await _context.SEDocuments
+                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId && 
+                                            d.DocumentType == SEDocumentType.RecommendedForm);
+                if (recommendationDoc != null)
+                {
+                    _context.SEDocuments.Remove(recommendationDoc);
+                }
+
                 application.UpdatedDate = DateTime.UtcNow;
                 application.UpdatedBy = $"Clerk_{clerkId}";
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("[ClerkWorkflow] Application {ApplicationId} rejected successfully by Clerk {ClerkId}", applicationId, clerkId);
+                _logger.LogInformation("[ClerkWorkflow] Application {ApplicationId} rejected by Clerk {ClerkId} and reset to initial state", applicationId, clerkId);
 
                 try
                 {
-                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(applicationId, ApplicationCurrentStatus.RejectedByJE);
+                    await _workflowNotificationService.NotifyApplicationWorkflowStageAsync(applicationId, ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING, rejectionInfo);
                 }
                 catch (Exception emailEx)
                 {
@@ -231,9 +329,9 @@ namespace PMCRMS.API.Services
                 return new ClerkActionResult
                 {
                     Success = true,
-                    Message = "Application rejected successfully",
+                    Message = "Application rejected. The applicant can edit and resubmit the application.",
                     ApplicationId = applicationId,
-                    NewStatus = ApplicationCurrentStatus.RejectedByJE.ToString()
+                    NewStatus = ApplicationCurrentStatus.REJECTED.ToString()
                 };
             }
             catch (Exception ex)
