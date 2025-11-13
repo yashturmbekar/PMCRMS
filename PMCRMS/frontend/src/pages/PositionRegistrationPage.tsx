@@ -1312,8 +1312,12 @@ export const PositionRegistrationPage = () => {
           parseInt(applicationId)
         );
 
-        // Store rejection comments if in resubmit mode
-        if (isResubmit && response.status === 37) {
+        console.log("[DEBUG] Application status:", response.status);
+        console.log("[DEBUG] Full response:", response);
+
+        // Store rejection comments if application is rejected
+        // Status can be either number 37 or string "REJECTED"
+        if (response.status === 37 || response.status === "REJECTED") {
           // Status 37 = REJECTED - Get rejection comments from the officer who rejected
           let comments = "";
           if (response.jeRejectionStatus && response.jeRejectionComments) {
@@ -1341,7 +1345,13 @@ export const PositionRegistrationPage = () => {
           } else {
             comments = response.remarks || "No rejection comments provided";
           }
+          console.log("[DEBUG] Rejection comments set to:", comments);
           setRejectionComments(comments);
+        } else {
+          console.log(
+            "[DEBUG] Application status is not REJECTED, it is:",
+            response.status
+          );
         }
 
         // Map API response to form data
@@ -1694,27 +1704,14 @@ export const PositionRegistrationPage = () => {
           Back to Dashboard
         </button>
 
-        <h1
-          className="pmc-content-title"
-          style={{
-            color: "var(--pmc-gray-900)",
-            fontSize: "24px",
-            marginBottom: "4px",
-          }}
-        >
-          {config.icon} {config.name} Registration
-        </h1>
-        <p
-          className="pmc-content-subtitle"
-          style={{ color: "var(--pmc-gray-600)", fontSize: "13px" }}
-        >
-          Complete all sections to register as a {config.name} with PMC
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} noValidate>
-        {/* Rejection Banner - Only shown in resubmit mode */}
-        {isResubmitMode && rejectionComments && (
+        {/* Rejection Banner - Shown at the top when application is rejected */}
+        {console.log(
+          "[DEBUG RENDER] rejectionComments:",
+          rejectionComments,
+          "Length:",
+          rejectionComments?.length
+        )}
+        {rejectionComments && (
           <div
             className="pmc-fadeIn"
             style={{
@@ -1743,7 +1740,10 @@ export const PositionRegistrationPage = () => {
                   className="pmc-text-lg pmc-font-bold"
                   style={{ color: "#dc2626", marginBottom: "8px" }}
                 >
-                  Application Rejected - Corrections Required
+                  Application Rejected -{" "}
+                  {isResubmitMode
+                    ? "Corrections Required"
+                    : "View Rejection Reason"}
                 </h3>
                 <p
                   className="pmc-text-sm pmc-font-semibold"
@@ -1766,24 +1766,45 @@ export const PositionRegistrationPage = () => {
                 </p>
               </div>
             </div>
-            <div
-              style={{
-                paddingTop: "12px",
-                borderTop: "1px solid rgba(220, 38, 38, 0.2)",
-              }}
-            >
-              <p
-                className="pmc-text-sm pmc-font-medium"
-                style={{ color: "#991b1b" }}
+            {isResubmitMode && (
+              <div
+                style={{
+                  paddingTop: "12px",
+                  borderTop: "1px solid rgba(220, 38, 38, 0.2)",
+                }}
               >
-                📝 Please review the rejection comments above, make necessary
-                corrections to your application, and resubmit. Your application
-                will be reviewed again from the beginning.
-              </p>
-            </div>
+                <p
+                  className="pmc-text-sm pmc-font-medium"
+                  style={{ color: "#991b1b" }}
+                >
+                  📝 Please review the rejection comments above, make necessary
+                  corrections to your application, and resubmit. Your
+                  application will be reviewed again from the beginning.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
+        <h1
+          className="pmc-content-title"
+          style={{
+            color: "var(--pmc-gray-900)",
+            fontSize: "24px",
+            marginBottom: "4px",
+          }}
+        >
+          {config.icon} {config.name} Registration
+        </h1>
+        <p
+          className="pmc-content-subtitle"
+          style={{ color: "var(--pmc-gray-600)", fontSize: "13px" }}
+        >
+          Complete all sections to register as a {config.name} with PMC
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} noValidate>
         {/* Success/Error Messages */}
         {success && (
           <div
