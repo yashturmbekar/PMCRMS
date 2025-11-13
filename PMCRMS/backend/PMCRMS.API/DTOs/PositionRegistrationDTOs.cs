@@ -180,8 +180,8 @@ namespace PMCRMS.API.DTOs
         public string? DocumentName { get; set; } // Custom name for the document (e.g., "Tax Receipt")
 
         // Base64 encoded file content (for binary storage in database)
-        [Required(ErrorMessage = "File content is required")]
-        public string FileBase64 { get; set; } = string.Empty;
+        // Not required for resubmit - backend will preserve existing content if empty
+        public string? FileBase64 { get; set; }
 
         public decimal? FileSize { get; set; }
 

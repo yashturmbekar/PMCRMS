@@ -358,8 +358,6 @@ export const PositionRegistrationPage = () => {
   const [isResubmitMode, setIsResubmitMode] = useState(false);
   const [rejectionComments, setRejectionComments] = useState("");
   const [additionalDocumentName, setAdditionalDocumentName] = useState("");
-  const [selectedAdditionalFile, setSelectedAdditionalFile] =
-    useState<File | null>(null);
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
@@ -4562,29 +4560,13 @@ export const PositionRegistrationPage = () => {
                     <label className="pmc-label">
                       Upload Attachment (Max 500KB)
                     </label>
-                    <div style={{ display: "flex", gap: "8px" }}>
-                      <input
-                        type="file"
-                        className="pmc-input"
-                        id="additionalDocFileInput"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setSelectedAdditionalFile(file);
-                          }
-                        }}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        style={{ flex: 1 }}
-                      />
-                      <button
-                        type="button"
-                        className="pmc-btn pmc-btn-primary"
-                        onClick={() => {
-                          if (!selectedAdditionalFile) {
-                            alert("Please select a file first");
-                            return;
-                          }
-
+                    <input
+                      type="file"
+                      className="pmc-input"
+                      id="additionalDocFileInput"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
                           // Use the document name as documentName and keep original filename
                           const documentName =
                             additionalDocumentName.trim() || undefined;
@@ -4592,28 +4574,21 @@ export const PositionRegistrationPage = () => {
                           handleFileUpload(
                             SEDocumentType.AdditionalDocument,
                             `DOC_ADD_${Date.now()}`,
-                            selectedAdditionalFile,
-                            selectedAdditionalFile.name, // Keep original file name
+                            file,
+                            file.name, // Keep original file name
                             documentName // Pass custom document name separately
                           );
 
                           // Clear everything after upload
                           setAdditionalDocumentName("");
-                          setSelectedAdditionalFile(null);
                           const fileInput = document.getElementById(
                             "additionalDocFileInput"
                           ) as HTMLInputElement;
                           if (fileInput) fileInput.value = "";
-                        }}
-                        style={{
-                          padding: "8px 16px",
-                          whiteSpace: "nowrap",
-                          minWidth: "80px",
-                        }}
-                      >
-                        Upload
-                      </button>
-                    </div>
+                        }
+                      }}
+                      accept=".pdf,.jpg,.jpeg,.png"
+                    />
                   </div>
                 </div>
               </div>

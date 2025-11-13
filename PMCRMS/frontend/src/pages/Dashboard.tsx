@@ -808,32 +808,56 @@ const Dashboard: React.FC = () => {
                         </td>
                         <td>
                           {app.status === 37 || app.status === "REJECTED" ? ( // REJECTED status
-                            <button
-                              className="pmc-button pmc-button-primary pmc-button-sm"
-                              onClick={() => {
-                                const positionRoutes: Record<number, string> = {
-                                  0: "architect",
-                                  1: "licence-engineer",
-                                  2: "structural-engineer",
-                                  3: "supervisor1",
-                                  4: "supervisor2",
-                                };
-                                const positionRoute =
-                                  positionRoutes[app.positionType] ||
-                                  "structural-engineer";
-                                navigate(
-                                  `/register/${positionRoute}/${app.id}?resubmit=true`
-                                );
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                              }}
-                            >
-                              <Edit size={14} />
-                              Edit & Resubmit
-                            </button>
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <button
+                                className="pmc-button pmc-button-primary pmc-button-sm"
+                                title="View Application"
+                                onClick={() => {
+                                  navigate(`/application/${app.id}`);
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  color: "#fff",
+                                  backgroundColor: "#1e40af",
+                                }}
+                              >
+                                <Eye size={14} />
+                                View
+                              </button>
+                              <button
+                                className="pmc-button pmc-button-secondary pmc-button-sm"
+                                title="Edit and Resubmit Application"
+                                onClick={() => {
+                                  const positionRoutes: Record<number, string> =
+                                    {
+                                      0: "architect",
+                                      1: "licence-engineer",
+                                      2: "structural-engineer",
+                                      3: "supervisor1",
+                                      4: "supervisor2",
+                                    };
+                                  const positionRoute =
+                                    positionRoutes[app.positionType] ||
+                                    "structural-engineer";
+                                  navigate(
+                                    `/register/${positionRoute}/${app.id}?resubmit=true`
+                                  );
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                  color: "#1e40af",
+                                  backgroundColor: "#fff",
+                                  border: "1px solid #cbd5e1",
+                                }}
+                              >
+                                <Edit size={14} />
+                                Edit & Resubmit
+                              </button>
+                            </div>
                           ) : (
                             <button
                               className="pmc-button pmc-button-secondary pmc-button-sm"

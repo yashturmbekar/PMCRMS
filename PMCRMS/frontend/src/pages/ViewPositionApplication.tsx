@@ -808,7 +808,11 @@ const ViewPositionApplication: React.FC = () => {
             <button
               onClick={() => navigate(backPath)}
               className="pmc-button pmc-button-primary"
-              style={{ marginTop: "24px" }}
+              style={{
+                marginTop: "24px",
+                color: "#fff",
+                backgroundColor: "#1e40af",
+              }}
             >
               <ArrowLeft size={16} style={{ marginRight: "8px" }} />
               {isAdminView ? "Back to Applications" : "Back to Dashboard"}
@@ -855,7 +859,12 @@ const ViewPositionApplication: React.FC = () => {
           <button
             onClick={() => navigate(backPath)}
             className="pmc-button pmc-button-secondary pmc-button-sm"
-            style={{ marginBottom: "16px" }}
+            style={{
+              marginBottom: "16px",
+              color: "#1e40af",
+              backgroundColor: "#fff",
+              border: "1px solid #cbd5e1",
+            }}
           >
             <ArrowLeft size={16} style={{ marginRight: "8px" }} />
             {isAdminView ? "Back to Applications" : "Back to Dashboard"}
@@ -1365,6 +1374,9 @@ const ViewPositionApplication: React.FC = () => {
                             display: "flex",
                             alignItems: "center",
                             gap: "4px",
+                            color: "#1e40af",
+                            backgroundColor: "#fff",
+                            border: "1px solid #cbd5e1",
                           }}
                         >
                           <Download size={14} />
@@ -2421,6 +2433,9 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#1e40af",
+                backgroundColor: "#fff",
+                border: "1px solid #cbd5e1",
               }}
             >
               <ArrowLeft size={18} />
@@ -2434,6 +2449,8 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#fff",
+                backgroundColor: "#dc2626",
               }}
             >
               <Ban size={18} />
@@ -2449,6 +2466,8 @@ const ViewPositionApplication: React.FC = () => {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
+                  color: "#fff",
+                  backgroundColor: "#16a34a",
                 }}
               >
                 <CheckCircle size={18} />
@@ -2463,6 +2482,8 @@ const ViewPositionApplication: React.FC = () => {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
+                  color: "#fff",
+                  backgroundColor: "#16a34a",
                 }}
               >
                 <Calendar size={18} />
@@ -2492,6 +2513,9 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#1e40af",
+                backgroundColor: "#fff",
+                border: "1px solid #cbd5e1",
               }}
             >
               <ArrowLeft size={18} />
@@ -2505,6 +2529,8 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#fff",
+                backgroundColor: "#dc2626",
               }}
             >
               <Ban size={18} />
@@ -2518,6 +2544,8 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#fff",
+                backgroundColor: "#16a34a",
               }}
             >
               <CheckCircle size={18} />
@@ -2544,6 +2572,9 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#1e40af",
+                backgroundColor: "#fff",
+                border: "1px solid #cbd5e1",
               }}
             >
               <ArrowLeft size={18} />
@@ -2557,6 +2588,8 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#fff",
+                backgroundColor: "#dc2626",
               }}
             >
               <Ban size={18} />
@@ -2570,6 +2603,8 @@ const ViewPositionApplication: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
+                color: "#fff",
+                backgroundColor: "#16a34a",
               }}
             >
               <CheckCircle size={18} />

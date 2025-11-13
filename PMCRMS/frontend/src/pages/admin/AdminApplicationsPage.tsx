@@ -8,6 +8,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  Edit,
 } from "lucide-react";
 import { PageLoader, Pagination } from "../../components";
 
@@ -474,24 +475,50 @@ const AdminApplicationsPage: React.FC = () => {
                           </span>
                         </td>
                         <td>
-                          <button
-                            onClick={() =>
-                              navigate(
-                                `/admin/applications/${app.applicationId}`
-                              )
-                            }
-                            className="pmc-button pmc-button-primary"
-                            style={{
-                              padding: "6px 12px",
-                              fontSize: "13px",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "6px",
-                            }}
-                          >
-                            <Eye style={{ width: "14px", height: "14px" }} />
-                            View
-                          </button>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/admin/applications/${app.applicationId}`
+                                )
+                              }
+                              className="pmc-button pmc-button-primary"
+                              title="View Application Details"
+                              style={{
+                                padding: "6px 12px",
+                                fontSize: "13px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "6px",
+                              }}
+                            >
+                              <Eye style={{ width: "14px", height: "14px" }} />
+                              View
+                            </button>
+                            {app.status.toLowerCase() === "rejected" && (
+                              <button
+                                onClick={() =>
+                                  navigate(
+                                    `/applications/edit/${app.applicationId}`
+                                  )
+                                }
+                                className="pmc-button pmc-button-secondary"
+                                title="Edit and Resubmit Application"
+                                style={{
+                                  padding: "6px 12px",
+                                  fontSize: "13px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "6px",
+                                }}
+                              >
+                                <Edit
+                                  style={{ width: "14px", height: "14px" }}
+                                />
+                                Edit/Resubmit
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
