@@ -133,47 +133,25 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Get PMC logo as base64 data URI for embedding in emails
-        /// Fetches from SystemSettings table first, then falls back to file system
+        /// Get PMC logo URL for embedding in emails
+        /// Returns a publicly accessible URL instead of base64 data URI for better email client compatibility
         /// </summary>
-        private async Task<string> GetPmcLogoDataUriAsync()
+        private string GetPmcLogoUrl()
         {
             try
             {
-                // Try to fetch logo from SystemSettings table first
-                var logoSetting = await _context.SystemSettings
-                    .FirstOrDefaultAsync(s => s.SettingKey == "PMC_LOGO" && s.IsActive);
+                // For email clients, we need to use a publicly accessible URL
+                // Data URIs are blocked by Gmail and many other email clients for security
                 
-                if (logoSetting?.BinaryData != null && logoSetting.BinaryData.Length > 0)
-                {
-                    var base64String = Convert.ToBase64String(logoSetting.BinaryData);
-                    _logger.LogInformation("✅ PMC Logo loaded from database for email (Size: {Size} bytes)", logoSetting.BinaryData.Length);
-                    return $"data:image/png;base64,{base64String}";
-                }
-                else
-                {
-                    _logger.LogWarning("⚠️ PMC Logo not found in database (SettingKey: PMC_LOGO). Trying file system...");
-                    
-                    // Fallback to file system
-                    var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                    
-                    if (File.Exists(logoPath))
-                    {
-                        var imageBytes = File.ReadAllBytes(logoPath);
-                        var base64String = Convert.ToBase64String(imageBytes);
-                        _logger.LogInformation("✅ PMC Logo loaded from file system for email (Size: {Size} bytes)", imageBytes.Length);
-                        return $"data:image/png;base64,{base64String}";
-                    }
-                    else
-                    {
-                        _logger.LogWarning("PMC logo not found at path: {Path}", logoPath);
-                        return ""; // Return empty string if no logo found
-                    }
-                }
+                // Return the public URL to the logo
+                var logoUrl = $"{_baseUrl}/Images/Certificate/pmc-logo.png";
+                
+                _logger.LogInformation("📧 Using public logo URL for email: {LogoUrl}", logoUrl);
+                return logoUrl;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error loading PMC logo for email");
+                _logger.LogError(ex, "Error generating PMC logo URL for email");
                 return "";
             }
         }
@@ -471,7 +449,7 @@ namespace PMCRMS.API.Services
         private async Task<string> GenerateOtpEmailBody(string otpCode, string purpose)
         {
             var actionText = purpose == "LOGIN" ? "login" : "registration";
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             
             return $@"
 <!DOCTYPE html>
@@ -609,7 +587,7 @@ namespace PMCRMS.API.Services
             string applicationId, 
             string viewUrl)
         {
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -810,7 +788,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -877,7 +855,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -953,7 +931,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1029,7 +1007,7 @@ namespace PMCRMS.API.Services
             string assignedBy,
             string viewUrl)
         {
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1104,7 +1082,7 @@ namespace PMCRMS.API.Services
             string temporaryPassword,
             string loginUrl)
         {
-            var logoDataUri = await GetPmcLogoDataUriAsync();
+            var logoDataUri = GetPmcLogoUrl();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1438,7 +1416,7 @@ namespace PMCRMS.API.Services
             {
                 var subject = $"Application {applicationNumber} - Processed by Clerk";
                 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
                 
                 var body = $@"
                 <!DOCTYPE html>
@@ -1508,7 +1486,7 @@ namespace PMCRMS.API.Services
             {
                 var subject = $"Application {applicationNumber} - Rejected by Clerk";
                 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
                 
                 var body = $@"
                 <!DOCTYPE html>
@@ -1583,7 +1561,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Action Required: Digital Signature - Application {applicationNumber}";
 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1661,7 +1639,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Progress Update: Certificate Signed by Executive Engineer - {applicationNumber}";
 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1738,7 +1716,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Action Required: Final Certificate Signature - Application {applicationNumber}";
 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1817,7 +1795,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"🎉 Certificate Issued! Download Your Building Permission Certificate - {applicationNumber}";
 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1914,7 +1892,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Application Update - {stageName} - {applicationNumber}";
 
-                var logoDataUri = await GetPmcLogoDataUriAsync();
+                var logoDataUri = GetPmcLogoUrl();
 
                 string body = $@"
 <!DOCTYPE html>
