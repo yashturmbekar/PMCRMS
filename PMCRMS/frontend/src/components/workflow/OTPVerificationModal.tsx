@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import NotificationModal from "../common/NotificationModal";
 import type { NotificationType } from "../common/NotificationModal";
@@ -38,20 +38,59 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
   const [comments, setComments] = useState("");
   const [otpValue, setOtpValue] = useState("");
   const [otpGenerated, setOtpGenerated] = useState(false);
+  const [otpMessage, setOtpMessage] = useState(""); // Store the OTP success message from backend
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resendTimer, setResendTimer] = useState(300); // 5 minutes in seconds
+  const [canResend, setCanResend] = useState(false);
   const [notification, setNotification] = useState<{
     isOpen: boolean;
     message: string;
     type: NotificationType;
     title: string;
     autoClose?: boolean;
+    autoCloseMessage?: string;
   }>({
     isOpen: false,
     message: "",
     type: "success",
     title: "",
   });
+
+  // Reset modal state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setComments("");
+      setOtpValue("");
+      setOtpGenerated(false);
+      setOtpMessage(""); // Clear OTP message
+      setResendTimer(300);
+      setCanResend(false);
+      setIsGeneratingOtp(false);
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    let interval: number | undefined;
+
+    if (otpGenerated && resendTimer > 0) {
+      interval = window.setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [otpGenerated, resendTimer]);
 
   if (!isOpen) return null;
 
@@ -85,15 +124,17 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
 
       if (response.success) {
         setOtpGenerated(true);
-        setNotification({
-          isOpen: true,
-          message:
-            response.message ||
-            "OTP has been sent to your registered mobile number",
-          type: "success",
-          title: "OTP Sent Successfully",
-          autoClose: true,
-        });
+        setResendTimer(300); // Reset timer to 5 minutes
+        setCanResend(false);
+
+        // Store the OTP message to display below the input
+        const message =
+          response.message ||
+          "OTP has been sent to your registered mobile number";
+        setOtpMessage(message);
+
+        // Don't show success popup - just show OTP input immediately
+        // The loader will hide and OTP input section will appear
       } else {
         setNotification({
           isOpen: true,
@@ -115,6 +156,12 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     } finally {
       setIsGeneratingOtp(false);
     }
+  };
+
+  const handleResendOtp = async () => {
+    // Reset OTP input and resend
+    setOtpValue("");
+    await handleGenerateOtp();
   };
 
   const handleVerifyAndSign = async () => {
@@ -160,6 +207,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           type: "success",
           title: "Digital Signature Applied",
           autoClose: true,
+          autoCloseMessage: "Refreshing page...", // Show this message for signature success
         });
 
         // Close modal and refresh after notification
@@ -205,6 +253,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         message={notification.message}
         autoClose={notification.autoClose}
         autoCloseDuration={2000}
+        autoCloseMessage={notification.autoCloseMessage}
       />
       <div
         className="pmc-modal-overlay"
@@ -338,18 +387,55 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
             {/* ========== TESTING MODE: Hide OTP section ========== */}
             {!TESTING_MODE && otpGenerated && (
               <div style={{ marginBottom: "20px" }}>
-                <label
-                  className="pmc-label"
+                <div
                   style={{
-                    display: "block",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     marginBottom: "12px",
-                    fontWeight: 600,
-                    color: "#334155",
-                    fontSize: "14px",
                   }}
                 >
-                  Enter OTP
-                </label>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      fontWeight: 600,
+                      color: "#334155",
+                      fontSize: "14px",
+                      margin: 0,
+                    }}
+                  >
+                    Enter OTP
+                  </label>
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={!canResend || isGeneratingOtp}
+                    style={{
+                      background: canResend
+                        ? officerType === "CE"
+                          ? "#dc2626"
+                          : officerType === "EE"
+                          ? "#7c3aed"
+                          : "#3b82f6"
+                        : "#e5e7eb",
+                      color: canResend ? "white" : "#9ca3af",
+                      border: "none",
+                      padding: "6px 14px",
+                      borderRadius: "6px",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      cursor: canResend ? "pointer" : "not-allowed",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {isGeneratingOtp
+                      ? "Sending..."
+                      : canResend
+                      ? "Resend OTP"
+                      : `Resend in ${Math.floor(resendTimer / 60)}:${String(
+                          resendTimer % 60
+                        ).padStart(2, "0")}`}
+                  </button>
+                </div>
                 <OtpInput
                   length={6}
                   value={otpValue}
@@ -364,8 +450,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     margin: "8px 0 0 0",
                   }}
                 >
-                  OTP sent to your registered mobile number (valid for 5
-                  minutes)
+                  {otpMessage ||
+                    "OTP sent to your registered mobile number (valid for 5 minutes)"}
                 </p>
               </div>
             )}
@@ -524,6 +610,14 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         <FullScreenLoader
           message="Processing Signature"
           submessage="Please wait while we verify and sign the application..."
+        />
+      )}
+
+      {/* Full Screen Loader for OTP Generation */}
+      {isGeneratingOtp && (
+        <FullScreenLoader
+          message="Generating OTP"
+          submessage="Sending OTP to your registered mobile number..."
         />
       )}
     </>

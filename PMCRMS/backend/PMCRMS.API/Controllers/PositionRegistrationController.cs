@@ -699,7 +699,11 @@ namespace PMCRMS.API.Controllers
                     }
                 }
 
-                // Update documents - convert base64 to binary and store in database
+                // Update documents - preserve existing document content when not re-uploaded
+                // Build a map of existing documents by FileId
+                var existingDocumentsMap = application.Documents.ToDictionary(d => d.FileId, d => d);
+                
+                // Remove all documents (we'll re-add them with updated/preserved content)
                 _context.SEDocuments.RemoveRange(application.Documents);
                 
                 if (request.Documents != null)
@@ -708,13 +712,14 @@ namespace PMCRMS.API.Controllers
                     {
                         byte[]? fileContent = null;
                         
-                        // Convert base64 string to binary data
+                        // Check if this is a new upload (has base64 data) or existing document (no base64 data)
                         if (!string.IsNullOrEmpty(doc.FileBase64))
                         {
+                            // New upload - convert base64 to binary
                             try
                             {
                                 fileContent = Convert.FromBase64String(doc.FileBase64);
-                                _logger.LogInformation("[DRAFT] Converted document {FileId} from base64 to binary ({Size} bytes)", 
+                                _logger.LogInformation("[DRAFT] Converted NEW document {FileId} from base64 to binary ({Size} bytes)", 
                                     doc.FileId, fileContent.Length);
                             }
                             catch (FormatException ex)
@@ -724,6 +729,19 @@ namespace PMCRMS.API.Controllers
                                 continue;
                             }
                         }
+                        else if (existingDocumentsMap.TryGetValue(doc.FileId, out var existingDoc))
+                        {
+                            // Existing document - preserve the original file content
+                            fileContent = existingDoc.FileContent;
+                            _logger.LogInformation("[DRAFT] Preserving EXISTING document {FileId} content ({Size} bytes)", 
+                                doc.FileId, fileContent?.Length ?? 0);
+                        }
+                        else
+                        {
+                            // Document without content and not in existing documents - skip it
+                            _logger.LogWarning("[DRAFT] Document {FileId} has no content and is not an existing document - skipping", doc.FileId);
+                            continue;
+                        }
                         
                         application.Documents.Add(new SEDocument
                         {
@@ -732,7 +750,7 @@ namespace PMCRMS.API.Controllers
                             FileName = doc.FileName ?? "",
                             DocumentName = doc.DocumentName, // Store custom document name
                             FilePath = null, // No physical file path - storing in database
-                            FileContent = fileContent, // Binary data stored in database
+                            FileContent = fileContent, // Binary data (new or preserved)
                             FileSize = fileContent != null ? (decimal)(fileContent.Length / 1024.0) : doc.FileSize,
                             ContentType = doc.ContentType,
                             CreatedBy = "User",
@@ -891,20 +909,25 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Update documents - convert base64 to binary and store in database
+                // Update documents - preserve existing document content when not re-uploaded
+                // Build a map of existing documents by FileId
+                var existingDocumentsMap = application.Documents.ToDictionary(d => d.FileId, d => d);
+                
+                // Remove all documents (we'll re-add them with updated/preserved content)
                 _context.SEDocuments.RemoveRange(application.Documents);
                 
                 foreach (var doc in request.Documents)
                 {
                     byte[]? fileContent = null;
                     
-                    // Convert base64 string to binary data
+                    // Check if this is a new upload (has base64 data) or existing document (no base64 data)
                     if (!string.IsNullOrEmpty(doc.FileBase64))
                     {
+                        // New upload - convert base64 to binary
                         try
                         {
                             fileContent = Convert.FromBase64String(doc.FileBase64);
-                            _logger.LogInformation("Converted document {FileId} from base64 to binary ({Size} bytes)", 
+                            _logger.LogInformation("Converted NEW document {FileId} from base64 to binary ({Size} bytes)", 
                                 doc.FileId, fileContent.Length);
                         }
                         catch (FormatException ex)
@@ -912,6 +935,19 @@ namespace PMCRMS.API.Controllers
                             _logger.LogError(ex, "Failed to convert base64 data for document {FileId}", doc.FileId);
                             throw new InvalidOperationException($"Invalid base64 data for document {doc.FileId}");
                         }
+                    }
+                    else if (existingDocumentsMap.TryGetValue(doc.FileId, out var existingDoc))
+                    {
+                        // Existing document - preserve the original file content
+                        fileContent = existingDoc.FileContent;
+                        _logger.LogInformation("Preserving EXISTING document {FileId} content ({Size} bytes)", 
+                            doc.FileId, fileContent?.Length ?? 0);
+                    }
+                    else
+                    {
+                        // Document without content and not in existing documents - skip it
+                        _logger.LogWarning("Document {FileId} has no content and is not an existing document - skipping", doc.FileId);
+                        continue;
                     }
                     
                     application.Documents.Add(new SEDocument
@@ -921,7 +957,7 @@ namespace PMCRMS.API.Controllers
                         FileName = doc.FileName,
                         DocumentName = doc.DocumentName, // Store custom document name
                         FilePath = null, // No physical file path - storing in database
-                        FileContent = fileContent, // Binary data stored in database
+                        FileContent = fileContent, // Binary data (new or preserved)
                         FileSize = fileContent != null ? (decimal)(fileContent.Length / 1024.0) : doc.FileSize,
                         ContentType = doc.ContentType,
                         CreatedBy = "User",
@@ -1390,6 +1426,39 @@ namespace PMCRMS.API.Controllers
             {
                 _logger.LogError(ex, "Error retrieving applications");
                 return StatusCode(500, new { error = "An error occurred while processing your request" });
+            }
+        }
+
+        // GET: api/PositionRegistration/drafts
+        /// <summary>
+        /// Get all draft applications for the current user
+        /// </summary>
+        [HttpGet("drafts")]
+        public async Task<ActionResult<IEnumerable<PositionRegistrationResponseDTO>>> GetUserDrafts()
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                
+                var drafts = await _context.PositionApplications
+                    .Include(a => a.Addresses)
+                    .Include(a => a.Qualifications)
+                    .Include(a => a.Experiences)
+                    .Include(a => a.Documents)
+                    .Where(a => a.UserId == userId && a.Status == ApplicationCurrentStatus.Draft)
+                    .OrderByDescending(a => a.UpdatedDate ?? a.CreatedDate)
+                    .ToListAsync();
+
+                var responses = drafts.Select(MapToResponse).ToList();
+
+                _logger.LogInformation("Retrieved {Count} draft applications for user {UserId}", drafts.Count, userId);
+
+                return Ok(responses);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving draft applications");
+                return StatusCode(500, new { error = "An error occurred while retrieving your drafts" });
             }
         }
 

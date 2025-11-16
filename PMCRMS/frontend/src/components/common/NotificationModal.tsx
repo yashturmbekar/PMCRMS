@@ -11,6 +11,7 @@ interface NotificationModalProps {
   message: string;
   autoClose?: boolean;
   autoCloseDuration?: number;
+  autoCloseMessage?: string; // Custom message for auto-close indicator
 }
 
 const NotificationModal: React.FC<NotificationModalProps> = ({
@@ -21,6 +22,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
   message,
   autoClose = false,
   autoCloseDuration = 2000,
+  autoCloseMessage,
 }) => {
   React.useEffect(() => {
     if (isOpen && autoClose) {
@@ -149,7 +151,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
         </p>
 
         {/* Auto-close indicator */}
-        {autoClose && (
+        {autoClose && autoCloseMessage && (
           <div
             style={{
               display: "flex",
@@ -177,7 +179,7 @@ const NotificationModal: React.FC<NotificationModalProps> = ({
                 margin: 0,
               }}
             >
-              Redirecting to dashboard...
+              {autoCloseMessage}
             </p>
           </div>
         )}

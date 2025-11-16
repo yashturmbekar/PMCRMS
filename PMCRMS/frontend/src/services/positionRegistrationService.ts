@@ -326,6 +326,13 @@ const positionRegistrationService = {
   },
 
   /**
+   * Get all draft applications for current user
+   */
+  getUserDrafts: async (): Promise<PositionRegistrationResponse[]> => {
+    return await apiClient.get("/PositionRegistration/drafts");
+  },
+
+  /**
    * Delete an application (only draft status)
    */
   deleteApplication: async (id: number): Promise<void> => {

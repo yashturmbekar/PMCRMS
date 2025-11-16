@@ -358,6 +358,11 @@ export const PositionRegistrationPage = () => {
   const [isResubmitMode, setIsResubmitMode] = useState(false);
   const [rejectionComments, setRejectionComments] = useState("");
   const [additionalDocumentName, setAdditionalDocumentName] = useState("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showUnsavedChangesPopup, setShowUnsavedChangesPopup] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(
+    null
+  );
 
   // Determine position type from URL parameter or default to StructuralEngineer
   const getPositionType = (): PositionTypeValue => {
@@ -1169,6 +1174,9 @@ export const PositionRegistrationPage = () => {
       setSubmittedApplicationNumber(response.applicationNumber || "Pending");
       setShowSuccessPopup(true);
 
+      // Clear unsaved changes flag
+      setHasUnsavedChanges(false);
+
       // Navigate to dashboard after 3 seconds
       setTimeout(() => {
         navigate("/dashboard");
@@ -1308,6 +1316,9 @@ export const PositionRegistrationPage = () => {
       );
       setShowDraftSuccessPopup(true);
 
+      // Clear unsaved changes flag since draft is saved
+      setHasUnsavedChanges(false);
+
       // Navigate to dashboard after 3 seconds
       setTimeout(() => {
         navigate("/dashboard");
@@ -1366,6 +1377,31 @@ export const PositionRegistrationPage = () => {
     return new Date().getMonth() + 1; // JavaScript months are 0-indexed
   };
 
+  // Handle cancel button click with unsaved changes check
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      setPendingNavigation("/dashboard");
+      setShowUnsavedChangesPopup(true);
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  // Confirm navigation despite unsaved changes
+  const handleConfirmNavigation = () => {
+    setShowUnsavedChangesPopup(false);
+    setHasUnsavedChanges(false);
+    if (pendingNavigation) {
+      navigate(pendingNavigation);
+    }
+  };
+
+  // Cancel navigation and stay on form
+  const handleCancelNavigation = () => {
+    setShowUnsavedChangesPopup(false);
+    setPendingNavigation(null);
+  };
+
   // Initialize the form - simulate loading to prevent blank page
   useEffect(() => {
     // Small delay to ensure smooth transition
@@ -1374,6 +1410,30 @@ export const PositionRegistrationPage = () => {
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Track form changes to detect unsaved changes
+  useEffect(() => {
+    // Mark as changed if user has modified the form
+    // Skip tracking during initial load or when data is being loaded from backend
+    if (!loading && !initializing) {
+      setHasUnsavedChanges(true);
+    }
+  }, [formData, loading, initializing]);
+
+  // Warn user before leaving page with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges && !isSubmitting) {
+        e.preventDefault();
+        e.returnValue =
+          "You have unsaved changes. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges, isSubmitting]);
 
   // Load application data if editing (applicationId present)
   useEffect(() => {
@@ -1578,6 +1638,9 @@ export const PositionRegistrationPage = () => {
 
         // Update the selected position type state to trigger config update
         setSelectedPositionType(loadedPositionType);
+
+        // Reset unsaved changes flag after loading data
+        setHasUnsavedChanges(false);
 
         setSuccess(
           `Editing ${response.status === 1 ? "Draft" : "Application"} #${
@@ -5352,7 +5415,7 @@ export const PositionRegistrationPage = () => {
             {/* Cancel Button */}
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={handleCancel}
               className="pmc-button pmc-button-lg"
               disabled={loading}
               style={{
@@ -6088,6 +6151,162 @@ export const PositionRegistrationPage = () => {
                 }
               `}
             </style>
+          </div>
+        </div>
+      )}
+
+      {/* Unsaved Changes Popup */}
+      {showUnsavedChangesPopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            backdropFilter: "blur(4px)",
+          }}
+          onClick={handleCancelNavigation}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "16px",
+              padding: "40px",
+              maxWidth: "500px",
+              width: "90%",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+              textAlign: "center",
+              position: "relative",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "80px",
+                height: "80px",
+                background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px auto",
+                fontSize: "40px",
+              }}
+            >
+              ⚠️
+            </div>
+            <h2
+              style={{
+                fontSize: "28px",
+                fontWeight: "700",
+                color: "#d97706",
+                marginBottom: "16px",
+              }}
+            >
+              Unsaved Changes
+            </h2>
+            <p
+              style={{
+                fontSize: "16px",
+                color: "#64748b",
+                marginBottom: "24px",
+                lineHeight: "1.6",
+              }}
+            >
+              You have unsaved changes in your form. If you leave now, all your
+              progress will be lost.
+            </p>
+            <div
+              style={{
+                background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                padding: "16px",
+                borderRadius: "12px",
+                marginBottom: "24px",
+                border: "2px solid #fbbf24",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: "#78350f",
+                  lineHeight: "1.6",
+                  marginBottom: "8px",
+                }}
+              >
+                💡 <strong>Tip:</strong> Click <strong>"Save as Draft"</strong>{" "}
+                to save your progress without validation
+              </p>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                gap: "12px",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={handleCancelNavigation}
+                style={{
+                  padding: "12px 24px",
+                  background:
+                    "linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(30, 64, 175, 0.3)",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 16px rgba(30, 64, 175, 0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(30, 64, 175, 0.3)";
+                }}
+              >
+                Stay on Page
+              </button>
+              <button
+                onClick={handleConfirmNavigation}
+                style={{
+                  padding: "12px 24px",
+                  background:
+                    "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "600",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 16px rgba(220, 38, 38, 0.4)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(220, 38, 38, 0.3)";
+                }}
+              >
+                Leave Without Saving
+              </button>
+            </div>
           </div>
         </div>
       )}
