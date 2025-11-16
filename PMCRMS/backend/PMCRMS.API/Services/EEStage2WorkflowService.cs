@@ -236,7 +236,7 @@ namespace PMCRMS.API.Services
 
         /// <summary>
         /// Apply digital signature to certificate
-        /// Updates status from EXECUTIVE_ENGINEER_SIGN_PENDING (32) to CITY_ENGINEER_SIGN_PENDING (33)
+        /// Updates status from EXECUTIVE_ENGINEER_SIGN_PENDING (32) to CITY_ENGINEER_SIGN_PENDING (34)
         /// </summary>
         public async Task<EEStage2SignResult> ApplyDigitalSignatureAsync(int applicationId, int eeUserId, string otpCode)
         {
@@ -388,11 +388,16 @@ namespace PMCRMS.API.Services
                 application.EEStage2ApprovalDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
 
-                _logger.LogInformation($"[EEStage2Workflow] BEFORE SaveChanges - Application Status: {application.Status}, Certificate bytes: {licenseCertificate.FileContent?.Length ?? 0}");
+                _logger.LogInformation($"[EEStage2Workflow] BEFORE SaveChanges - Application {applicationId} Status: {application.Status} (Enum Value: {(int)application.Status}), Certificate bytes: {licenseCertificate.FileContent?.Length ?? 0}");
 
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"[EEStage2Workflow] AFTER SaveChanges - Digital signature applied successfully for application {applicationId}. Status: {application.Status}");
+                _logger.LogInformation($"[EEStage2Workflow] AFTER SaveChanges - Application {applicationId} Status: {application.Status} (Enum Value: {(int)application.Status}), Digital signature applied successfully");
+                
+                // Verify the status was actually saved by re-reading from database
+                var savedApplication = await _context.PositionApplications.AsNoTracking().FirstOrDefaultAsync(a => a.Id == applicationId);
+                _logger.LogInformation($"[EEStage2Workflow] VERIFICATION - Re-read from DB - Application {applicationId} Status: {savedApplication?.Status} (Enum Value: {(int)(savedApplication?.Status ?? 0)}), AssignedCEStage2Id: {savedApplication?.AssignedCEStage2Id}");
+
 
                 // Auto-assign to City Engineer for final signature
                 try
@@ -408,22 +413,32 @@ namespace PMCRMS.API.Services
                     if (assignmentResult != null)
                     {
                         _logger.LogInformation(
-                            "[EEStage2Workflow] Application {ApplicationId} auto-assigned to City Engineer {OfficerId} for final signature",
+                            "[EEStage2Workflow] ✅ Application {ApplicationId} auto-assigned to City Engineer (Officer ID: {OfficerId}) for final signature",
                             applicationId,
                             assignmentResult.AssignedToOfficerId
+                        );
+                        
+                        // Re-verify the assignment was saved
+                        var verifyAssignment = await _context.PositionApplications.AsNoTracking()
+                            .Where(a => a.Id == applicationId)
+                            .Select(a => new { a.Id, a.Status, a.AssignedCEStage2Id, a.AssignedToCEStage2Date })
+                            .FirstOrDefaultAsync();
+                        _logger.LogInformation(
+                            "[EEStage2Workflow] Assignment verification - App {AppId}: Status={Status}, AssignedCEStage2Id={CEId}, AssignedDate={Date}",
+                            verifyAssignment?.Id, verifyAssignment?.Status, verifyAssignment?.AssignedCEStage2Id, verifyAssignment?.AssignedToCEStage2Date
                         );
                     }
                     else
                     {
                         _logger.LogWarning(
-                            "[EEStage2Workflow] Application {ApplicationId} status updated to CITY_ENGINEER_SIGN_PENDING but no City Engineer available for auto-assignment. Application will appear as unassigned on CE dashboard.",
+                            "[EEStage2Workflow] ⚠️ Application {ApplicationId} status updated to CITY_ENGINEER_SIGN_PENDING but no City Engineer available for auto-assignment. Application will appear as unassigned on CE dashboard.",
                             applicationId
                         );
                     }
                 }
                 catch (Exception assignEx)
                 {
-                    _logger.LogError(assignEx, "[EEStage2Workflow] Failed to auto-assign to City Engineer for application {ApplicationId}. Application will appear as unassigned on CE dashboard.", applicationId);
+                    _logger.LogError(assignEx, "[EEStage2Workflow] ❌ Failed to auto-assign to City Engineer for application {ApplicationId}. Application will appear as unassigned on CE dashboard.", applicationId);
                     // Don't fail the signature operation if assignment fails
                 }
 

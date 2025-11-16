@@ -39,20 +39,41 @@ namespace PMCRMS.API.Services
             try
             {
                 _logger.LogInformation("[CEStage2Workflow] Fetching pending applications for CE final signature. CE User ID: {CeUserId}", ceUserId);
+                _logger.LogInformation("[CEStage2Workflow] Querying for Status: CITY_ENGINEER_SIGN_PENDING (Enum Value: {StatusValue})", (int)ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING);
 
                 var query = _context.PositionApplications
                     .Include(a => a.Addresses)
                     .Where(a => a.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING);
 
+                // Log ALL applications with this status before filtering by CE
+                var allApplicationsWithStatus = await _context.PositionApplications
+                    .Where(a => a.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING)
+                    .Select(a => new { a.Id, a.ApplicationNumber, a.AssignedCEStage2Id, a.Status })
+                    .ToListAsync();
+                
+                _logger.LogInformation("[CEStage2Workflow] Total applications with CITY_ENGINEER_SIGN_PENDING status: {Count}", allApplicationsWithStatus.Count);
+                foreach (var app in allApplicationsWithStatus)
+                {
+                    _logger.LogInformation("[CEStage2Workflow] - App {Id} ({AppNumber}): Status={Status} (Value: {StatusValue}), AssignedCEStage2Id={CEId}", 
+                        app.Id, app.ApplicationNumber, app.Status, (int)app.Status, app.AssignedCEStage2Id);
+                }
+
                 // If ceUserId is provided, filter by assigned CE (or unassigned applications)
                 if (ceUserId.HasValue)
                 {
+                    _logger.LogInformation("[CEStage2Workflow] Filtering for CE User ID: {CeUserId} OR unassigned applications", ceUserId.Value);
                     query = query.Where(a => a.AssignedCEStage2Id == ceUserId.Value || a.AssignedCEStage2Id == null);
+                }
+                else
+                {
+                    _logger.LogInformation("[CEStage2Workflow] No CE filter applied (Admin view) - showing all applications");
                 }
 
                 var applications = await query
                     .OrderBy(a => a.AssignedToCEStage2Date ?? a.UpdatedDate)
                     .ToListAsync();
+
+                _logger.LogInformation("[CEStage2Workflow] After CE filter: {Count} applications", applications.Count);
 
                 // Get payment amounts from Challan table
                 var applicationIds = applications.Select(a => a.Id).ToList();

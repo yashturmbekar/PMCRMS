@@ -872,45 +872,42 @@ namespace PMCRMS.API.Services
         {
             container.Column(column =>
             {
-                column.Spacing(5);
+                column.Spacing(3);
 
-                // Top header
-                column.Item().Row(row =>
-                {
-                    row.RelativeItem()
-                        .AlignLeft()
-                        .Text("मा. शहर अभियंता\nपुणे महानगरपालिका")
-                        .Bold()
-                        .FontFamily(MarathiFont)
-                        .FontSize(11)
-                        .LineHeight(1.4f);
+                // Top header - left aligned
+                column.Item().AlignLeft().Text("मा. शहर अभियंता\nपुणे महानगरपालिका")
+                    .Bold()
+                    .FontFamily(MarathiFont)
+                    .FontSize(11)
+                    .LineHeight(1.3f);
 
-                    row.RelativeItem();
-                });
+                column.Item().PaddingTop(20);
 
-                column.Item().PaddingTop(15);
-
+                // Centered "यांजकडे सादर...."
                 column.Item()
                     .AlignCenter()
                     .Text("यांजकडे सादर....")
-                    .FontSize(13)
+                    .FontSize(12)
                     .FontFamily(MarathiFont);
 
                 DateTime date = _model.Date;
                 int year = date.Year;
                 int toYear = year + 2;
 
-                column.Item().PaddingTop(8).AlignLeft().Text($"विषय:- जानेवारी {year} ते डिसेंबर {toYear} करीता {_model.Position} नवीन परवान्याबाबत.")
+                // Subject line
+                column.Item().PaddingTop(12).AlignLeft().Text($"विषय:- जानेवारी {year} ते डिसेंबर {toYear} करीता {_model.Position} नवीन परवान्याबाबत.")
+                    .FontSize(11)
+                    .FontFamily(MarathiFont)
+                    .LineHeight(1.3f);
+
+                // Main intro paragraph
+                column.Item().PaddingTop(12).AlignLeft().Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने जानेवारी {year} ते डिसेंबर {toYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
                     .FontSize(11)
                     .FontFamily(MarathiFont)
                     .LineHeight(1.4f);
 
-                column.Item().PaddingTop(10).AlignLeft().Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने जानेवारी {year} ते डिसेंबर {toYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
-                    .FontSize(11)
-                    .FontFamily(MarathiFont)
-                    .LineHeight(1.5f);
-
-                column.Item().PaddingTop(10).Text(text =>
+                // Name field
+                column.Item().PaddingTop(12).Text(text =>
                 {
                     text.Span("अर्जदाराचे नाव - ")
                         .FontSize(11)
@@ -922,7 +919,8 @@ namespace PMCRMS.API.Services
                         .Bold();
                 });
 
-                column.Item().PaddingTop(6).Text(text =>
+                // Education field
+                column.Item().PaddingTop(5).Text(text =>
                 {
                     text.Span("अर्जदाराचे शिक्षण - ")
                         .FontSize(11)
@@ -945,7 +943,8 @@ namespace PMCRMS.API.Services
                     }
                 });
 
-                column.Item().PaddingTop(6).Text(text =>
+                // Address field
+                column.Item().PaddingTop(5).Text(text =>
                 {
                     text.Span("पत्ता : 1) ")
                         .FontSize(11)
@@ -965,7 +964,8 @@ namespace PMCRMS.API.Services
                     }
                 });
 
-                column.Item().PaddingTop(6).Text(text =>
+                // Mobile field
+                column.Item().PaddingTop(5).Text(text =>
                 {
                     text.Span("मोबाईलनं.- ")
                         .FontSize(11)
@@ -977,12 +977,14 @@ namespace PMCRMS.API.Services
                         .Bold();
                 });
 
-                column.Item().PaddingTop(6).Text("आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
+                // Required experience
+                column.Item().PaddingTop(5).Text("आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
                     .FontFamily(MarathiFont)
                     .FontSize(11)
-                    .LineHeight(1.4f);
+                    .LineHeight(1.3f);
 
-                column.Item().PaddingTop(6).Text(text =>
+                // Actual experience
+                column.Item().PaddingTop(5).Text(text =>
                 {
                     text.Span("अनुभव- ")
                         .FontSize(11)
@@ -1022,12 +1024,14 @@ namespace PMCRMS.API.Services
                     _ => "4"
                 };
 
-                column.Item().PaddingTop(12).Text($"उपरोक्त नमूद केलेल्या व्यक्तीचा मागणी अर्ज, शैक्षणिक पात्रता, अनुभव व पत्त्याचा पुरावा इ. कागदपत्राची तपासणी केली ती बरोबर व नियमानुसार आहेत. त्यानुसार वरील अर्जदाराची मान्य युडीसीपीआर २०२० मधील अपेंडिक्स सी, सी-{num} नुसार पुणे महानगरपालिकेच्या {_model.Position} (नवीन) परवाना धारण करण्यास आवश्यक शैक्षणिक पात्रता व अनुभव असल्याने त्यांचा अर्ज आपले मान्यतेकरिता सादर करीत आहोत.")
+                // Main verification paragraph
+                column.Item().PaddingTop(14).Text($"उपरोक्त नमूद केलेल्या व्यक्तीचा मागणी अर्ज, शैक्षणिक पात्रता, अनुभव व पत्त्याचा पुरावा इ. कागदपत्राची तपासणी केली ती बरोबर व नियमानुसार आहेत. त्यानुसार वरील अर्जदाराची मान्य युडीसीपीआर २०२० मधील अपेंडिक्स सी, सी-{num} नुसार पुणे महानगरपालिकेच्या {_model.Position} (नवीन) परवाना धारण करण्यास आवश्यक शैक्षणिक पात्रता व अनुभव असल्याने त्यांचा अर्ज आपले मान्यतेकरिता सादर करीत आहोत.")
                     .FontFamily(MarathiFont)
                     .FontSize(11)
-                    .LineHeight(1.5f);
+                    .LineHeight(1.4f);
 
-                column.Item().PaddingTop(8).Text(text =>
+                // Request paragraph
+                column.Item().PaddingTop(10).Text(text =>
                 {
                     DateTime date = _model.Date;
                     int year = date.Year;
@@ -1047,36 +1051,39 @@ namespace PMCRMS.API.Services
                         .FontSize(11);
                 });
 
-                column.Item().PaddingTop(12).Text("मा.स.कळावे.")
+                // "मा.स.कळावे."
+                column.Item().PaddingTop(14).Text("मा.स.कळावे.")
                     .FontFamily(MarathiFont)
                     .FontSize(11);
 
-                // Signature/footer section - positioned at bottom
+                // Signature section - positioned at bottom with proper spacing
                 column.Item().Extend().AlignBottom().Column(bottomColumn =>
                 {
-                    // First row of signatures (JE and AE)
-                    bottomColumn.Item().Row(row =>
+                    // First row of signatures (JE and AE) 
+                    bottomColumn.Item().PaddingTop(10).Row(row =>
                     {
-                        // JE signature
+                        // JE signature (left)
                         row.RelativeItem().Column(col =>
                         {
-                            col.Item().Height(50); // Space for signature
+                            col.Item().Height(65); // Space for digital signature
                             col.Item().AlignCenter().Column(c =>
                             {
-                                c.Item().Text($"({_model.JrEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Spacing(1);
+                                c.Item().Text($"({_model.JrEnggName ?? "श्री. राजेंद्र पुंडे"})").FontFamily(EnglishFont).FontSize(10);
                                 c.Item().Text("शाखा अभियंता").FontFamily(MarathiFont).FontSize(10);
                                 c.Item().Text("शहर-अभियंता कार्यालय").FontFamily(MarathiFont).FontSize(10);
                                 c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
                         });
 
-                        // AE signature
+                        // AE signature (right)
                         row.RelativeItem().Column(col =>
                         {
-                            col.Item().Height(50); // Space for signature
+                            col.Item().Height(65); // Space for digital signature
                             col.Item().AlignCenter().Column(c =>
                             {
-                                c.Item().Text($"({_model.AssEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Spacing(1);
+                                c.Item().Text($"({_model.AssEnggName ?? "डॉ. देवदास साबळे"})").FontFamily(EnglishFont).FontSize(10);
                                 c.Item().Text("उपअभियंता").FontFamily(MarathiFont).FontSize(10);
                                 c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
@@ -1084,38 +1091,40 @@ namespace PMCRMS.API.Services
                     });
 
                     // Recommendation text
-                    bottomColumn.Item().PaddingTop(15).AlignLeft().Text("प्रस्तुत प्रकरणी उपरोक्त प्रमाणे छाननी झाली असल्याने मान्यतेस शिफारस आहे.")
+                    bottomColumn.Item().PaddingTop(10).AlignLeft().Text("प्रस्तुत प्रकरणी उपरोक्त प्रमाणे छाननी झाली असल्याने मान्यतेस शिफारस आहे.")
                         .FontFamily(MarathiFont)
                         .FontSize(11)
-                        .LineHeight(1.4f);
+                        .LineHeight(1.3f);
 
                     // "क्ष मान्य" text aligned to right
-                    bottomColumn.Item().PaddingTop(25).AlignRight().PaddingRight(100).Text("क्ष मान्य")
+                    bottomColumn.Item().PaddingTop(20).AlignRight().PaddingRight(80).Text("क्ष मान्य")
                         .FontFamily(MarathiFont)
                         .FontSize(11);
 
                     // Second row of signatures (EE and CE)
-                    bottomColumn.Item().PaddingTop(5).Row(row =>
+                    bottomColumn.Item().PaddingTop(8).Row(row =>
                     {
-                        // EE signature
+                        // EE signature (left)
                         row.RelativeItem().Column(col =>
                         {
-                            col.Item().Height(50); // Space for signature
+                            col.Item().Height(65); // Space for digital signature
                             col.Item().AlignCenter().Column(c =>
                             {
-                                c.Item().Text($"({_model.ExeEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Spacing(1);
+                                c.Item().Text($"({_model.ExeEnggName ?? "श्री शंकरराव शिंदे"})").FontFamily(EnglishFont).FontSize(10);
                                 c.Item().Text("कार्यकारी अभियंता").FontFamily(MarathiFont).FontSize(10);
                                 c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
                         });
 
-                        // CE signature
+                        // CE signature (right)
                         row.RelativeItem().Column(col =>
                         {
-                            col.Item().Height(50); // Space for signature
+                            col.Item().Height(65); // Space for digital signature
                             col.Item().AlignCenter().Column(c =>
                             {
-                                c.Item().Text($"({_model.CityEnggName ?? ""})").FontFamily(EnglishFont).FontSize(10);
+                                c.Spacing(1);
+                                c.Item().Text($"({_model.CityEnggName ?? "श्री संजय डोके"})").FontFamily(EnglishFont).FontSize(10);
                                 c.Item().Text("शहर अभियंता").FontFamily(MarathiFont).FontSize(10);
                                 c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             });
