@@ -328,7 +328,7 @@ namespace PMCRMS.API.Services
                         
                         if (decimal.TryParse(request.Amount, out var amount))
                         {
-                            transaction.AmountPaid = amount / 100; // Convert paise to rupees
+                            transaction.AmountPaid = amount; // Amount is already in rupees from BillDesk
                         }
 
                         _logger.LogInformation($"[PAYMENT] Updated transaction {transaction.Id} - Status: {transaction.Status}");
@@ -560,7 +560,7 @@ namespace PMCRMS.API.Services
 
                             if (decimal.TryParse(amount, out var parsedAmount))
                             {
-                                transaction.AmountPaid = parsedAmount / 100; // Convert paise to rupees
+                                transaction.AmountPaid = parsedAmount; // Amount is already in rupees from BillDesk
                             }
 
                             _logger.LogInformation($"[BILLDESK-CALLBACK] Updated transaction {transaction.Id} - Status: {transaction.Status}");
@@ -581,7 +581,7 @@ namespace PMCRMS.API.Services
                         decimal amountPaid = 0;
                         if (decimal.TryParse(amount, out var parsedAmount))
                         {
-                            amountPaid = parsedAmount / 100; // Convert paise to rupees
+                            amountPaid = parsedAmount; // Amount is already in rupees from BillDesk
                         }
 
                         try
@@ -742,8 +742,8 @@ namespace PMCRMS.API.Services
                 input.clientId = _configService.ClientId;
                 input.orderid = orderId;
                 input.Action = "Encrypt";
-                // BillDesk expects amount in paise (smallest currency unit)
-                input.amount = (decimal.Parse(amount) * 100).ToString("0");
+                // BillDesk expects amount in rupees with 2 decimal places (e.g., "1500.00" for ₹1500)
+                input.amount = decimal.Parse(amount).ToString("0.00");
                 input.currency = "356"; // INR currency code
                 input.ReturnUrl = $"{_configService.ReturnUrlBase}/{entityId}?txnEntityId={txnEntityId}";
                 input.itemcode = "DIRECT";
@@ -756,7 +756,8 @@ namespace PMCRMS.API.Services
                 // **PAYLOAD LOGGING (Sensitive data masked)**
                 _logger.LogInformation($"[BILLDESK-ENCRYPT] === ENCRYPTION INPUT PAYLOAD ===");
                 _logger.LogInformation($"[BILLDESK-ENCRYPT] OrderId: {orderId}");
-                _logger.LogInformation($"[BILLDESK-ENCRYPT] Amount: {amount}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] Amount (Rupees): ₹{amount}");
+                _logger.LogInformation($"[BILLDESK-ENCRYPT] Amount (Formatted for BillDesk): {input.amount}");
                 _logger.LogInformation($"[BILLDESK-ENCRYPT] Currency: 356 (INR)");
                 _logger.LogInformation($"[BILLDESK-ENCRYPT] ReturnUrl: {_configService.ReturnUrlBase}/{entityId}");
                 _logger.LogInformation($"[BILLDESK-ENCRYPT] ItemCode: DIRECT");

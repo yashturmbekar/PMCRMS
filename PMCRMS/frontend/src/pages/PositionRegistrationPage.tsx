@@ -142,7 +142,7 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
   [PositionType.Supervisor1]: {
     name: "Supervisor 1",
     icon: "👷",
-    fee: 900,
+    fee: 1500,
     feeDuration: "3 years",
     sections: {
       basicInfo: true,

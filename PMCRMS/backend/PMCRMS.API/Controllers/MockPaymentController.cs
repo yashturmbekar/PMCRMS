@@ -56,6 +56,27 @@ namespace PMCRMS.API.Controllers
                     return NotFound(new { success = false, message = "Application not found" });
                 }
 
+                // Calculate amount based on position type
+                var paymentAmount = application.PositionType switch
+                {
+                    PositionType.Architect => 0m,
+                    PositionType.LicenceEngineer => 3000m,
+                    PositionType.StructuralEngineer => 1500m,
+                    PositionType.Supervisor1 => 1500m,
+                    PositionType.Supervisor2 => 900m,
+                    _ => 0m
+                };
+
+                // Get amount in words
+                var amountInWords = paymentAmount switch
+                {
+                    0m => "Zero",
+                    900m => "Nine Hundred Only",
+                    1500m => "One Thousand Five Hundred Only",
+                    3000m => "Three Thousand Only",
+                    _ => "Unknown Amount"
+                };
+
                 // 2. Create mock transaction
                 var mockTransaction = new Transaction
                 {
@@ -64,8 +85,8 @@ namespace PMCRMS.API.Controllers
                     TransactionId = $"MOCK{DateTime.Now:yyyyMMddHHmmss}",
                     BdOrderId = $"MOCK_BD_{DateTime.Now:yyyyMMddHHmmss}",
                     Status = "SUCCESS",
-                    Price = 3000.00m,
-                    AmountPaid = 3000.00m,
+                    Price = paymentAmount,
+                    AmountPaid = paymentAmount,
                     Mode = "MOCK_PAYMENT",
                     CardType = "TEST",
                     CreatedAt = DateTime.UtcNow,
@@ -86,8 +107,8 @@ namespace PMCRMS.API.Controllers
                     ApplicationId = applicationId,
                     Name = $"{application.FirstName} {application.LastName}",
                     Position = application.PositionType.ToString(),
-                    Amount = 3000m,
-                    AmountInWords = "Three Thousand Only",
+                    Amount = paymentAmount,
+                    AmountInWords = amountInWords,
                     Date = DateTime.UtcNow
                 };
 
@@ -147,7 +168,7 @@ namespace PMCRMS.API.Controllers
                     var emailBody = $@"
                         <h2>Payment Successful - Application #{application.ApplicationNumber}</h2>
                         <p>Dear {application.FirstName} {application.LastName},</p>
-                        <p>Your payment of <strong>₹3000</strong> has been successfully processed.</p>
+                        <p>Your payment of <strong>₹{paymentAmount:F0}</strong> has been successfully processed.</p>
                         <p><strong>Transaction Details:</strong></p>
                         <ul>
                             <li>Transaction ID: {mockTransaction.TransactionId}</li>

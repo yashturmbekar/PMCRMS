@@ -69,7 +69,8 @@ namespace PMCRMS.API.Services
         /// Architect: 0 (No fee)
         /// LicenceEngineer: 3000
         /// StructuralEngineer: 1500
-        /// Supervisor1 & Supervisor2: 900
+        /// Supervisor1: 1500
+        /// Supervisor2: 900
         /// </summary>
         private string GetPriceByPositionType(PositionType positionType)
         {
@@ -78,7 +79,7 @@ namespace PMCRMS.API.Services
                 PositionType.Architect => "0",
                 PositionType.LicenceEngineer => "3000",
                 PositionType.StructuralEngineer => "1500",
-                PositionType.Supervisor1 => "900",
+                PositionType.Supervisor1 => "1500",
                 PositionType.Supervisor2 => "900",
                 _ => "0" // Default to 0 for unknown types
             };

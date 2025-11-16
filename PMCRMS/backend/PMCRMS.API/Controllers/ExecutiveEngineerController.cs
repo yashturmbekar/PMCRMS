@@ -91,9 +91,10 @@ namespace PMCRMS.API.Controllers
             try
             {
                 var officerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                var otp = await _workflowService.GenerateOtpForSignatureAsync(id, officerId);
+                var message = await _workflowService.GenerateOtpForSignatureAsync(id, officerId);
                 
-                return Ok(new { message = "OTP sent successfully", otp = otp }); // TODO: Remove OTP from response in production
+                // Return the HSM success message to frontend
+                return Ok(new { success = true, message = message });
             }
             catch (Exception ex)
             {

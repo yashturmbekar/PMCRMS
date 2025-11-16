@@ -84,7 +84,9 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
         setOtpGenerated(true);
         setNotification({
           isOpen: true,
-          message: "OTP has been sent to your registered email address",
+          message:
+            response.message ||
+            "OTP has been sent to your registered mobile number",
           type: "success",
           title: "OTP Sent Successfully",
           autoClose: true,
@@ -364,7 +366,7 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                     margin: 0,
                   }}
                 >
-                  OTP sent to your registered email address (valid for 5
+                  OTP sent to your registered mobile number (valid for 5
                   minutes)
                 </p>
               </div>
@@ -402,8 +404,9 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                 >
                   <p style={{ fontSize: "13px", color: "#92400e", margin: 0 }}>
                     <strong>Note:</strong> Click "GET OTP" to receive a
-                    verification code on your email. You'll need to enter this
-                    OTP to digitally sign the recommendation form.
+                    verification code on your registered mobile number. You'll
+                    need to enter this OTP to digitally sign the recommendation
+                    form.
                   </p>
                 </div>
               )

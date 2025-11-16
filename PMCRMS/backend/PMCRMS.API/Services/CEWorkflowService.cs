@@ -236,9 +236,10 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("✅ OTP generated and sent by HSM to CE officer {OfficerId} - no database storage needed", officerId);
 
+                // Return the actual HSM success message (e.g., "Message successfully sent to XXXXXX4115")
                 // HSM sends OTP directly to officer's registered mobile/email
                 // No need to store or return OTP - HSM validates it during signing
-                return "OTP sent to registered mobile/email";
+                return hsmResult.Message ?? "OTP sent to registered mobile number";
             }
             catch (Exception ex)
             {

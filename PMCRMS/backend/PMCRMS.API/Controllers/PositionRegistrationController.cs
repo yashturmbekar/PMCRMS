@@ -2080,7 +2080,7 @@ namespace PMCRMS.API.Controllers
                 PositionType.Architect => 0m,
                 PositionType.LicenceEngineer => 3000m,
                 PositionType.StructuralEngineer => 1500m,
-                PositionType.Supervisor1 => 900m,
+                PositionType.Supervisor1 => 1500m,
                 PositionType.Supervisor2 => 900m,
                 _ => null
             };

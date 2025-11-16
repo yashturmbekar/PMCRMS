@@ -62,7 +62,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       case "EE":
         return "Executive Engineer";
       case "CE":
-        return "City Engineer - Document Verification";
+        return "City Engineer";
       default:
         return "Officer";
     }
@@ -81,7 +81,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
         setOtpGenerated(true);
         setNotification({
           isOpen: true,
-          message: "OTP has been sent to your registered email address",
+          message:
+            response.message ||
+            "OTP has been sent to your registered mobile number",
           type: "success",
           title: "OTP Sent Successfully",
           autoClose: true,
@@ -146,7 +148,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           message:
             officerType === "CE"
               ? "Application FINALLY APPROVED and digitally signed successfully!"
-              : `Documents verified and digitally signed successfully! Forwarded to ${
+              : `Recommendation form digitally signed successfully! Forwarded to ${
                   officerType === "AE" ? "Executive Engineer" : "City Engineer"
                 }.`,
           type: "success",
@@ -166,9 +168,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
       } else {
         setNotification({
           isOpen: true,
-          message: response.message || "Failed to verify and sign",
+          message: response.message || "Failed to apply digital signature",
           type: "error",
-          title: "Verification Failed",
+          title: "Signature Failed",
           autoClose: false,
         });
       }
@@ -257,7 +259,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                 fontWeight: "600",
               }}
             >
-              {title || `${getOfficerTitle()} - Document Verification`}
+              {title ||
+                `${getOfficerTitle()} - Adding Signature to Recommendation Form`}
             </h3>
             <button
               onClick={onClose}
@@ -355,7 +358,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     margin: "8px 0 0 0",
                   }}
                 >
-                  OTP sent to your registered email address (valid for 5
+                  OTP sent to your registered mobile number (valid for 5
                   minutes)
                 </p>
               </div>
@@ -407,8 +410,9 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     }}
                   >
                     <strong>Note:</strong> Click "GET OTP" to receive a
-                    verification code on your email. You'll need to enter this
-                    OTP to digitally sign the recommendation form.
+                    verification code on your registered mobile number. You'll
+                    need to enter this OTP to digitally sign the recommendation
+                    form.
                   </p>
                 </div>
               )

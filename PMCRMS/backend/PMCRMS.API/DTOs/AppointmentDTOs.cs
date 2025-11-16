@@ -1,14 +1,28 @@
 using PMCRMS.API.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace PMCRMS.API.DTOs
 {
     public class ScheduleAppointmentRequestDto
     {
+        [Required(ErrorMessage = "Application ID is required")]
         public int ApplicationId { get; set; }
+        
+        [Required(ErrorMessage = "Review date is required")]
         public DateTime ReviewDate { get; set; }
+        
+        [Required(ErrorMessage = "Contact person is required")]
+        [MinLength(1, ErrorMessage = "Contact person cannot be empty")]
         public string ContactPerson { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Place is required")]
+        [MinLength(1, ErrorMessage = "Place cannot be empty")]
         public string Place { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Room number is required")]
+        [MinLength(1, ErrorMessage = "Room number cannot be empty")]
         public string RoomNumber { get; set; } = string.Empty;
+        
         public string? Comments { get; set; }
     }
 
@@ -25,12 +39,27 @@ namespace PMCRMS.API.DTOs
 
     public class RescheduleAppointmentRequestDto
     {
+        [Required(ErrorMessage = "Appointment ID is required")]
         public int AppointmentId { get; set; }
+        
+        [Required(ErrorMessage = "New review date is required")]
         public DateTime NewReviewDate { get; set; }
+        
+        [Required(ErrorMessage = "Reschedule reason is required")]
+        [MinLength(1, ErrorMessage = "Reschedule reason cannot be empty")]
         public string RescheduleReason { get; set; } = string.Empty;
-        public string? Place { get; set; }
-        public string? ContactPerson { get; set; }
-        public string? RoomNumber { get; set; }
+        
+        [Required(ErrorMessage = "Place is required")]
+        [MinLength(1, ErrorMessage = "Place cannot be empty")]
+        public string Place { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Contact person is required")]
+        [MinLength(1, ErrorMessage = "Contact person cannot be empty")]
+        public string ContactPerson { get; set; } = string.Empty;
+        
+        [Required(ErrorMessage = "Room number is required")]
+        [MinLength(1, ErrorMessage = "Room number cannot be empty")]
+        public string RoomNumber { get; set; } = string.Empty;
     }
 
     public class CompleteAppointmentRequestDto

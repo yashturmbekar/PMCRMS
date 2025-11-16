@@ -143,12 +143,11 @@ namespace PMCRMS.API.Controllers
         {
             try
             {
-                var result = await _workflowService.GenerateOtpForSignatureAsync(id, GetCurrentUserId());
+                var message = await _workflowService.GenerateOtpForSignatureAsync(id, GetCurrentUserId());
                 return Ok(new
                 {
                     success = true,
-                    message = "OTP sent to your registered email address",
-                    data = result
+                    message = message
                 });
             }
             catch (Exception ex)

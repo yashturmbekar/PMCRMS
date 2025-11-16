@@ -477,6 +477,7 @@ const ViewPositionApplication: React.FC = () => {
     // Clear previous error
     setScheduleError("");
 
+    // Validate all required fields
     if (
       !application ||
       !scheduleForm.reviewDate ||
@@ -485,6 +486,16 @@ const ViewPositionApplication: React.FC = () => {
       !scheduleForm.roomNumber
     ) {
       setScheduleError("Please fill in all required fields");
+      return;
+    }
+
+    // Trim and validate non-empty strings
+    if (
+      !scheduleForm.contactPerson.trim() ||
+      !scheduleForm.place.trim() ||
+      !scheduleForm.roomNumber.trim()
+    ) {
+      setScheduleError("All fields must contain valid values");
       return;
     }
 
@@ -498,10 +509,10 @@ const ViewPositionApplication: React.FC = () => {
       await jeWorkflowService.scheduleAppointment({
         applicationId: application.id,
         reviewDate: scheduleForm.reviewDate,
-        place: scheduleForm.place,
-        contactPerson: scheduleForm.contactPerson,
-        roomNumber: scheduleForm.roomNumber,
-        remarks: scheduleForm.comments,
+        place: scheduleForm.place.trim(),
+        contactPerson: scheduleForm.contactPerson.trim(),
+        roomNumber: scheduleForm.roomNumber.trim(),
+        remarks: scheduleForm.comments.trim() || undefined,
       });
 
       // Close schedule modal and show success popup
@@ -532,8 +543,26 @@ const ViewPositionApplication: React.FC = () => {
   };
 
   const handleRescheduleSubmit = async () => {
-    if (!rescheduleForm.newReviewDate || !rescheduleForm.rescheduleReason) {
+    // Validate all required fields
+    if (
+      !rescheduleForm.newReviewDate ||
+      !rescheduleForm.rescheduleReason ||
+      !rescheduleForm.place ||
+      !rescheduleForm.contactPerson ||
+      !rescheduleForm.roomNumber
+    ) {
       setRescheduleError("Please fill in all required fields");
+      return;
+    }
+
+    // Trim and validate non-empty strings
+    if (
+      !rescheduleForm.rescheduleReason.trim() ||
+      !rescheduleForm.place.trim() ||
+      !rescheduleForm.contactPerson.trim() ||
+      !rescheduleForm.roomNumber.trim()
+    ) {
+      setRescheduleError("All fields must contain valid values");
       return;
     }
 
@@ -548,10 +577,10 @@ const ViewPositionApplication: React.FC = () => {
       await jeWorkflowService.rescheduleAppointment({
         appointmentId: application.workflowInfo.appointmentId,
         newReviewDate: rescheduleForm.newReviewDate,
-        rescheduleReason: rescheduleForm.rescheduleReason,
-        place: rescheduleForm.place || undefined,
-        contactPerson: rescheduleForm.contactPerson || undefined,
-        roomNumber: rescheduleForm.roomNumber || undefined,
+        rescheduleReason: rescheduleForm.rescheduleReason.trim(),
+        place: rescheduleForm.place.trim(),
+        contactPerson: rescheduleForm.contactPerson.trim(),
+        roomNumber: rescheduleForm.roomNumber.trim(),
       });
 
       setShowRescheduleModal(false);
@@ -2671,21 +2700,33 @@ const ViewPositionApplication: React.FC = () => {
               <ArrowLeft size={18} />
               Back to Dashboard
             </button>
-            <button
-              className="pmc-button pmc-button-danger"
-              title="Reject Application"
-              onClick={openRejectModal}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                color: "#fff",
-                backgroundColor: "#dc2626",
-              }}
-            >
-              <Ban size={18} />
-              Reject
-            </button>
+            {/* Only Stage 1 officers can reject - Stage 2 officers (EE Sign Pending=32, CE Sign Pending=34) cannot */}
+            {!(
+              (user?.role.includes("Executive") &&
+                (typeof application.status === "number"
+                  ? application.status
+                  : parseInt(application.status)) >= 32) ||
+              (user?.role.includes("City") &&
+                (typeof application.status === "number"
+                  ? application.status
+                  : parseInt(application.status)) >= 34)
+            ) && (
+              <button
+                className="pmc-button pmc-button-danger"
+                title="Reject Application"
+                onClick={openRejectModal}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  color: "#fff",
+                  backgroundColor: "#dc2626",
+                }}
+              >
+                <Ban size={18} />
+                Reject
+              </button>
+            )}
             <button
               className="pmc-button pmc-button-success"
               title="Verify & Approve Documents"
@@ -2730,21 +2771,7 @@ const ViewPositionApplication: React.FC = () => {
               <ArrowLeft size={18} />
               Back to Dashboard
             </button>
-            <button
-              className="pmc-button pmc-button-danger"
-              title="Reject Application"
-              onClick={openRejectModal}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                color: "#fff",
-                backgroundColor: "#dc2626",
-              }}
-            >
-              <Ban size={18} />
-              Reject
-            </button>
+            {/* Clerk cannot reject applications - only Stage 1 officers can reject */}
             <button
               className="pmc-button pmc-button-success"
               title="Approve Application"
@@ -3650,10 +3677,11 @@ const ViewPositionApplication: React.FC = () => {
                       color: "#374151",
                     }}
                   >
-                    Reschedule Reason
+                    Reschedule Reason{" "}
+                    <span style={{ color: "#dc2626" }}>*</span>
                   </label>
                   <textarea
-                    placeholder="Reason for rescheduling (optional)"
+                    placeholder="Enter reason for rescheduling"
                     value={rescheduleForm.rescheduleReason}
                     onChange={(e) =>
                       setRescheduleForm({
@@ -3665,7 +3693,11 @@ const ViewPositionApplication: React.FC = () => {
                     style={{
                       width: "100%",
                       padding: "12px 14px",
-                      border: "1.5px solid #d1d5db",
+                      border: `1.5px solid ${
+                        rescheduleError && !rescheduleForm.rescheduleReason
+                          ? "#ef4444"
+                          : "#d1d5db"
+                      }`,
                       borderRadius: "8px",
                       fontSize: "14px",
                       resize: "vertical",
@@ -3679,10 +3711,25 @@ const ViewPositionApplication: React.FC = () => {
                         "0 0 0 3px rgba(16, 185, 129, 0.1)";
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
+                      e.target.style.borderColor =
+                        rescheduleError && !rescheduleForm.rescheduleReason
+                          ? "#ef4444"
+                          : "#d1d5db";
                       e.target.style.boxShadow = "none";
                     }}
                   />
+                  {rescheduleError && !rescheduleForm.rescheduleReason && (
+                    <p
+                      style={{
+                        marginTop: "6px",
+                        fontSize: "13px",
+                        color: "#ef4444",
+                        fontWeight: 500,
+                      }}
+                    >
+                      Reschedule reason is required
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -38,6 +38,37 @@ namespace PMCRMS.API.Services
                     "ScheduleAppointmentAsync called - ApplicationId: {ApplicationId}, OfficerId: {OfficerId}, ReviewDate: {ReviewDate}, ContactPerson: {ContactPerson}, Place: {Place}, RoomNumber: {RoomNumber}",
                     applicationId, scheduledByOfficerId, reviewDate, contactPerson, place, roomNumber);
 
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(contactPerson))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Contact person is required",
+                        Errors = new List<string> { "Contact person cannot be empty" }
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(place))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Place is required",
+                        Errors = new List<string> { "Place cannot be empty" }
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(roomNumber))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Room number is required",
+                        Errors = new List<string> { "Room number cannot be empty" }
+                    };
+                }
+
                 var application = await _context.PositionApplications
                     .Include(a => a.User)
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
@@ -54,10 +85,13 @@ namespace PMCRMS.API.Services
                 }
 
                 // Validate that the review date is not in the past
+                // Frontend sends datetime in format: YYYY-MM-DDTHH:mm:ss (without timezone)
+                // ASP.NET Core deserializes this as UTC by default
+                // We should use the datetime as-is without any conversion
                 var now = DateTime.UtcNow;
-                var reviewDateUtc = reviewDate.Kind == DateTimeKind.Unspecified 
-                    ? DateTime.SpecifyKind(reviewDate, DateTimeKind.Local).ToUniversalTime()
-                    : reviewDate.ToUniversalTime();
+                
+                // Treat the incoming datetime as UTC (which is how ASP.NET Core deserializes it)
+                var reviewDateUtc = DateTime.SpecifyKind(reviewDate, DateTimeKind.Utc);
 
                 if (reviewDateUtc < now)
                 {
@@ -73,11 +107,9 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("Creating appointment entity for application {ApplicationId}", applicationId);
 
-                // Convert reviewDate to UTC - frontend sends local time (IST) without timezone info
-                // We need to treat the incoming datetime as local time, not UTC
-                var utcReviewDate = reviewDate.Kind == DateTimeKind.Unspecified 
-                    ? DateTime.SpecifyKind(reviewDate, DateTimeKind.Local).ToUniversalTime()
-                    : reviewDate.ToUniversalTime();
+                // Use the datetime as-is - frontend sends local time but ASP.NET deserializes it as UTC
+                // We just need to mark it as UTC for consistency
+                var utcReviewDate = DateTime.SpecifyKind(reviewDate, DateTimeKind.Utc);
 
                 var appointment = new Appointment
                 {
@@ -254,6 +286,43 @@ namespace PMCRMS.API.Services
         {
             try
             {
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(rescheduleReason))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Reschedule reason is required"
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(place))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Location is required"
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(contactPerson))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Contact person is required"
+                    };
+                }
+
+                if (string.IsNullOrWhiteSpace(roomNumber))
+                {
+                    return new AppointmentResult
+                    {
+                        Success = false,
+                        Message = "Room number is required"
+                    };
+                }
+
                 var originalAppointment = await _context.Appointments
                     .Include(a => a.Application)
                     .Include(a => a.ScheduledByOfficer)
@@ -275,10 +344,13 @@ namespace PMCRMS.API.Services
                 }
 
                 // Validate that the new review date is not in the past
+                // Frontend sends datetime in format: YYYY-MM-DDTHH:mm:ss (without timezone)
+                // ASP.NET Core deserializes this as UTC by default
+                // We should use the datetime as-is without any conversion
                 var now = DateTime.UtcNow;
-                var newReviewDateUtc = newReviewDate.Kind == DateTimeKind.Unspecified 
-                    ? DateTime.SpecifyKind(newReviewDate, DateTimeKind.Local).ToUniversalTime()
-                    : newReviewDate.ToUniversalTime();
+                
+                // Treat the incoming datetime as UTC (which is how ASP.NET Core deserializes it)
+                var newReviewDateUtc = DateTime.SpecifyKind(newReviewDate, DateTimeKind.Utc);
 
                 if (newReviewDateUtc < now)
                 {
@@ -292,11 +364,9 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Convert newReviewDate to UTC - frontend sends local time (IST) without timezone info
-                // We need to treat the incoming datetime as local time, not UTC
-                var utcNewReviewDate = newReviewDate.Kind == DateTimeKind.Unspecified 
-                    ? DateTime.SpecifyKind(newReviewDate, DateTimeKind.Local).ToUniversalTime()
-                    : newReviewDate.ToUniversalTime();
+                // Use the datetime as-is - frontend sends local time but ASP.NET deserializes it as UTC
+                // We just need to mark it as UTC for consistency
+                var utcNewReviewDate = DateTime.SpecifyKind(newReviewDate, DateTimeKind.Utc);
 
                 var newAppointment = new Appointment
                 {
