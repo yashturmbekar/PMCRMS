@@ -687,45 +687,31 @@ h6 {
     0 2px 6px rgba(12, 74, 110, 0.15);
 }
 
-/* Secondary Button - Modern Outlined */
+/* Secondary Button - Clean Outlined Design */
 .pmc-button-secondary {
   background-color: white;
-  color: var(--pmc-primary);
-  border-color: var(--pmc-primary);
+  color: #1e40af;
+  border: 1px solid #cbd5e1;
   box-shadow: var(--pmc-shadow-sm);
-  position: relative;
-}
-
-.pmc-button-secondary::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 10px;
-  background: linear-gradient(
-    135deg,
-    var(--pmc-primary) 0%,
-    var(--pmc-primary-dark) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
+  transition: all 0.2s ease;
 }
 
 .pmc-button-secondary:hover:not(:disabled) {
+  background-color: #1e40af;
   color: white;
-  border-color: var(--pmc-primary-dark);
+  border-color: #1e40af;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(12, 74, 110, 0.25),
-    0 2px 8px rgba(12, 74, 110, 0.15);
+  box-shadow: 0 4px 12px rgba(30, 64, 175, 0.25);
 }
 
-.pmc-button-secondary:hover:not(:disabled)::after {
-  opacity: 1;
+.pmc-button-secondary:hover:not(:disabled) svg {
+  color: white;
+  stroke: white;
 }
 
-.pmc-button-secondary:hover:not(:disabled) > * {
-  position: relative;
-  z-index: 1;
+.pmc-button-secondary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(30, 64, 175, 0.15);
 }
 
 /* Success Button - Modern Green */

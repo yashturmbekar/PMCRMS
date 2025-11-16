@@ -1414,7 +1414,12 @@ const ViewPositionApplication: React.FC = () => {
             <div className="pmc-card-body">
               <div className="pmc-form-grid pmc-form-grid-2">
                 {application.documents
-                  .filter((doc) => doc.documentTypeName !== "RecommendedForm")
+                  .filter(
+                    (doc) =>
+                      doc.documentTypeName !== "RecommendedForm" &&
+                      doc.documentTypeName !== "LicenceCertificate" &&
+                      doc.documentTypeName !== "PaymentChallan"
+                  )
                   .map((doc) => (
                     <div
                       key={doc.id}
@@ -1686,6 +1691,283 @@ const ViewPositionApplication: React.FC = () => {
                       <Download size={14} />
                       Download
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* License Certificate - Show if it exists in database */}
+        {application.licenseCertificate && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                color: "white",
+                padding: "12px 16px",
+                borderBottom: "2px solid #059669",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "white", margin: 0 }}
+              >
+                License Certificate
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <div className="pmc-form-grid pmc-form-grid-2">
+                <div
+                  style={{
+                    padding: "16px",
+                    background: "#f0fdf4",
+                    borderRadius: "8px",
+                    border: "1px solid #86efac",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <CheckCircle size={24} color="#10b981" />
+                    <div>
+                      <p
+                        className="pmc-value"
+                        style={{ marginBottom: "4px", color: "#059669" }}
+                      >
+                        License Certificate Generated
+                      </p>
+                      <p style={{ fontSize: "12px", color: "#64748b" }}>
+                        {application.licenseCertificate.fileName}
+                      </p>
+                      {application.licenseCertificate.fileSize && (
+                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                          {(
+                            application.licenseCertificate.fileSize / 1024
+                          ).toFixed(2)}{" "}
+                          KB
+                        </p>
+                      )}
+                      {application.licenseCertificate.lastSignedDate && (
+                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                          Last signed:{" "}
+                          {new Date(
+                            application.licenseCertificate.lastSignedDate
+                          ).toLocaleDateString("en-IN")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <button
+                      className="pmc-button pmc-button-success pmc-button-sm"
+                      onClick={() =>
+                        setSelectedDocument({
+                          fileName: application.licenseCertificate!.fileName,
+                          filePath: "",
+                          documentTypeName: "License Certificate",
+                          pdfBase64: application.licenseCertificate!.pdfBase64,
+                        })
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Eye size={14} />
+                      View
+                    </button>
+                    <button
+                      className="pmc-button pmc-button-secondary pmc-button-sm"
+                      onClick={() => {
+                        const byteCharacters = atob(
+                          application.licenseCertificate!.pdfBase64
+                        );
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                          byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], {
+                          type: "application/pdf",
+                        });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download =
+                          application.licenseCertificate!.fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Download size={14} />
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Challan (Payment Receipt) - Show if it exists */}
+        {application.challan && (
+          <div className="pmc-card" style={{ marginBottom: "16px" }}>
+            <div
+              className="pmc-card-header"
+              style={{
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                color: "white",
+                padding: "12px 16px",
+                borderBottom: "2px solid #2563eb",
+              }}
+            >
+              <h2
+                className="pmc-card-title"
+                style={{ color: "white", margin: 0 }}
+              >
+                Payment Challan
+              </h2>
+            </div>
+            <div className="pmc-card-body">
+              <div className="pmc-form-grid pmc-form-grid-2">
+                <div
+                  style={{
+                    padding: "16px",
+                    background: "#eff6ff",
+                    borderRadius: "8px",
+                    border: "1px solid #93c5fd",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                    }}
+                  >
+                    <CreditCard size={24} color="#3b82f6" />
+                    <div>
+                      <p
+                        className="pmc-value"
+                        style={{ marginBottom: "4px", color: "#2563eb" }}
+                      >
+                        Challan #{application.challan.challanNumber}
+                      </p>
+                      <p style={{ fontSize: "12px", color: "#64748b" }}>
+                        Amount: ₹{application.challan.amount.toFixed(2)}
+                      </p>
+                      {application.challan.createdDate && (
+                        <p style={{ fontSize: "11px", color: "#94a3b8" }}>
+                          Generated:{" "}
+                          {new Date(
+                            application.challan.createdDate
+                          ).toLocaleDateString("en-IN")}
+                        </p>
+                      )}
+                      {application.challan.paidDate && (
+                        <p style={{ fontSize: "11px", color: "#10b981" }}>
+                          Paid:{" "}
+                          {new Date(
+                            application.challan.paidDate
+                          ).toLocaleDateString("en-IN")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    {application.challan.pdfBase64 && (
+                      <>
+                        <button
+                          className="pmc-button pmc-button-primary pmc-button-sm"
+                          onClick={() =>
+                            setSelectedDocument({
+                              fileName: `Challan_${
+                                application.challan!.challanNumber
+                              }.pdf`,
+                              filePath: "",
+                              documentTypeName: "Payment Challan",
+                              pdfBase64: application.challan!.pdfBase64,
+                            })
+                          }
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Eye size={14} />
+                          View
+                        </button>
+                        <button
+                          className="pmc-button pmc-button-secondary pmc-button-sm"
+                          onClick={() => {
+                            const byteCharacters = atob(
+                              application.challan!.pdfBase64
+                            );
+                            const byteNumbers = new Array(
+                              byteCharacters.length
+                            );
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], {
+                              type: "application/pdf",
+                            });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = `Challan_${
+                              application.challan!.challanNumber
+                            }.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                          }}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Download size={14} />
+                          Download
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2700,33 +2982,7 @@ const ViewPositionApplication: React.FC = () => {
               <ArrowLeft size={18} />
               Back to Dashboard
             </button>
-            {/* Only Stage 1 officers can reject - Stage 2 officers (EE Sign Pending=32, CE Sign Pending=34) cannot */}
-            {!(
-              (user?.role.includes("Executive") &&
-                (typeof application.status === "number"
-                  ? application.status
-                  : parseInt(application.status)) >= 32) ||
-              (user?.role.includes("City") &&
-                (typeof application.status === "number"
-                  ? application.status
-                  : parseInt(application.status)) >= 34)
-            ) && (
-              <button
-                className="pmc-button pmc-button-danger"
-                title="Reject Application"
-                onClick={openRejectModal}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  color: "#fff",
-                  backgroundColor: "#dc2626",
-                }}
-              >
-                <Ban size={18} />
-                Reject
-              </button>
-            )}
+            {/* Reject button hidden for AE/EE/CE officers as per requirement */}
             <button
               className="pmc-button pmc-button-success"
               title="Verify & Approve Documents"

@@ -262,6 +262,12 @@ namespace PMCRMS.API.DTOs
         // Recommendation Form PDF (system-generated, stored as binary data)
         public RecommendationFormDTO? RecommendationForm { get; set; }
         
+        // License Certificate PDF (final certificate with all signatures)
+        public LicenseCertificateDTO? LicenseCertificate { get; set; }
+        
+        // Challan (payment receipt)
+        public ChallanDTO? Challan { get; set; }
+        
         // JE Workflow Information
         public JEWorkflowInfo? WorkflowInfo { get; set; }
     }
@@ -278,6 +284,38 @@ namespace PMCRMS.API.DTOs
         public string ContentType { get; set; } = string.Empty;
         public string PdfBase64 { get; set; } = string.Empty; // Base64 encoded PDF data
         public DateTime CreatedDate { get; set; }
+    }
+    
+    /// <summary>
+    /// License Certificate PDF data (final certificate with all digital signatures)
+    /// </summary>
+    public class LicenseCertificateDTO
+    {
+        public int DocumentId { get; set; }
+        public string FileName { get; set; } = string.Empty;
+        public string FileId { get; set; } = string.Empty;
+        public decimal FileSize { get; set; }
+        public string ContentType { get; set; } = string.Empty;
+        public string PdfBase64 { get; set; } = string.Empty; // Base64 encoded PDF data
+        public DateTime CreatedDate { get; set; }
+        public DateTime? LastSignedDate { get; set; }
+        public List<string> SignedBy { get; set; } = new List<string>(); // List of officers who signed
+    }
+    
+    /// <summary>
+    /// Challan (payment receipt) data
+    /// </summary>
+    public class ChallanDTO
+    {
+        public int Id { get; set; }
+        public string ChallanNumber { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public DateTime? PaidDate { get; set; }
+        public string? PaymentReference { get; set; }
+        public string? PaymentMode { get; set; }
+        public string? BankName { get; set; }
+        public string PdfBase64 { get; set; } = string.Empty; // Base64 encoded PDF data
     }
     
     /// <summary>

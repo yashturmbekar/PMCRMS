@@ -7,7 +7,9 @@ namespace PMCRMS.API.Services
     /// <summary>
     /// Service for City Engineer Stage 2 workflow for Position Applications (Licensing)
     /// Handles City Engineer final digital signature on license certificate after EE Stage 2
-    /// Status progression: CITY_ENGINEER_SIGN_PENDING (34) → APPROVED (36)
+    /// Status progression: 
+    ///   CITY_ENGINEER_SIGN_PENDING (34) → APPROVED (36) [New workflow]
+    ///   CITY_ENGINEER_PENDING (33) → APPROVED (36) [Legacy workflow compatibility]
     /// </summary>
     public class CEStage2WorkflowService
     {
@@ -39,30 +41,35 @@ namespace PMCRMS.API.Services
             try
             {
                 _logger.LogInformation("[CEStage2Workflow] Fetching pending applications for CE final signature. CE User ID: {CeUserId}", ceUserId);
-                _logger.LogInformation("[CEStage2Workflow] Querying for Status: CITY_ENGINEER_SIGN_PENDING (Enum Value: {StatusValue})", (int)ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING);
+                _logger.LogInformation("[CEStage2Workflow] Querying for Status: CITY_ENGINEER_SIGN_PENDING (34) OR CITY_ENGINEER_PENDING (33)");
 
                 var query = _context.PositionApplications
                     .Include(a => a.Addresses)
-                    .Where(a => a.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING);
+                    .Where(a => a.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING 
+                             || a.Status == ApplicationCurrentStatus.CITY_ENGINEER_PENDING);
 
-                // Log ALL applications with this status before filtering by CE
+                // Log ALL applications with these statuses before filtering by CE
                 var allApplicationsWithStatus = await _context.PositionApplications
-                    .Where(a => a.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING)
-                    .Select(a => new { a.Id, a.ApplicationNumber, a.AssignedCEStage2Id, a.Status })
+                    .Where(a => a.Status == ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING 
+                             || a.Status == ApplicationCurrentStatus.CITY_ENGINEER_PENDING)
+                    .Select(a => new { a.Id, a.ApplicationNumber, a.AssignedCEStage2Id, a.AssignedCityEngineerId, a.Status })
                     .ToListAsync();
                 
-                _logger.LogInformation("[CEStage2Workflow] Total applications with CITY_ENGINEER_SIGN_PENDING status: {Count}", allApplicationsWithStatus.Count);
+                _logger.LogInformation("[CEStage2Workflow] Total applications with CITY_ENGINEER_SIGN_PENDING or CITY_ENGINEER_PENDING status: {Count}", allApplicationsWithStatus.Count);
                 foreach (var app in allApplicationsWithStatus)
                 {
-                    _logger.LogInformation("[CEStage2Workflow] - App {Id} ({AppNumber}): Status={Status} (Value: {StatusValue}), AssignedCEStage2Id={CEId}", 
-                        app.Id, app.ApplicationNumber, app.Status, (int)app.Status, app.AssignedCEStage2Id);
+                    _logger.LogInformation("[CEStage2Workflow] - App {Id} ({AppNumber}): Status={Status} (Value: {StatusValue}), AssignedCEStage2Id={CEId}, AssignedCityEngineerId={OldCEId}", 
+                        app.Id, app.ApplicationNumber, app.Status, (int)app.Status, app.AssignedCEStage2Id, app.AssignedCityEngineerId);
                 }
 
-                // If ceUserId is provided, filter by assigned CE (or unassigned applications)
+                // If ceUserId is provided, filter by assigned CE (check both new and old CE assignment fields)
                 if (ceUserId.HasValue)
                 {
                     _logger.LogInformation("[CEStage2Workflow] Filtering for CE User ID: {CeUserId} OR unassigned applications", ceUserId.Value);
-                    query = query.Where(a => a.AssignedCEStage2Id == ceUserId.Value || a.AssignedCEStage2Id == null);
+                    query = query.Where(a => 
+                        a.AssignedCEStage2Id == ceUserId.Value 
+                        || a.AssignedCityEngineerId == ceUserId.Value 
+                        || (a.AssignedCEStage2Id == null && a.AssignedCityEngineerId == null));
                 }
                 else
                 {
@@ -186,17 +193,19 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                if (application.Status != ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING)
+                if (application.Status != ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING 
+                    && application.Status != ApplicationCurrentStatus.CITY_ENGINEER_PENDING)
                 {
                     return new CEStage2OtpResult
                     {
                         Success = false,
-                        Message = $"Application is not in CITY_ENGINEER_SIGN_PENDING status. Current status: {application.Status}"
+                        Message = $"Application is not in CITY_ENGINEER_SIGN_PENDING or CITY_ENGINEER_PENDING status. Current status: {application.Status}"
                     };
                 }
 
-                // Verify CE is assigned to this application
-                if (application.AssignedCEStage2Id != ceUserId)
+                // Verify CE is assigned to this application (check both new and old assignment fields)
+                if (application.AssignedCEStage2Id != ceUserId 
+                    && application.AssignedCityEngineerId != ceUserId)
                 {
                     return new CEStage2OtpResult
                     {
@@ -271,7 +280,7 @@ namespace PMCRMS.API.Services
 
         /// <summary>
         /// Apply CE final digital signature to license certificate
-        /// Updates status from CITY_ENGINEER_SIGN_PENDING (34) to APPROVED (36)
+        /// Updates status from CITY_ENGINEER_SIGN_PENDING (34) or CITY_ENGINEER_PENDING (33) to APPROVED (36)
         /// </summary>
         public async Task<CEStage2SignResult> ApplyFinalSignatureAsync(int applicationId, int ceUserId, string otpCode)
         {
@@ -291,17 +300,19 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                if (application.Status != ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING)
+                if (application.Status != ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING
+                    && application.Status != ApplicationCurrentStatus.CITY_ENGINEER_PENDING)
                 {
                     return new CEStage2SignResult
                     {
                         Success = false,
-                        Message = $"Application is not in CITY_ENGINEER_SIGN_PENDING status. Current status: {application.Status}"
+                        Message = $"Application is not in CITY_ENGINEER_SIGN_PENDING or CITY_ENGINEER_PENDING status. Current status: {application.Status}"
                     };
                 }
 
-                // Verify CE is assigned
-                if (application.AssignedCEStage2Id != ceUserId)
+                // Verify CE is assigned (check both new and old assignment fields)
+                if (application.AssignedCEStage2Id != ceUserId
+                    && application.AssignedCityEngineerId != ceUserId)
                 {
                     return new CEStage2SignResult
                     {

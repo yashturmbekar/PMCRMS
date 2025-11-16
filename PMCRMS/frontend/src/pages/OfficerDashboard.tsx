@@ -332,15 +332,15 @@ const OfficerDashboard: React.FC = () => {
 
           // Map Stage 2 applications
           const stage2Apps = stage2Pending.map((app) => ({
-            applicationId: app.applicationId,
+            applicationId: app.id, // Backend returns 'id', map it to 'applicationId'
             applicationNumber: app.applicationNumber,
             applicantName: app.applicantName,
             firstName: app.applicantName?.split(" ")[0] || "",
             lastName: app.applicantName?.split(" ").slice(1).join(" ") || "",
             status: "CITY_ENGINEER_SIGN_PENDING",
-            createdDate: app.ee2SignedDate || new Date().toISOString(),
-            positionType: app.buildingType,
-            position: app.buildingType,
+            createdDate: app.eeStage2SignedDate || app.createdAt,
+            positionType: app.positionType,
+            position: app.positionType,
             assignedAEName: "EE Stage 2",
             isStage2: true,
             stage2Data: app,

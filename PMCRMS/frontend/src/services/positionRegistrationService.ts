@@ -70,6 +70,28 @@ export interface RecommendationFormResponse {
   fileSize: number;
 }
 
+export interface LicenseCertificateResponse {
+  pdfBase64: string;
+  documentId: number;
+  fileName: string;
+  createdDate: string;
+  lastSignedDate?: string;
+  fileSize: number;
+  signedBy: string[];
+}
+
+export interface ChallanResponse {
+  id: number;
+  challanNumber: string;
+  amount: number;
+  createdDate: string;
+  paidDate?: string;
+  paymentReference?: string;
+  paymentMode?: string;
+  bankName?: string;
+  pdfBase64: string;
+}
+
 export interface PositionRegistrationResponse {
   id: number;
   applicationNumber: string;
@@ -132,6 +154,8 @@ export interface PositionRegistrationResponse {
   experiences: ExperienceResponse[];
   documents: DocumentResponse[];
   recommendationForm?: RecommendationFormResponse;
+  licenseCertificate?: LicenseCertificateResponse;
+  challan?: ChallanResponse;
   workflowInfo?: WorkflowInfo;
 }
 

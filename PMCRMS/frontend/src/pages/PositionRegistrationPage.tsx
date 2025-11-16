@@ -838,48 +838,80 @@ export const PositionRegistrationPage = () => {
     // Set attemptedSubmit first to trigger validation UI
     setAttemptedSubmit(true);
 
-    // Comprehensive frontend validation
+    // Comprehensive frontend validation with detailed error messages
     const errors: string[] = [];
 
     // Personal Details validation
-    if (!formData.firstName) errors.push("First name is required");
-    if (!formData.lastName) errors.push("Last name is required");
-    if (!formData.motherName) errors.push("Mother name is required");
-    if (!formData.mobileNumber) errors.push("Mobile number is required");
-    if (!formData.emailAddress) errors.push("Email address is required");
-    if (!formData.dateOfBirth) errors.push("Date of birth is required");
-    if (!formData.bloodGroup) errors.push("Blood group is required");
+    if (!formData.firstName)
+      errors.push("📝 Personal Details - First name is required");
+    if (!formData.lastName)
+      errors.push("📝 Personal Details - Last name is required");
+    if (!formData.motherName)
+      errors.push(
+        "📝 Personal Details - Mother's name is required for official records"
+      );
+    if (!formData.mobileNumber)
+      errors.push(
+        "📱 Personal Details - Mobile number is required for communication"
+      );
+    else if (!/^[6-9]\d{9}$/.test(formData.mobileNumber))
+      errors.push(
+        "📱 Personal Details - Please enter a valid 10-digit mobile number starting with 6-9"
+      );
+    if (!formData.emailAddress)
+      errors.push(
+        "📧 Personal Details - Email address is required for notifications"
+      );
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.emailAddress))
+      errors.push("📧 Personal Details - Please enter a valid email address");
+    if (!formData.dateOfBirth)
+      errors.push("📅 Personal Details - Date of birth is required");
+    if (!formData.bloodGroup)
+      errors.push("🩸 Personal Details - Blood group is required");
     if (!formData.height || formData.height <= 0)
-      errors.push("Height is required");
+      errors.push("📏 Personal Details - Height (in cms) is required");
 
     // Local Address validation
     if (!formData.currentAddress.addressLine1)
-      errors.push("Local address line 1 is required");
+      errors.push("🏠 Current Address - Address Line 1 is required");
     if (!formData.currentAddress.addressLine2)
-      errors.push("Local address line 2 is required");
-    if (!formData.currentAddress.city) errors.push("Local city is required");
-    if (!formData.currentAddress.state) errors.push("Local state is required");
+      errors.push("🏠 Current Address - Address Line 2 is required");
+    if (!formData.currentAddress.city)
+      errors.push("🏙️ Current Address - City name is required");
+    if (!formData.currentAddress.state)
+      errors.push("📍 Current Address - State name is required");
     // Country is always "India" - no validation needed
     if (!formData.currentAddress.pinCode)
-      errors.push("Local postal code is required");
+      errors.push("📮 Current Address - PIN code is required");
+    else if (!/^\d{6}$/.test(formData.currentAddress.pinCode))
+      errors.push("📮 Current Address - Please enter a valid 6-digit PIN code");
 
     // Permanent Address validation (if not same as local)
     if (!permanentSameAsLocal) {
       if (!formData.permanentAddress.addressLine1)
-        errors.push("Permanent address line 1 is required");
+        errors.push("🏡 Permanent Address - Address Line 1 is required");
       if (!formData.permanentAddress.addressLine2)
-        errors.push("Permanent address line 2 is required");
+        errors.push("🏡 Permanent Address - Address Line 2 is required");
       if (!formData.permanentAddress.city)
-        errors.push("Permanent city is required");
+        errors.push("🏙️ Permanent Address - City name is required");
       if (!formData.permanentAddress.state)
-        errors.push("Permanent state is required");
+        errors.push("📍 Permanent Address - State name is required");
       // Country is always "India" - no validation needed
       if (!formData.permanentAddress.pinCode)
-        errors.push("Permanent postal code is required");
+        errors.push("📮 Permanent Address - PIN code is required");
+      else if (!/^\d{6}$/.test(formData.permanentAddress.pinCode))
+        errors.push(
+          "📮 Permanent Address - Please enter a valid 6-digit PIN code"
+        );
     }
 
     // PAN validation
-    if (!formData.panCardNumber) errors.push("PAN card number is required");
+    if (!formData.panCardNumber)
+      errors.push("💳 Identity Documents - PAN card number is required");
+    else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panCardNumber))
+      errors.push(
+        "💳 Identity Documents - Please enter a valid PAN card number (e.g., ABCDE1234F)"
+      );
     const panDoc = formData.documents.find(
       (d) => d.documentType === SEDocumentType.PanCard
     );
@@ -889,11 +921,18 @@ export const PositionRegistrationPage = () => {
       ((!panDoc.fileBase64 || panDoc.fileBase64.trim() === "") &&
         (!panDoc.filePath || panDoc.filePath.trim() === ""))
     ) {
-      errors.push("PAN card document upload is required");
+      errors.push(
+        "📄 Identity Documents - PAN card document upload is required"
+      );
     }
 
     // Aadhar validation
-    if (!formData.aadharCardNumber) errors.push("Aadhar number is required");
+    if (!formData.aadharCardNumber)
+      errors.push("🆔 Identity Documents - Aadhar card number is required");
+    else if (!/^\d{12}$/.test(formData.aadharCardNumber))
+      errors.push(
+        "🆔 Identity Documents - Please enter a valid 12-digit Aadhar number"
+      );
     const aadharDoc = formData.documents.find(
       (d) => d.documentType === SEDocumentType.AadharCard
     );
@@ -903,36 +942,60 @@ export const PositionRegistrationPage = () => {
       ((!aadharDoc.fileBase64 || aadharDoc.fileBase64.trim() === "") &&
         (!aadharDoc.filePath || aadharDoc.filePath.trim() === ""))
     ) {
-      errors.push("Aadhar card document upload is required");
+      errors.push(
+        "📄 Identity Documents - Aadhar card document upload is required"
+      );
     }
 
     // Qualifications validation
     if (config.sections.qualifications) {
+      if (formData.qualifications.length === 0) {
+        errors.push(
+          "🎓 Qualifications - At least one qualification must be added"
+        );
+      }
       formData.qualifications.forEach((qual, index) => {
         if (!qual.instituteName)
-          errors.push(`Qualification ${index + 1}: Institute name is required`);
+          errors.push(
+            `🎓 Qualification #${index + 1} - Institute name is required`
+          );
         if (!qual.universityName)
           errors.push(
-            `Qualification ${index + 1}: University name is required`
+            `🎓 Qualification #${index + 1} - University/Board name is required`
           );
         if (!qual.degreeName)
-          errors.push(`Qualification ${index + 1}: Degree name is required`);
+          errors.push(
+            `🎓 Qualification #${index + 1} - Degree/Diploma name is required`
+          );
         if (!qual.yearOfPassing)
-          errors.push(`Qualification ${index + 1}: Passing year is required`);
+          errors.push(
+            `🎓 Qualification #${index + 1} - Year of passing is required`
+          );
       });
     }
 
     // Experience validation
     if (config.sections.experience) {
+      if (formData.experiences.length === 0) {
+        errors.push(
+          "💼 Work Experience - At least one work experience must be added"
+        );
+      }
       formData.experiences.forEach((exp, index) => {
         if (!exp.companyName)
-          errors.push(`Experience ${index + 1}: Company name is required`);
+          errors.push(
+            `💼 Experience #${
+              index + 1
+            } - Company/Organization name is required`
+          );
         if (!exp.position)
-          errors.push(`Experience ${index + 1}: Position is required`);
+          errors.push(
+            `💼 Experience #${index + 1} - Position/Designation is required`
+          );
         if (!exp.fromDate)
-          errors.push(`Experience ${index + 1}: From date is required`);
+          errors.push(`💼 Experience #${index + 1} - Start date is required`);
         if (!exp.toDate)
-          errors.push(`Experience ${index + 1}: To date is required`);
+          errors.push(`💼 Experience #${index + 1} - End date is required`);
       });
     }
 
@@ -948,7 +1011,7 @@ export const PositionRegistrationPage = () => {
           (!propertyTaxDoc.filePath || propertyTaxDoc.filePath.trim() === ""))
       ) {
         errors.push(
-          "Property tax receipt / rent agreement / electricity bill is required"
+          "📄 Required Documents - Property tax receipt / Rent agreement / Electricity bill is required as address proof"
         );
       }
     }
@@ -963,7 +1026,9 @@ export const PositionRegistrationPage = () => {
         ((!isseDoc.fileBase64 || isseDoc.fileBase64.trim() === "") &&
           (!isseDoc.filePath || isseDoc.filePath.trim() === ""))
       ) {
-        errors.push("ISSE certificate is required");
+        errors.push(
+          "📄 Professional Certificates - ISSE (Indian Society of Structural Engineers) certificate is required"
+        );
       }
     }
 
@@ -977,7 +1042,9 @@ export const PositionRegistrationPage = () => {
         ((!coaDoc.fileBase64 || coaDoc.fileBase64.trim() === "") &&
           (!coaDoc.filePath || coaDoc.filePath.trim() === ""))
       ) {
-        errors.push("Council of Architecture (COA) certificate is required");
+        errors.push(
+          "📄 Professional Certificates - Council of Architecture (COA) certificate is required"
+        );
       }
     }
 
@@ -991,7 +1058,9 @@ export const PositionRegistrationPage = () => {
         ((!ugcDoc.fileBase64 || ugcDoc.fileBase64.trim() === "") &&
           (!ugcDoc.filePath || ugcDoc.filePath.trim() === ""))
       ) {
-        errors.push("UGC Recognition certificate is required");
+        errors.push(
+          "📄 Academic Certificates - UGC Recognition certificate is required (for degrees from outside Maharashtra)"
+        );
       }
     }
 
@@ -1005,7 +1074,9 @@ export const PositionRegistrationPage = () => {
         ((!aicteDoc.fileBase64 || aicteDoc.fileBase64.trim() === "") &&
           (!aicteDoc.filePath || aicteDoc.filePath.trim() === ""))
       ) {
-        errors.push("AICTE Approval certificate is required");
+        errors.push(
+          "📄 Academic Certificates - AICTE Approval certificate is required for your degree"
+        );
       }
     }
 
@@ -1019,7 +1090,9 @@ export const PositionRegistrationPage = () => {
         ((!selfDecDoc.fileBase64 || selfDecDoc.fileBase64.trim() === "") &&
           (!selfDecDoc.filePath || selfDecDoc.filePath.trim() === ""))
       ) {
-        errors.push("Self declaration document is required");
+        errors.push(
+          "📄 Required Documents - Self declaration form must be uploaded (signed and stamped)"
+        );
       }
     }
 
@@ -1034,13 +1107,19 @@ export const PositionRegistrationPage = () => {
           profilePicDoc.fileBase64.trim() === "") &&
           (!profilePicDoc.filePath || profilePicDoc.filePath.trim() === ""))
       ) {
-        errors.push("Profile picture is required");
+        errors.push(
+          "📷 Required Documents - Passport-size photograph is required"
+        );
       }
     }
 
     if (errors.length > 0) {
+      setValidationErrors(errors);
+      setShowValidationPopup(true);
       setError(
-        "Please fill in all required fields and scroll through the form to see validation errors"
+        `Found ${errors.length} validation error${
+          errors.length > 1 ? "s" : ""
+        }. Please review and fix them before submitting.`
       );
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -1563,7 +1642,72 @@ export const PositionRegistrationPage = () => {
   }
 
   return (
-    <div className="pmc-fadeIn">
+    <div
+      className="pmc-fadeIn"
+      style={{
+        maxWidth: "1400px",
+        margin: "0 auto",
+      }}
+    >
+      {/* Compact Form Styling */}
+      <style>{`
+        .pmc-card {
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+        }
+        .pmc-card-body {
+          padding: 20px !important;
+        }
+        .pmc-form-group {
+          margin-bottom: 0 !important;
+        }
+        .pmc-label {
+          margin-bottom: 6px !important;
+          font-size: 13px !important;
+          font-weight: 600 !important;
+        }
+        .pmc-input, .pmc-select {
+          padding: 9px 12px !important;
+          font-size: 14px !important;
+        }
+        .pmc-text-error {
+          font-size: 12px !important;
+          display: block !important;
+          margin-top: 4px !important;
+        }
+        .pmc-form-grid {
+          display: grid !important;
+          gap: 16px !important;
+        }
+        .pmc-form-grid-2 {
+          grid-template-columns: repeat(2, 1fr) !important;
+        }
+        .pmc-form-grid-3 {
+          grid-template-columns: repeat(3, 1fr) !important;
+        }
+        .pmc-form-grid-4 {
+          grid-template-columns: repeat(4, 1fr) !important;
+        }
+        @media (max-width: 1024px) {
+          .pmc-form-grid-4 {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .pmc-form-grid-2,
+          .pmc-form-grid-3,
+          .pmc-form-grid-4 {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        details[open] summary span:first-child {
+          transform: rotate(90deg);
+          transition: transform 0.2s;
+        }
+        details summary span:first-child {
+          transition: transform 0.2s;
+          display: inline-block;
+        }
+      `}</style>
       {/* Validation Error Popup */}
       {showValidationPopup && validationErrors.length > 0 && (
         <div
@@ -1573,126 +1717,192 @@ export const PositionRegistrationPage = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backgroundColor: "rgba(0, 0, 0, 0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 9999,
+            padding: "20px",
           }}
           onClick={() => setShowValidationPopup(false)}
         >
           <div
             style={{
               backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "24px",
-              maxWidth: "500px",
-              width: "90%",
-              maxHeight: "70vh",
-              overflow: "auto",
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
+              borderRadius: "16px",
+              maxWidth: "650px",
+              width: "100%",
+              maxHeight: "85vh",
+              overflow: "hidden",
+              boxShadow: "0 25px 80px rgba(0, 0, 0, 0.4)",
+              display: "flex",
+              flexDirection: "column",
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Header */}
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                marginBottom: "16px",
-                paddingBottom: "16px",
-                borderBottom: "2px solid #fee2e2",
+                background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                padding: "24px",
+                color: "white",
               }}
             >
-              <svg
+              <div
                 style={{
-                  width: "32px",
-                  height: "32px",
-                  color: "#dc2626",
-                  flexShrink: 0,
-                }}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <h2
-                style={{
-                  fontSize: "20px",
-                  fontWeight: "700",
-                  color: "#991b1b",
-                  margin: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "8px",
                 }}
               >
-                Validation Error
-              </h2>
-            </div>
-            <div
-              style={{
-                marginBottom: "20px",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "#64748b",
-                  marginBottom: "12px",
-                }}
-              >
-                Please fix the following errors:
+                <svg
+                  style={{ width: "32px", height: "32px", flexShrink: 0 }}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <h2 style={{ fontSize: "24px", fontWeight: "700", margin: 0 }}>
+                  Validation Failed
+                </h2>
+              </div>
+              <p style={{ margin: 0, opacity: 0.95, fontSize: "14px" }}>
+                {validationErrors.length} error
+                {validationErrors.length > 1 ? "s" : ""} found. Please fix the
+                following issues before submitting:
               </p>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                }}
+            </div>
+
+            {/* Content */}
+            <div
+              style={{
+                padding: "24px",
+                overflow: "auto",
+                flex: 1,
+              }}
+            >
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
                 {validationErrors.map((error, index) => (
-                  <li
+                  <div
                     key={index}
                     style={{
-                      padding: "10px 12px",
-                      marginBottom: "8px",
+                      padding: "14px 16px",
                       backgroundColor: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      borderRadius: "6px",
-                      color: "#991b1b",
-                      fontSize: "13px",
-                      lineHeight: "1.5",
+                      border: "2px solid #fecaca",
+                      borderLeft: "4px solid #dc2626",
+                      borderRadius: "8px",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "12px",
+                      transition: "all 0.2s",
                     }}
                   >
-                    • {error}
-                  </li>
+                    <span
+                      style={{
+                        fontSize: "20px",
+                        flexShrink: 0,
+                        marginTop: "-2px",
+                      }}
+                    >
+                      {error.split(" ")[0]}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <span
+                        style={{
+                          color: "#991b1b",
+                          fontSize: "14px",
+                          lineHeight: "1.6",
+                          fontWeight: "500",
+                        }}
+                      >
+                        {error.substring(error.indexOf(" ") + 1)}
+                      </span>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
+
+              <div
+                style={{
+                  marginTop: "20px",
+                  padding: "16px",
+                  background:
+                    "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                  border: "2px solid #fbbf24",
+                  borderRadius: "10px",
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#92400e",
+                    fontSize: "13px",
+                    lineHeight: "1.6",
+                    fontWeight: "500",
+                  }}
+                >
+                  💡 <strong>Tip:</strong> Scroll through the form to locate
+                  highlighted fields with errors. All required fields are marked
+                  with a red asterisk (*).
+                </p>
+              </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: "20px 24px",
+                borderTop: "1px solid #e5e7eb",
+                background: "#f9fafb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: "#6b7280",
+                  fontWeight: "500",
+                }}
+              >
+                Review and fix all errors to proceed
+              </span>
               <button
                 onClick={() => setShowValidationPopup(false)}
                 style={{
-                  padding: "10px 24px",
-                  backgroundColor: "#dc2626",
+                  padding: "12px 28px",
+                  background:
+                    "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
                   color: "white",
                   border: "none",
                   borderRadius: "8px",
-                  fontWeight: "600",
+                  fontWeight: "700",
                   fontSize: "14px",
                   cursor: "pointer",
                   transition: "all 0.2s ease",
+                  boxShadow: "0 4px 12px rgba(220, 38, 38, 0.3)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "#b91c1c";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 16px rgba(220, 38, 38, 0.4)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#dc2626";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 12px rgba(220, 38, 38, 0.3)";
                 }}
               >
-                Close
+                Got it, Fix Errors
               </button>
             </div>
           </div>
@@ -1820,21 +2030,23 @@ export const PositionRegistrationPage = () => {
           <div
             className="pmc-fadeIn"
             style={{
-              padding: "12px 16px",
+              padding: "14px 18px",
               marginBottom: "16px",
               background: "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
-              border: "1px solid #86efac",
+              border: "2px solid #86efac",
+              borderLeft: "6px solid #10b981",
               borderRadius: "8px",
               color: "#166534",
-              fontWeight: 500,
+              fontWeight: "600",
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              fontSize: "13px",
+              gap: "12px",
+              fontSize: "14px",
+              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
             }}
           >
             <svg
-              style={{ width: "18px", height: "18px", flexShrink: 0 }}
+              style={{ width: "22px", height: "22px", flexShrink: 0 }}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -1851,21 +2063,31 @@ export const PositionRegistrationPage = () => {
           <div
             className="pmc-fadeIn"
             style={{
-              padding: "12px 16px",
+              padding: "14px 18px",
               marginBottom: "16px",
               background: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)",
-              border: "1px solid #fca5a5",
+              border: "2px solid #f87171",
+              borderLeft: "6px solid #dc2626",
               borderRadius: "8px",
               color: "#991b1b",
-              fontWeight: 500,
+              fontWeight: "600",
               display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              fontSize: "13px",
+              alignItems: "flex-start",
+              gap: "12px",
+              fontSize: "14px",
+              boxShadow: "0 4px 12px rgba(220, 38, 38, 0.2)",
+              position: "sticky",
+              top: "10px",
+              zIndex: 100,
             }}
           >
             <svg
-              style={{ width: "18px", height: "18px", flexShrink: 0 }}
+              style={{
+                width: "22px",
+                height: "22px",
+                flexShrink: 0,
+                marginTop: "1px",
+              }}
               fill="currentColor"
               viewBox="0 0 20 20"
             >
@@ -1875,7 +2097,41 @@ export const PositionRegistrationPage = () => {
                 clipRule="evenodd"
               />
             </svg>
-            {error}
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  marginBottom: validationErrors.length > 0 ? "8px" : "0",
+                }}
+              >
+                {error}
+              </div>
+              {validationErrors.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowValidationPopup(true)}
+                  style={{
+                    padding: "6px 14px",
+                    background: "#dc2626",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "#b91c1c")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "#dc2626")
+                  }
+                >
+                  View {validationErrors.length} Error
+                  {validationErrors.length > 1 ? "s" : ""}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -1883,51 +2139,62 @@ export const PositionRegistrationPage = () => {
           {/* Basic Information */}
           <div
             className="pmc-card pmc-slideInLeft"
-            style={{ marginBottom: "12px" }}
+            style={{ marginBottom: "16px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-                color: "#334155",
-                padding: "12px 16px",
-                borderBottom: "2px solid #cbd5e1",
+                background: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+                color: "white",
+                padding: "14px 20px",
+                borderBottom: "none",
               }}
             >
               <h2
                 className="pmc-card-title"
                 style={{
-                  color: "#334155",
+                  color: "white",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
-                  fontSize: "16px",
-                  fontWeight: "600",
+                  gap: "10px",
+                  fontSize: "17px",
+                  fontWeight: "700",
                   margin: 0,
                 }}
               >
-                <span style={{ fontSize: "16px" }}>📋</span>
+                <span style={{ fontSize: "20px" }}>📋</span>
                 Basic Information
               </h2>
               <p
                 className="pmc-card-subtitle"
                 style={{
-                  color: "#64748b",
-                  fontSize: "13px",
-                  margin: "2px 0 0 0",
+                  color: "rgba(255,255,255,0.9)",
+                  fontSize: "12px",
+                  margin: "4px 0 0 30px",
                 }}
               >
-                Position selection and fee information
+                Position selection and registration fee details
               </p>
             </div>
-            <div className="pmc-card-body" style={{ padding: "16px" }}>
-              <div className="pmc-form-grid pmc-form-grid-2">
+            <div className="pmc-card-body" style={{ padding: "20px" }}>
+              <div
+                className="pmc-form-grid pmc-form-grid-2"
+                style={{ gap: "16px" }}
+              >
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
-                    Position
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Position Type
                   </label>
                   <select
                     className="pmc-input pmc-select"
+                    style={{ fontSize: "14px", fontWeight: "600" }}
                     value={formData.positionType}
                     onChange={(e) =>
                       handleInputChange("positionType", Number(e.target.value))
@@ -1946,14 +2213,22 @@ export const PositionRegistrationPage = () => {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      padding: "12px 20px",
-                      background: "#fef3c7",
+                      padding: "10px 18px",
+                      background:
+                        "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
                       borderRadius: "8px",
-                      border: "1px solid #fbbf24",
+                      border: "2px solid #fbbf24",
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: "#92400e" }}>
-                      Fees - ₹{config.fee} for {config.feeDuration}
+                    <span
+                      style={{
+                        fontWeight: "700",
+                        color: "#92400e",
+                        fontSize: "15px",
+                      }}
+                    >
+                      💰 Registration Fee: ₹{config.fee} for{" "}
+                      {config.feeDuration}
                     </span>
                   </div>
                 )}
@@ -1962,146 +2237,204 @@ export const PositionRegistrationPage = () => {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      padding: "12px 20px",
-                      background: "#dcfce7",
+                      padding: "10px 18px",
+                      background:
+                        "linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)",
                       borderRadius: "8px",
-                      border: "1px solid #86efac",
+                      border: "2px solid #86efac",
                     }}
                   >
-                    <span style={{ fontWeight: 600, color: "#166534" }}>
-                      No Registration Fee
+                    <span
+                      style={{
+                        fontWeight: "700",
+                        color: "#166534",
+                        fontSize: "15px",
+                      }}
+                    >
+                      ✓ No Registration Fee
                     </span>
                   </div>
                 )}
               </div>
 
-              {/* Qualifications Info Box */}
-              <div
+              {/* Qualifications Info Box - More Compact */}
+              <details
                 style={{
-                  marginTop: "20px",
-                  padding: "16px",
-                  background: "#fef3c7",
+                  marginTop: "16px",
+                  padding: "14px",
+                  background:
+                    "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
                   borderRadius: "8px",
-                  fontSize: "13px",
+                  fontSize: "12px",
                   lineHeight: "1.6",
+                  border: "2px solid #fde68a",
                 }}
               >
-                <h3 style={{ fontWeight: 600, marginBottom: "8px" }}>
-                  1. Qualifications
-                </h3>
+                <summary
+                  style={{
+                    fontWeight: "700",
+                    marginBottom: "8px",
+                    cursor: "pointer",
+                    fontSize: "13px",
+                    color: "#92400e",
+                    listStyle: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>▶</span> View Qualification Requirements & Documents
+                </summary>
                 <div
                   style={{
-                    paddingLeft: "10px",
-                    margin: "8px 0",
-                    whiteSpace: "pre-line",
+                    marginTop: "12px",
+                    paddingTop: "12px",
+                    borderTop: "1px solid #fde68a",
                   }}
                 >
-                  {config.qualificationInfo}
+                  <h3
+                    style={{
+                      fontWeight: 600,
+                      marginBottom: "6px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    1. Qualifications
+                  </h3>
+                  <div
+                    style={{
+                      paddingLeft: "10px",
+                      margin: "6px 0",
+                      whiteSpace: "pre-line",
+                    }}
+                  >
+                    {config.qualificationInfo}
+                  </div>
+
+                  {config.scope && (
+                    <>
+                      <h3
+                        style={{
+                          fontWeight: 600,
+                          marginTop: "10px",
+                          marginBottom: "6px",
+                          fontSize: "13px",
+                        }}
+                      >
+                        2. Scope of Work
+                      </h3>
+                      <div
+                        style={{
+                          margin: "4px 0",
+                          paddingLeft: "10px",
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {config.scope}
+                      </div>
+                    </>
+                  )}
+
+                  <h3
+                    style={{
+                      fontWeight: 600,
+                      marginTop: "10px",
+                      marginBottom: "6px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {config.scope ? "3" : "2"}. Duties and Responsibilities
+                  </h3>
+                  <p style={{ margin: "4px 0", paddingLeft: "10px" }}>
+                    It will be incumbent on every architect / licensed technical
+                    personnel to assist and co-operate with the Metropolitan
+                    Commissioner and other Officers in carrying out and
+                    enforcing the provisions of Maharashtra Regional & Town
+                    Planning Act, 1966.
+                  </p>
+
+                  <h3
+                    style={{
+                      fontWeight: 600,
+                      marginTop: "10px",
+                      marginBottom: "6px",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {config.scope ? "4" : "3"}. Documents Required for{" "}
+                    {config.name}
+                  </h3>
+                  <ol style={{ paddingLeft: "20px", margin: "6px 0" }}>
+                    {config.documentsRequired.map((doc, idx) => (
+                      <li key={idx} style={{ marginBottom: "4px" }}>
+                        {doc}
+                      </li>
+                    ))}
+                  </ol>
                 </div>
-
-                {config.scope && (
-                  <>
-                    <h3
-                      style={{
-                        fontWeight: 600,
-                        marginTop: "12px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      2. Scope of Work
-                    </h3>
-                    <div
-                      style={{
-                        margin: "4px 0",
-                        paddingLeft: "10px",
-                        whiteSpace: "pre-line",
-                      }}
-                    >
-                      {config.scope}
-                    </div>
-                  </>
-                )}
-
-                <h3
-                  style={{
-                    fontWeight: 600,
-                    marginTop: "12px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {config.scope ? "3" : "2"}. Duties and Responsibilities
-                </h3>
-                <p style={{ margin: "4px 0", paddingLeft: "10px" }}>
-                  It will be incumbent on every architect / licensed technical
-                  personnel to assist and co-operate with the Metropolitan
-                  Commissioner and other Officers in carrying out and enforcing
-                  the provisions of Maharashtra Regional & Town Planning Act,
-                  1966.
-                </p>
-
-                <h3
-                  style={{
-                    fontWeight: 600,
-                    marginTop: "12px",
-                    marginBottom: "8px",
-                  }}
-                >
-                  {config.scope ? "4" : "3"}. Documents Required for{" "}
-                  {config.name}
-                </h3>
-                <ol style={{ paddingLeft: "20px", margin: "8px 0" }}>
-                  {config.documentsRequired.map((doc, idx) => (
-                    <li key={idx}>{doc}</li>
-                  ))}
-                </ol>
-              </div>
+              </details>
             </div>
           </div>
 
           {/* Personal Details */}
           <div
             className="pmc-card pmc-slideInRight"
-            style={{ marginBottom: "12px" }}
+            style={{ marginBottom: "16px" }}
           >
             <div
               className="pmc-card-header"
               style={{
-                background: "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)",
-                color: "#334155",
-                padding: "12px 16px",
-                borderBottom: "2px solid #cbd5e1",
+                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                color: "white",
+                padding: "14px 20px",
+                borderBottom: "none",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
               }}
             >
-              <h2
-                className="pmc-card-title"
-                style={{
-                  color: "#334155",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "16px",
-                  fontWeight: "600",
-                  margin: 0,
-                }}
-              >
-                <span style={{ fontSize: "24px" }}>👤</span>
-                Personal Details
-              </h2>
-              <p
-                className="pmc-card-subtitle"
-                style={{
-                  color: "#64748b",
-                  fontSize: "13px",
-                  margin: "2px 0 0 0",
-                }}
-              >
-                Enter your personal information
-              </p>
+              <div>
+                <h2
+                  className="pmc-card-title"
+                  style={{
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    fontSize: "17px",
+                    fontWeight: "700",
+                    margin: 0,
+                  }}
+                >
+                  <span style={{ fontSize: "22px" }}>👤</span>
+                  Personal Details
+                </h2>
+                <p
+                  className="pmc-card-subtitle"
+                  style={{
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "12px",
+                    margin: "4px 0 0 32px",
+                  }}
+                >
+                  Your personal information for identification
+                </p>
+              </div>
             </div>
-            <div className="pmc-card-body">
-              <div className="pmc-form-grid pmc-form-grid-3">
+            <div className="pmc-card-body" style={{ padding: "20px" }}>
+              <div
+                className="pmc-form-grid pmc-form-grid-3"
+                style={{ gap: "16px" }}
+              >
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
                     First Name
                   </label>
                   <input
@@ -2112,36 +2445,62 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.firstName}
                     onChange={(e) =>
                       handleInputChange("firstName", e.target.value)
                     }
+                    placeholder="Enter first name"
                     required
                   />
                   {attemptedSubmit && !formData.firstName && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       First name is required
                     </span>
                   )}
                   {hasFieldError("firstName") && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       {fieldErrors["firstname"]}
                     </span>
                   )}
                 </div>
                 <div className="pmc-form-group">
-                  <label className="pmc-label">Middle Name</label>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Middle Name
+                  </label>
                   <input
                     type="text"
                     className="pmc-input"
+                    style={{ fontSize: "14px" }}
                     value={formData.middleName}
                     onChange={(e) =>
                       handleInputChange("middleName", e.target.value)
                     }
+                    placeholder="Enter middle name (optional)"
                   />
                 </div>
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
                     Last Name
                   </label>
                   <input
@@ -2152,29 +2511,47 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.lastName}
                     onChange={(e) =>
                       handleInputChange("lastName", e.target.value)
                     }
+                    placeholder="Enter last name"
                     required
                   />
                   {attemptedSubmit && !formData.lastName && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       Last name is required
                     </span>
                   )}
                   {hasFieldError("lastName") && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       {fieldErrors["lastname"]}
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="pmc-form-grid pmc-form-grid-3">
+              <div
+                className="pmc-form-grid pmc-form-grid-3"
+                style={{ gap: "16px", marginTop: "16px" }}
+              >
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
-                    Mother Name
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Mother's Name
                   </label>
                   <input
                     type="text"
@@ -2184,20 +2561,32 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.motherName}
                     onChange={(e) =>
                       handleInputChange("motherName", e.target.value)
                     }
+                    placeholder="Enter mother's name"
                     required
                   />
                   {attemptedSubmit && !formData.motherName && (
-                    <span className="pmc-text-error">
-                      Mother name is required
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
+                      Mother's name is required
                     </span>
                   )}
                 </div>
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
                     Mobile Number
                   </label>
                   <input
@@ -2208,20 +2597,33 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.mobileNumber}
                     onChange={(e) =>
                       handleInputChange("mobileNumber", e.target.value)
                     }
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
                     required
                   />
                   {attemptedSubmit && !formData.mobileNumber && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       Mobile number is required
                     </span>
                   )}
                 </div>
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
                     Email Address
                   </label>
                   <input
@@ -2232,24 +2634,39 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.emailAddress}
                     onChange={(e) =>
                       handleInputChange("emailAddress", e.target.value)
                     }
+                    placeholder="your.email@example.com"
                     required
                   />
                   {attemptedSubmit && !formData.emailAddress && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       Email address is required
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="pmc-form-grid pmc-form-grid-3">
+              <div
+                className="pmc-form-grid pmc-form-grid-4"
+                style={{ gap: "16px", marginTop: "16px" }}
+              >
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
-                    Birth Date
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Date of Birth
                   </label>
                   <input
                     type="date"
@@ -2259,6 +2676,7 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.dateOfBirth}
                     onChange={(e) =>
                       handleInputChange("dateOfBirth", e.target.value)
@@ -2267,18 +2685,31 @@ export const PositionRegistrationPage = () => {
                     required
                   />
                   {attemptedSubmit && !formData.dateOfBirth && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       Date of birth is required
                     </span>
                   )}
                   {hasFieldError("dateOfBirth") && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       {fieldErrors["dateofbirth"]}
                     </span>
                   )}
                 </div>
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
                     Blood Group
                   </label>
                   <select
@@ -2287,13 +2718,14 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.bloodGroup}
                     onChange={(e) =>
                       handleInputChange("bloodGroup", e.target.value)
                     }
                     required
                   >
-                    <option value="">Select Blood Group</option>
+                    <option value="">Select</option>
                     {bloodGroupOptions.map((bg) => (
                       <option key={bg} value={bg}>
                         {bg}
@@ -2301,14 +2733,24 @@ export const PositionRegistrationPage = () => {
                     ))}
                   </select>
                   {attemptedSubmit && !formData.bloodGroup && (
-                    <span className="pmc-text-error">
+                    <span
+                      className="pmc-text-error"
+                      style={{ fontSize: "12px", marginTop: "4px" }}
+                    >
                       Blood group is required
                     </span>
                   )}
                 </div>
                 <div className="pmc-form-group">
-                  <label className="pmc-label pmc-label-required">
-                    Height (in cms)
+                  <label
+                    className="pmc-label pmc-label-required"
+                    style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    Height (cm)
                   </label>
                   <input
                     type="number"
@@ -2319,79 +2761,108 @@ export const PositionRegistrationPage = () => {
                         ? "pmc-input-error"
                         : ""
                     }`}
+                    style={{ fontSize: "14px" }}
                     value={formData.height || ""}
                     onChange={(e) =>
                       handleInputChange("height", parseFloat(e.target.value))
                     }
+                    placeholder="e.g., 170.5"
                     required
                   />
                   {attemptedSubmit &&
                     (!formData.height || formData.height <= 0) && (
-                      <span className="pmc-text-error">Height is required</span>
+                      <span
+                        className="pmc-text-error"
+                        style={{ fontSize: "12px", marginTop: "4px" }}
+                      >
+                        Height is required
+                      </span>
                     )}
                 </div>
-              </div>
-
-              <div className="pmc-form-group">
-                <label className="pmc-label pmc-label-required">Gender</label>
-                <div style={{ display: "flex", gap: "20px", marginTop: "8px" }}>
+                <div className="pmc-form-group">
                   <label
+                    className="pmc-label pmc-label-required"
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      marginBottom: "6px",
                     }}
                   >
-                    <input
-                      type="radio"
-                      name="gender"
-                      value={Gender.Male}
-                      checked={formData.gender === Gender.Male}
-                      onChange={(e) =>
-                        handleInputChange("gender", Number(e.target.value))
-                      }
-                      className="pmc-radio"
-                    />
-                    <span>Male</span>
+                    Gender
                   </label>
-                  <label
+                  <div
                     style={{
                       display: "flex",
+                      gap: "12px",
+                      marginTop: "8px",
+                      height: "38px",
                       alignItems: "center",
-                      gap: "8px",
                     }}
                   >
-                    <input
-                      type="radio"
-                      name="gender"
-                      value={Gender.Female}
-                      checked={formData.gender === Gender.Female}
-                      onChange={(e) =>
-                        handleInputChange("gender", Number(e.target.value))
-                      }
-                      className="pmc-radio"
-                    />
-                    <span>Female</span>
-                  </label>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="gender"
-                      value={Gender.Other}
-                      checked={formData.gender === Gender.Other}
-                      onChange={(e) =>
-                        handleInputChange("gender", Number(e.target.value))
-                      }
-                      className="pmc-radio"
-                    />
-                    <span>Other</span>
-                  </label>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="gender"
+                        value={Gender.Male}
+                        checked={formData.gender === Gender.Male}
+                        onChange={(e) =>
+                          handleInputChange("gender", Number(e.target.value))
+                        }
+                        className="pmc-radio"
+                      />
+                      <span>Male</span>
+                    </label>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="gender"
+                        value={Gender.Female}
+                        checked={formData.gender === Gender.Female}
+                        onChange={(e) =>
+                          handleInputChange("gender", Number(e.target.value))
+                        }
+                        className="pmc-radio"
+                      />
+                      <span>Female</span>
+                    </label>
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="gender"
+                        value={Gender.Other}
+                        checked={formData.gender === Gender.Other}
+                        onChange={(e) =>
+                          handleInputChange("gender", Number(e.target.value))
+                        }
+                        className="pmc-radio"
+                      />
+                      <span>Other</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 

@@ -764,18 +764,41 @@ namespace PMCRMS.API.Services
                                 text.Span(" अन्वये भरले आहे.").FontSize(10);
                             });
 
-                            column.Item().Height(30);
+                            column.Item().Height(20);
 
-                            // Signatures
+                            // Determine engineer title
                             var engg = marathiPosition == "स्ट्रक्चरल इंजिनिअर" ? "कार्यकारी" : "उप";
 
+                            // Signature Boxes - Reserved space for digital signatures
+                            // NEW Coordinates: EE at (50,120,250,200,1) and CE at (450,120,650,200,1)
+                            // Box size: 200x80 points each, positioned for landscape A4 (842x595 pts)
                             column.Item().Row(row =>
                             {
-                                row.RelativeItem(1).AlignCenter().Text($"{engg} अभियंता, (बांधकाम विकास विभाग) पुणे महानगरपालिका")
-                                    .FontSize(10);
+                                // Executive Engineer Signature Box (Left)
+                                row.RelativeItem(2).Column(col =>
+                                {
+                                    col.Item().Height(80).Border(1).BorderColor(Colors.Grey.Lighten1)
+                                        .Background(Colors.Grey.Lighten4);
+                                    col.Item().PaddingTop(50).AlignCenter().Text($"{engg} अभियंता")
+                                        .FontSize(10).Bold();
+                                    col.Item().AlignCenter().Text("(बांधकाम विकास विभाग)")
+                                        .FontSize(8);
+                                    col.Item().AlignCenter().Text("पुणे महानगरपालिका")
+                                        .FontSize(8);
+                                });
 
-                                row.RelativeItem(1).AlignCenter().Text("शहर अभियंता पुणे महानगरपालिका")
-                                    .FontSize(10);
+                                row.RelativeItem(1); // Spacer between signatures
+
+                                // City Engineer Signature Box (Right)
+                                row.RelativeItem(2).Column(col =>
+                                {
+                                    col.Item().Height(80).Border(1).BorderColor(Colors.Grey.Lighten1)
+                                        .Background(Colors.Grey.Lighten4);
+                                    col.Item().PaddingTop(50).AlignCenter().Text("शहर अभियंता")
+                                        .FontSize(10).Bold();
+                                    col.Item().AlignCenter().Text("पुणे महानगरपालिका")
+                                        .FontSize(8);
+                                });
                             });
 
                             column.Item().Height(10);

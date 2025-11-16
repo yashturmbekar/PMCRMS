@@ -134,14 +134,17 @@ namespace PMCRMS.API.Configuration
     {
         /// <summary>
         /// Default coordinates for recommendation form
-        /// Format: x,y,width,height
+        /// Format: llx,lly,urx,ury (lower-left x, lower-left y, upper-right x, upper-right y)
+        /// PDF origin (0,0) is at bottom-left corner
+        /// A4 dimensions: 595x842 points
+        /// Layout: JE (bottom-left), AE (bottom-right), EE (upper-left), CE (upper-right)
         /// </summary>
-        public static string RecommendationForm => "117,383,236,324";
+        public static string RecommendationForm => "70,60,220,110";
 
         /// <summary>
         /// Coordinates for certificate
         /// </summary>
-        public static string Certificate => "369,275,488,216";
+        public static string Certificate => "100,50,250,110";
 
         /// <summary>
         /// Coordinates for approval letter

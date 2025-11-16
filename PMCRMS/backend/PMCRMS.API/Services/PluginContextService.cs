@@ -68,7 +68,7 @@ namespace PMCRMS.API.Services
         /// Get fee amount based on position type
         /// Architect: 0 (No fee)
         /// LicenceEngineer: 3000
-        /// StructuralEngineer: 1500
+        /// StructuralEngineer: 3000
         /// Supervisor1: 1500
         /// Supervisor2: 900
         /// </summary>
@@ -78,7 +78,7 @@ namespace PMCRMS.API.Services
             {
                 PositionType.Architect => "0",
                 PositionType.LicenceEngineer => "3000",
-                PositionType.StructuralEngineer => "1500",
+                PositionType.StructuralEngineer => "3000",
                 PositionType.Supervisor1 => "1500",
                 PositionType.Supervisor2 => "900",
                 _ => "0" // Default to 0 for unknown types

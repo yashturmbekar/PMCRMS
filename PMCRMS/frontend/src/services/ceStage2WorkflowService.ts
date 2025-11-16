@@ -8,45 +8,33 @@ import { getApiUrl, getToken } from "./apiClient";
 
 // DTOs matching backend
 export interface CEStage2ApplicationDto {
-  applicationId: number;
-  applicationNumber: string;
-  applicantName: string;
-  buildingType: string;
-  plotArea: number;
-  district: string;
-  ee2SignedDate?: string;
-  paymentAmount: number;
-  paymentDate?: string;
-  paymentReference: string;
-}
-
-export interface CEStage2ApplicationDetailDto {
-  applicationId: number;
+  id: number;
   applicationNumber: string;
   applicantName: string;
   applicantEmail: string;
-  applicantContact: string;
-  buildingType: string;
-  plotArea: number;
-  buildingArea: number;
-  floors: number;
-  district: string;
-  taluka: string;
-  village: string;
-  ee2SignedDate?: string;
-  paymentAmount: number;
-  paymentDate?: string;
-  paymentReference: string;
-  certificatePath?: string;
+  positionType: string;
+  propertyAddress: string;
+  paymentAmount?: number;
+  eeStage2SignedDate?: string;
+  assignedDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CEStage2ApplicationDetailDto {
+  id: number;
+  applicationNumber: string;
+  applicantName: string;
+  applicantEmail: string;
+  positionType: string;
+  propertyAddress: string;
   currentStatus: string;
-  jeApprovedDate?: string;
-  jeOfficerName?: string;
-  aeApprovedDate?: string;
-  aeOfficerName?: string;
-  ee1ApprovedDate?: string;
-  ee1OfficerName?: string;
-  ce1ApprovedDate?: string;
-  ce1OfficerName?: string;
+  paymentAmount?: number;
+  eeStage2SignedDate?: string;
+  eeStage2OfficerName?: string;
+  assignedDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CEStage2OtpResult {

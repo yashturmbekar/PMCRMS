@@ -1673,6 +1673,62 @@ namespace PMCRMS.API.Controllers
                 };
             }
 
+            // Add license certificate PDF if it exists (separate from documents)
+            var licenseCertificate = application.Documents
+                .FirstOrDefault(d => d.DocumentType == SEDocumentType.LicenceCertificate);
+            
+            if (licenseCertificate != null && licenseCertificate.FileContent != null && licenseCertificate.FileContent.Length > 0)
+            {
+                // Determine who signed the certificate
+                var signedBy = new List<string>();
+                if (application.JEDigitalSignatureApplied) signedBy.Add("Junior Engineer");
+                if (application.AEArchitectApprovalStatus == true || application.AEStructuralApprovalStatus == true) signedBy.Add("Assistant Engineer");
+                if (application.ExecutiveEngineerDigitalSignatureApplied) signedBy.Add("Executive Engineer");
+                if (application.EEStage2DigitalSignatureApplied) signedBy.Add("Executive Engineer (Stage 2)");
+                if (application.CityEngineerDigitalSignatureApplied) signedBy.Add("City Engineer");
+                if (application.CEStage2DigitalSignatureApplied) signedBy.Add("City Engineer (Stage 2)");
+                
+                response.LicenseCertificate = new LicenseCertificateDTO
+                {
+                    DocumentId = licenseCertificate.Id,
+                    FileName = licenseCertificate.FileName,
+                    FileId = licenseCertificate.FileId,
+                    FileSize = licenseCertificate.FileSize ?? 0,
+                    ContentType = licenseCertificate.ContentType ?? "application/pdf",
+                    PdfBase64 = Convert.ToBase64String(licenseCertificate.FileContent),
+                    CreatedDate = licenseCertificate.CreatedDate,
+                    LastSignedDate = application.CEStage2DigitalSignatureDate 
+                        ?? application.CityEngineerDigitalSignatureDate 
+                        ?? application.EEStage2DigitalSignatureDate 
+                        ?? application.ExecutiveEngineerDigitalSignatureDate,
+                    SignedBy = signedBy
+                };
+            }
+
+            // Add challan (payment receipt) if it exists
+            var challan = _context.Challans
+                .Where(c => c.ApplicationId == application.Id)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefault();
+            
+            if (challan != null)
+            {
+                response.Challan = new ChallanDTO
+                {
+                    Id = challan.Id,
+                    ChallanNumber = challan.ChallanNumber,
+                    Amount = challan.Amount,
+                    CreatedDate = challan.CreatedAt,
+                    PaidDate = null, // Challan model doesn't have PaidDate - payment info is in application.PaymentCompletedDate
+                    PaymentReference = null,
+                    PaymentMode = null,
+                    BankName = null,
+                    PdfBase64 = challan.PdfContent != null && challan.PdfContent.Length > 0
+                        ? Convert.ToBase64String(challan.PdfContent)
+                        : string.Empty
+                };
+            }
+
             // Add JE workflow information if application is in JE stage
             if (IsInJEWorkflowStage(application.Status))
             {
@@ -2079,7 +2135,7 @@ namespace PMCRMS.API.Controllers
             {
                 PositionType.Architect => 0m,
                 PositionType.LicenceEngineer => 3000m,
-                PositionType.StructuralEngineer => 1500m,
+                PositionType.StructuralEngineer => 3000m,
                 PositionType.Supervisor1 => 1500m,
                 PositionType.Supervisor2 => 900m,
                 _ => null
