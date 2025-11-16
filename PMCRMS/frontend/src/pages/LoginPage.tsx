@@ -2,7 +2,6 @@
 import { useNavigate } from "react-router-dom";
 import { apiService } from "../services/apiService";
 import OtpInput from "../components/OtpInput";
-import { REDIRECT_DELAY } from "../constants";
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -97,12 +96,28 @@ const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      // Simulate API call to resend OTP
-      await new Promise((resolve) => setTimeout(resolve, REDIRECT_DELAY));
-      setSuccess("OTP resent successfully to your email!");
+      const response = await apiService.auth.sendOtp(email, "LOGIN");
+
+      if (response.success) {
+        setSuccess(
+          response.message || "OTP resent successfully to your email!"
+        );
+      } else {
+        throw new Error(
+          response.message || "Failed to resend OTP. Please try again."
+        );
+      }
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to resend OTP";
+      let errorMessage = "Failed to resend OTP";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as {
+          response?: { data?: { message?: string } };
+        };
+        errorMessage =
+          axiosError.response?.data?.message || "Failed to resend OTP";
+      }
       setError(errorMessage);
     } finally {
       setLoading(false);
