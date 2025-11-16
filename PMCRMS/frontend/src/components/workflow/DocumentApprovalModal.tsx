@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { jeWorkflowService } from "../../services/jeWorkflowService";
 import NotificationModal from "../common/NotificationModal";
@@ -32,6 +32,9 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
   const [comments, setComments] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpGenerated, setOtpGenerated] = useState(false);
+  const [otpMessage, setOtpMessage] = useState(""); // Store the OTP success message from backend
+  const [resendTimer, setResendTimer] = useState(300); // 5 minutes in seconds
+  const [canResend, setCanResend] = useState(false);
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notification, setNotification] = useState<{
@@ -40,12 +43,34 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
     type: NotificationType;
     title: string;
     autoClose?: boolean;
+    autoCloseMessage?: string;
   }>({
     isOpen: false,
     message: "",
     type: "success",
     title: "",
   });
+
+  // Countdown timer for resend OTP
+  useEffect(() => {
+    let interval: number | undefined;
+
+    if (otpGenerated && resendTimer > 0) {
+      interval = window.setInterval(() => {
+        setResendTimer((prev) => {
+          if (prev <= 1) {
+            setCanResend(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [otpGenerated, resendTimer]);
 
   if (!isOpen) return null;
 
@@ -82,15 +107,17 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
 
       if (response.success) {
         setOtpGenerated(true);
-        setNotification({
-          isOpen: true,
-          message:
-            response.message ||
-            "OTP has been sent to your registered mobile number",
-          type: "success",
-          title: "OTP Sent Successfully",
-          autoClose: true,
-        });
+        setResendTimer(300); // Reset timer to 5 minutes
+        setCanResend(false);
+
+        // Store the OTP message to display below the input
+        const message =
+          response.message ||
+          "OTP has been sent to your registered mobile number";
+        setOtpMessage(message);
+
+        // Don't show success popup - just show OTP input immediately
+        // The loader will hide and OTP input section will appear
       }
     } catch (error) {
       console.error("Error generating OTP:", error);
@@ -106,6 +133,11 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
     }
   };
 
+  const handleResendOtp = async () => {
+    // Reset OTP input and resend
+    setOtp(["", "", "", "", "", ""]);
+    await handleGenerateOtp();
+  };
   const handleAddDigitalSignature = async () => {
     const otpValue = otp.join("");
 
@@ -303,18 +335,55 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
             {/* ========== TESTING MODE: Hide OTP section ========== */}
             {!TESTING_MODE && otpGenerated && (
               <div style={{ marginBottom: "20px" }}>
-                <label
-                  className="pmc-label"
+                <div
                   style={{
-                    display: "block",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                     marginBottom: "12px",
-                    fontWeight: 600,
-                    color: "#334155",
-                    fontSize: "14px",
                   }}
                 >
-                  Enter OTP
-                </label>
+                  <label
+                    className="pmc-label"
+                    style={{
+                      fontWeight: 600,
+                      color: "#334155",
+                      fontSize: "14px",
+                      margin: 0,
+                    }}
+                  >
+                    Enter OTP
+                  </label>
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={!canResend || isGeneratingOtp}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: canResend ? "#10b981" : "#94a3b8",
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      cursor: canResend ? "pointer" : "not-allowed",
+                      padding: "4px 8px",
+                      borderRadius: "4px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (canResend) {
+                        e.currentTarget.style.backgroundColor = "#f0fdf4";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "transparent";
+                    }}
+                  >
+                    {canResend
+                      ? "Resend OTP"
+                      : `Resend in ${Math.floor(resendTimer / 60)}:${String(
+                          resendTimer % 60
+                        ).padStart(2, "0")}`}
+                  </button>
+                </div>
                 <div
                   style={{
                     display: "flex",
@@ -366,8 +435,11 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
                     margin: 0,
                   }}
                 >
-                  OTP sent to your registered mobile number (valid for 5
-                  minutes)
+                  {otpMessage || "OTP sent to your registered mobile number"}
+                  <br />
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    (Valid for 5 minutes)
+                  </span>
                 </p>
               </div>
             )}
@@ -510,6 +582,14 @@ const DocumentApprovalModal: React.FC<DocumentApprovalModalProps> = ({
         <FullScreenLoader
           message="Adding Digital Signature"
           submessage="Please wait while we process and sign the documents..."
+        />
+      )}
+
+      {/* Full Screen Loader for OTP Generation */}
+      {isGeneratingOtp && (
+        <FullScreenLoader
+          message="Generating OTP"
+          submessage="Sending OTP to your registered mobile number..."
         />
       )}
     </>

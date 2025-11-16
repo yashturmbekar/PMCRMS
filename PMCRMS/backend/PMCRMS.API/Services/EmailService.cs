@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Mail;
+using Microsoft.EntityFrameworkCore;
+using PMCRMS.API.Data;
 
 namespace PMCRMS.API.Services
 {
@@ -31,6 +33,7 @@ namespace PMCRMS.API.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<EmailService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
+        private readonly PMCRMSDbContext _context;
         private readonly string _smtpHost;
         private readonly int _smtpPort;
         private readonly string _username;
@@ -43,11 +46,12 @@ namespace PMCRMS.API.Services
         private readonly bool _useBrevoApi;
         private readonly string _baseUrl;
 
-        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
+        public EmailService(IConfiguration configuration, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory, PMCRMSDbContext context)
         {
             _configuration = configuration;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
+            _context = context;
 
             // Check for Brevo API key first (preferred method)
             _brevoApiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY")
@@ -130,29 +134,46 @@ namespace PMCRMS.API.Services
 
         /// <summary>
         /// Get PMC logo as base64 data URI for embedding in emails
+        /// Fetches from SystemSettings table first, then falls back to file system
         /// </summary>
-        private string GetPmcLogoDataUri()
+        private async Task<string> GetPmcLogoDataUriAsync()
         {
             try
             {
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                // Try to fetch logo from SystemSettings table first
+                var logoSetting = await _context.SystemSettings
+                    .FirstOrDefaultAsync(s => s.SettingKey == "PMC_LOGO" && s.IsActive);
                 
-                if (File.Exists(logoPath))
+                if (logoSetting?.BinaryData != null && logoSetting.BinaryData.Length > 0)
                 {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    var base64String = Convert.ToBase64String(imageBytes);
+                    var base64String = Convert.ToBase64String(logoSetting.BinaryData);
+                    _logger.LogInformation("✅ PMC Logo loaded from database for email (Size: {Size} bytes)", logoSetting.BinaryData.Length);
                     return $"data:image/png;base64,{base64String}";
                 }
                 else
                 {
-                    _logger.LogWarning("PMC logo not found at path: {Path}", logoPath);
-                    // Return a placeholder or empty string
-                    return "";
+                    _logger.LogWarning("⚠️ PMC Logo not found in database (SettingKey: PMC_LOGO). Trying file system...");
+                    
+                    // Fallback to file system
+                    var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
+                    
+                    if (File.Exists(logoPath))
+                    {
+                        var imageBytes = File.ReadAllBytes(logoPath);
+                        var base64String = Convert.ToBase64String(imageBytes);
+                        _logger.LogInformation("✅ PMC Logo loaded from file system for email (Size: {Size} bytes)", imageBytes.Length);
+                        return $"data:image/png;base64,{base64String}";
+                    }
+                    else
+                    {
+                        _logger.LogWarning("PMC logo not found at path: {Path}", logoPath);
+                        return ""; // Return empty string if no logo found
+                    }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error reading PMC logo file");
+                _logger.LogError(ex, "Error loading PMC logo for email");
                 return "";
             }
         }
@@ -162,7 +183,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = "Your PMCRMS Login OTP";
-                var body = GenerateOtpEmailBody(otpCode, purpose);
+                var body = await GenerateOtpEmailBody(otpCode, purpose);
 
                 return await SendEmailAsync(toEmail, subject, body);
             }
@@ -184,7 +205,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = $"Application Submitted Successfully - {applicationNumber}";
-                var body = GenerateApplicationSubmissionEmailBody(applicantName, applicationNumber, applicationType, applicationId, viewUrl);
+                var body = await GenerateApplicationSubmissionEmailBody(applicantName, applicationNumber, applicationType, applicationId, viewUrl);
 
                 return await SendEmailAsync(toEmail, subject, body);
             }
@@ -208,7 +229,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = $"Application Status Updated - {applicationNumber}";
-                var body = GenerateStatusUpdateEmailBody(applicantName, applicationNumber, status, assignedTo, assignedRole, remarks, viewUrl);
+                var body = await GenerateStatusUpdateEmailBody(applicantName, applicationNumber, status, assignedTo, assignedRole, remarks, viewUrl);
                 return await SendEmailAsync(toEmail, subject, body);
             }
             catch (Exception ex)
@@ -230,7 +251,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = $"Application Approved - {applicationNumber}";
-                var body = GenerateApprovalEmailBody(applicantName, applicationNumber, approvedBy, approvedRole, remarks, viewUrl);
+                var body = await GenerateApprovalEmailBody(applicantName, applicationNumber, approvedBy, approvedRole, remarks, viewUrl);
                 return await SendEmailAsync(toEmail, subject, body);
             }
             catch (Exception ex)
@@ -252,7 +273,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = $"Application Requires Attention - {applicationNumber}";
-                var body = GenerateRejectionEmailBody(applicantName, applicationNumber, rejectedBy, rejectedRole, remarks, viewUrl);
+                var body = await GenerateRejectionEmailBody(applicantName, applicationNumber, rejectedBy, rejectedRole, remarks, viewUrl);
                 return await SendEmailAsync(toEmail, subject, body);
             }
             catch (Exception ex)
@@ -274,7 +295,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = $"New Application Assigned - {applicationNumber}";
-                var body = GenerateAssignmentEmailBody(officerName, applicationNumber, applicationType, applicantName, assignedBy, viewUrl);
+                var body = await GenerateAssignmentEmailBody(officerName, applicationNumber, applicationType, applicantName, assignedBy, viewUrl);
                 return await SendEmailAsync(toEmail, subject, body);
             }
             catch (Exception ex)
@@ -295,7 +316,7 @@ namespace PMCRMS.API.Services
             try
             {
                 var subject = "Invitation to Join PMCRMS - Officer Account Created";
-                var body = GenerateOfficerInvitationEmailBody(officerName, role, employeeId, temporaryPassword, loginUrl);
+                var body = await GenerateOfficerInvitationEmailBody(officerName, role, employeeId, temporaryPassword, loginUrl);
                 return await SendEmailAsync(toEmail, subject, body);
             }
             catch (Exception ex)
@@ -447,10 +468,10 @@ namespace PMCRMS.API.Services
             }
         }
 
-        private string GenerateOtpEmailBody(string otpCode, string purpose)
+        private async Task<string> GenerateOtpEmailBody(string otpCode, string purpose)
         {
             var actionText = purpose == "LOGIN" ? "login" : "registration";
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             
             return $@"
 <!DOCTYPE html>
@@ -581,14 +602,14 @@ namespace PMCRMS.API.Services
 ";
         }
 
-        private string GenerateApplicationSubmissionEmailBody(
+        private async Task<string> GenerateApplicationSubmissionEmailBody(
             string applicantName, 
             string applicationNumber, 
             string applicationType, 
             string applicationId, 
             string viewUrl)
         {
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -780,7 +801,7 @@ namespace PMCRMS.API.Services
 ";
         }
 
-        private string GenerateStatusUpdateEmailBody(
+        private async Task<string> GenerateStatusUpdateEmailBody(
             string applicantName,
             string applicationNumber,
             string status,
@@ -789,7 +810,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -848,7 +869,7 @@ namespace PMCRMS.API.Services
 </html>";
         }
 
-        private string GenerateApprovalEmailBody(
+        private async Task<string> GenerateApprovalEmailBody(
             string applicantName,
             string applicationNumber,
             string approvedBy,
@@ -856,7 +877,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -924,7 +945,7 @@ namespace PMCRMS.API.Services
 </html>";
         }
 
-        private string GenerateRejectionEmailBody(
+        private async Task<string> GenerateRejectionEmailBody(
             string applicantName,
             string applicationNumber,
             string rejectedBy,
@@ -932,7 +953,7 @@ namespace PMCRMS.API.Services
             string remarks,
             string viewUrl)
         {
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1000,7 +1021,7 @@ namespace PMCRMS.API.Services
 </html>";
         }
 
-        private string GenerateAssignmentEmailBody(
+        private async Task<string> GenerateAssignmentEmailBody(
             string officerName,
             string applicationNumber,
             string applicationType,
@@ -1008,7 +1029,7 @@ namespace PMCRMS.API.Services
             string assignedBy,
             string viewUrl)
         {
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1076,14 +1097,14 @@ namespace PMCRMS.API.Services
 </html>";
         }
 
-        private string GenerateOfficerInvitationEmailBody(
+        private async Task<string> GenerateOfficerInvitationEmailBody(
             string officerName,
             string role,
             string employeeId,
             string temporaryPassword,
             string loginUrl)
         {
-            var logoDataUri = GetPmcLogoDataUri();
+            var logoDataUri = await GetPmcLogoDataUriAsync();
             return $@"
 <!DOCTYPE html>
 <html>
@@ -1417,13 +1438,7 @@ namespace PMCRMS.API.Services
             {
                 var subject = $"Application {applicationNumber} - Processed by Clerk";
                 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
                 
                 var body = $@"
                 <!DOCTYPE html>
@@ -1493,13 +1508,7 @@ namespace PMCRMS.API.Services
             {
                 var subject = $"Application {applicationNumber} - Rejected by Clerk";
                 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
                 
                 var body = $@"
                 <!DOCTYPE html>
@@ -1574,13 +1583,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Action Required: Digital Signature - Application {applicationNumber}";
 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1658,13 +1661,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Progress Update: Certificate Signed by Executive Engineer - {applicationNumber}";
 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1741,13 +1738,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Action Required: Final Certificate Signature - Application {applicationNumber}";
 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1826,13 +1817,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"🎉 Certificate Issued! Download Your Building Permission Certificate - {applicationNumber}";
 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
 
                 string body = $@"
                 <!DOCTYPE html>
@@ -1929,13 +1914,7 @@ namespace PMCRMS.API.Services
             {
                 string subject = $"Application Update - {stageName} - {applicationNumber}";
 
-                var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
-                var logoDataUri = "";
-                if (File.Exists(logoPath))
-                {
-                    var imageBytes = File.ReadAllBytes(logoPath);
-                    logoDataUri = $"data:image/png;base64,{Convert.ToBase64String(imageBytes)}";
-                }
+                var logoDataUri = await GetPmcLogoDataUriAsync();
 
                 string body = $@"
 <!DOCTYPE html>

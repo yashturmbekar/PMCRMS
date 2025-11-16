@@ -450,8 +450,11 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                     margin: "8px 0 0 0",
                   }}
                 >
-                  {otpMessage ||
-                    "OTP sent to your registered mobile number (valid for 5 minutes)"}
+                  {otpMessage || "OTP sent to your registered mobile number"}
+                  <br />
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                    (Valid for 5 minutes)
+                  </span>
                 </p>
               </div>
             )}
