@@ -68,6 +68,12 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
     }
   };
 
+  const getDocumentName = () => {
+    // EE and CE (Stage 2) sign License Certificate
+    // AE signs Recommendation Form
+    return officerType === "AE" ? "Recommendation Form" : "License Certificate";
+  };
+
   const handleOtpChange = (value: string) => {
     setOtpValue(value);
   };
@@ -148,7 +154,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
           message:
             officerType === "CE"
               ? "Application FINALLY APPROVED and digitally signed successfully!"
-              : `Recommendation form digitally signed successfully! Forwarded to ${
+              : `${getDocumentName()} digitally signed successfully! Forwarded to ${
                   officerType === "AE" ? "Executive Engineer" : "City Engineer"
                 }.`,
           type: "success",
@@ -260,7 +266,7 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
               }}
             >
               {title ||
-                `${getOfficerTitle()} - Adding Signature to Recommendation Form`}
+                `${getOfficerTitle()} - Adding Signature to ${getDocumentName()}`}
             </h3>
             <button
               onClick={onClose}
@@ -411,8 +417,8 @@ const OTPVerificationModal: React.FC<OTPVerificationModalProps> = ({
                   >
                     <strong>Note:</strong> Click "GET OTP" to receive a
                     verification code on your registered mobile number. You'll
-                    need to enter this OTP to digitally sign the recommendation
-                    form.
+                    need to enter this OTP to digitally sign the{" "}
+                    {getDocumentName().toLowerCase()}.
                   </p>
                 </div>
               )
