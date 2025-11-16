@@ -837,6 +837,26 @@ namespace PMCRMS.API.Services
                 _ => "Engineer"
             };
         }
+
+        private string GetMarathiMonthName(int month)
+        {
+            return month switch
+            {
+                1 => "जानेवारी",
+                2 => "फेब्रुवारी",
+                3 => "मार्च",
+                4 => "एप्रिल",
+                5 => "मे",
+                6 => "जून",
+                7 => "जुलै",
+                8 => "ऑगस्ट",
+                9 => "सप्टेंबर",
+                10 => "ऑक्टोबर",
+                11 => "नोव्हेंबर",
+                12 => "डिसेंबर",
+                _ => "जानेवारी"
+            };
+        }
     }
 
     public class ApplicationPdfDocument : IDocument
@@ -853,6 +873,26 @@ namespace PMCRMS.API.Services
         }
 
         public DocumentMetadata GetMetadata() => DocumentMetadata.Default;
+
+        private static string GetMarathiMonthName(int month)
+        {
+            return month switch
+            {
+                1 => "जानेवारी",
+                2 => "फेब्रुवारी",
+                3 => "मार्च",
+                4 => "एप्रिल",
+                5 => "मे",
+                6 => "जून",
+                7 => "जुलै",
+                8 => "ऑगस्ट",
+                9 => "सप्टेंबर",
+                10 => "ऑक्टोबर",
+                11 => "नोव्हेंबर",
+                12 => "डिसेंबर",
+                _ => "जानेवारी"
+            };
+        }
 
         public void Compose(IDocumentContainer container)
         {
@@ -891,17 +931,22 @@ namespace PMCRMS.API.Services
                     .FontFamily(MarathiFont);
 
                 DateTime date = _model.Date;
-                int year = date.Year;
-                int toYear = year + 2;
+                // Calculate end date: exactly 3 years minus 1 day from start date
+                DateTime endDate = date.AddYears(3).AddDays(-1);
+                
+                int startYear = date.Year;
+                int endYear = endDate.Year;
+                string startMonth = GetMarathiMonthName(date.Month);
+                string endMonth = GetMarathiMonthName(endDate.Month);
 
                 // Subject line
-                column.Item().PaddingTop(12).AlignLeft().Text($"विषय:- जानेवारी {year} ते डिसेंबर {toYear} करीता {_model.Position} नवीन परवान्याबाबत.")
+                column.Item().PaddingTop(12).AlignLeft().Text($"विषय:- {startMonth} {startYear} ते {endMonth} {endYear} करीता {_model.Position} नवीन परवान्याबाबत.")
                     .FontSize(11)
                     .FontFamily(MarathiFont)
                     .LineHeight(1.3f);
 
                 // Main intro paragraph
-                column.Item().PaddingTop(12).AlignLeft().Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने जानेवारी {year} ते डिसेंबर {toYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
+                column.Item().PaddingTop(12).AlignLeft().Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने {startMonth} {startYear} ते {endMonth} {endYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
                     .FontSize(11)
                     .FontFamily(MarathiFont)
                     .LineHeight(1.4f);
@@ -1034,8 +1079,13 @@ namespace PMCRMS.API.Services
                 column.Item().PaddingTop(10).Text(text =>
                 {
                     DateTime date = _model.Date;
-                    int year = date.Year;
-                    int toYear = year + 2;
+                    // Calculate end date: exactly 3 years minus 1 day from start date
+                    DateTime endDate = date.AddYears(3).AddDays(-1);
+                    
+                    int startYear = date.Year;
+                    int endYear = endDate.Year;
+                    string startMonth = GetMarathiMonthName(date.Month);
+                    string endMonth = GetMarathiMonthName(endDate.Month);
 
                     text.Span("तरी सदर प्रकरणी ")
                         .FontFamily(MarathiFont)
@@ -1046,7 +1096,7 @@ namespace PMCRMS.API.Services
                         .FontFamily(EnglishFont)
                         .Bold();
 
-                    text.Span($" यांचेकडून जानेवारी {year} ते डिसेंबर {toYear} या कालावधी करिता आवश्यक ती फी भरून घेवून {_model.Position} (नवीन) परवाना देणेबाबत मान्यता मिळणेस विनंती आहे.")
+                    text.Span($" यांचेकडून {startMonth} {startYear} ते {endMonth} {endYear} या कालावधी करिता आवश्यक ती फी भरून घेवून {_model.Position} (नवीन) परवाना देणेबाबत मान्यता मिळणेस विनंती आहे.")
                         .FontFamily(MarathiFont)
                         .FontSize(11);
                 });
