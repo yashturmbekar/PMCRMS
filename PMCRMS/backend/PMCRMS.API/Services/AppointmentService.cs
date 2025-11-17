@@ -86,11 +86,13 @@ namespace PMCRMS.API.Services
 
                 // Validate that the review date is not in the past
                 // Frontend sends datetime in format: YYYY-MM-DDTHH:mm:ss (without timezone)
-                // ASP.NET Core deserializes this as UTC by default
-                // We should use the datetime as-is without any conversion
+                // This represents the LOCAL TIME (India Standard Time) selected by the user
+                // ASP.NET Core deserializes it as DateTimeKind.Unspecified
+                // We store it as UTC for consistency, but the value itself remains the user's local time
+                // When displaying in emails, we use it as-is without timezone conversion
                 var now = DateTime.UtcNow;
                 
-                // Treat the incoming datetime as UTC (which is how ASP.NET Core deserializes it)
+                // Mark the datetime as UTC for storage (but value is actually India local time)
                 var reviewDateUtc = DateTime.SpecifyKind(reviewDate, DateTimeKind.Utc);
 
                 if (reviewDateUtc < now)
@@ -107,8 +109,8 @@ namespace PMCRMS.API.Services
 
                 _logger.LogInformation("Creating appointment entity for application {ApplicationId}", applicationId);
 
-                // Use the datetime as-is - frontend sends local time but ASP.NET deserializes it as UTC
-                // We just need to mark it as UTC for consistency
+                // Store the datetime with UTC kind, but the value represents India local time
+                // This approach preserves the exact date/time selected by the user in India
                 var utcReviewDate = DateTime.SpecifyKind(reviewDate, DateTimeKind.Utc);
 
                 var appointment = new Appointment
@@ -711,7 +713,8 @@ namespace PMCRMS.API.Services
 
         private string BuildScheduledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
-            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            // ReviewDate is already in local time (India time) as sent from frontend
+            var appointmentDate = appointment.ReviewDate;
             var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "https://pmcrms.punemunicipal.gov.in";
             
             // Get logo as base64
@@ -932,7 +935,8 @@ namespace PMCRMS.API.Services
 
         private string BuildConfirmedEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
-            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            // ReviewDate is already in local time (India time) as sent from frontend
+            var appointmentDate = appointment.ReviewDate;
             
             var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
             var logoDataUri = "";
@@ -964,6 +968,9 @@ Pune Municipal Corporation";
 
         private string BuildCancelledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
+            // ReviewDate is already in local time (India time) as sent from frontend
+            var appointmentDate = appointment.ReviewDate;
+            
             var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
             var logoDataUri = "";
             if (File.Exists(logoPath))
@@ -975,7 +982,7 @@ Pune Municipal Corporation";
             return $@"
 Dear {application.FirstName} {application.LastName},
 
-Your appointment scheduled for {appointment.ReviewDate.ToLocalTime():MMMM dd, yyyy 'at' hh:mm tt} has been cancelled.
+Your appointment scheduled for {appointmentDate:MMMM dd, yyyy 'at' hh:mm tt} has been cancelled.
 
 Application Number: {application.ApplicationNumber}
 {(string.IsNullOrEmpty(appointment.CancellationReason) ? "" : $"Reason: {appointment.CancellationReason}")}
@@ -989,7 +996,8 @@ Pune Municipal Corporation";
 
         private string BuildRescheduledEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
-            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            // ReviewDate is already in local time (India time) as sent from frontend
+            var appointmentDate = appointment.ReviewDate;
             var baseUrl = _configuration["AppSettings:BaseUrl"] ?? "https://pmcrms.punemunicipal.gov.in";
             
             var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
@@ -1209,7 +1217,8 @@ Pune Municipal Corporation";
 
         private string BuildReminderEmailBody(PositionApplication application, Appointment appointment, Officer officer)
         {
-            var appointmentDate = appointment.ReviewDate.ToLocalTime();
+            // ReviewDate is already in local time (India time) as sent from frontend
+            var appointmentDate = appointment.ReviewDate;
             var hoursUntil = (appointment.ReviewDate - DateTime.UtcNow).TotalHours;
             
             var logoPath = Path.Combine("wwwroot", "Images", "Certificate", "pmc-logo.png");
