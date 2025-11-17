@@ -23,6 +23,7 @@ import {
 } from "../components/workflow";
 import NotificationModal from "../components/common/NotificationModal";
 import DateTimePicker from "../components/DateTimePicker";
+import { parseLocalDateTime } from "../utils/dateUtils";
 import type { NotificationType } from "../components/common/NotificationModal";
 import type { JEWorkflowStatusDto } from "../types/jeWorkflow";
 import type { AEWorkflowStatusDto, PositionType } from "../types/aeWorkflow";
@@ -795,7 +796,7 @@ const OfficerDashboard: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
+    const date = parseLocalDateTime(dateString);
     return date.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "2-digit",

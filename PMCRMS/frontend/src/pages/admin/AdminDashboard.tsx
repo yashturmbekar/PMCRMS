@@ -16,6 +16,7 @@ import {
   Eye,
 } from "lucide-react";
 import { PageLoader } from "../../components";
+import { parseLocalDateTime } from "../../utils/dateUtils";
 
 interface ApplicationSummary {
   applicationId: number;
@@ -62,8 +63,8 @@ const AdminDashboard: React.FC = () => {
           .filter((app) => app.submittedOn) // Only show submitted applications
           .sort(
             (a, b) =>
-              new Date(b.submittedOn).getTime() -
-              new Date(a.submittedOn).getTime()
+              parseLocalDateTime(b.submittedOn).getTime() -
+              parseLocalDateTime(a.submittedOn).getTime()
           )
           .slice(0, 5);
         setRecentApplications(sortedApps);
@@ -646,7 +647,9 @@ const AdminDashboard: React.FC = () => {
                           className="pmc-text-sm"
                           style={{ color: "var(--pmc-gray-600)" }}
                         >
-                          {new Date(app.submittedOn).toLocaleDateString()}
+                          {parseLocalDateTime(
+                            app.submittedOn
+                          ).toLocaleDateString()}
                         </td>
                         <td>
                           <span

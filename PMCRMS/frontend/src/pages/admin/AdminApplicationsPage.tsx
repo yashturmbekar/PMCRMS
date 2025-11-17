@@ -11,6 +11,7 @@ import {
   Edit,
 } from "lucide-react";
 import { PageLoader, Pagination } from "../../components";
+import { parseLocalDateTime } from "../../utils/dateUtils";
 
 interface ApplicationSummary {
   applicationId: number;
@@ -454,7 +455,9 @@ const AdminApplicationsPage: React.FC = () => {
                           className="pmc-text-sm"
                           style={{ color: "var(--pmc-gray-600)" }}
                         >
-                          {new Date(app.submittedOn).toLocaleDateString()}
+                          {parseLocalDateTime(
+                            app.submittedOn
+                          ).toLocaleDateString()}
                         </td>
                         <td>
                           <span

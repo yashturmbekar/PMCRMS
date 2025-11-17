@@ -343,7 +343,7 @@ const UnifiedOfficerDashboard: React.FC<UnifiedOfficerDashboardProps> = ({
   // Utility Functions
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-IN", {
+    return parseLocalDateTime(dateString).toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",

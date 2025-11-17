@@ -15,6 +15,7 @@ import {
   Edit,
 } from "lucide-react";
 import { PageLoader, SectionLoader, Pagination } from "../components";
+import { parseLocalDateTime } from "../utils/dateUtils";
 
 // Position Type Enum matching backend
 const PositionType = {
@@ -755,7 +756,7 @@ const Dashboard: React.FC = () => {
                             <Calendar
                               style={{ width: "14px", height: "14px" }}
                             />
-                            {new Date(
+                            {parseLocalDateTime(
                               activeTab === "submitted"
                                 ? app.submittedDate || app.createdDate
                                 : app.createdDate
@@ -777,7 +778,9 @@ const Dashboard: React.FC = () => {
                               <Clock
                                 style={{ width: "14px", height: "14px" }}
                               />
-                              {new Date(app.updatedDate).toLocaleDateString()}
+                              {parseLocalDateTime(
+                                app.updatedDate
+                              ).toLocaleDateString()}
                             </div>
                           ) : (
                             <span
