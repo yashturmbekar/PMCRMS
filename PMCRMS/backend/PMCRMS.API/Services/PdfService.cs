@@ -1137,28 +1137,22 @@ namespace PMCRMS.API.Services
                         // JE signature (left)
                         row.RelativeItem().Column(col =>
                         {
+                            col.Spacing(2);
+                            col.Item().Text($"({_model.JrEnggName ?? "श्री. राजेंद्र फुंदे"})").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("शाखा अभियंता").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("शहर अभियंता कार्यालय").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().PaddingLeft(40).Column(c =>
-                            {
-                                c.Spacing(2);
-                                c.Item().Text($"({_model.JrEnggName ?? "श्री. राजेंद्र पुंडे"})").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("शाखा अभियंता").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("शहर-अभियंता कार्यालय").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
-                            });
                         });
 
                         // AE signature (right)
                         row.RelativeItem().Column(col =>
                         {
+                            col.Spacing(2);
+                            col.Item().Text($"({_model.AssEnggName ?? "श्री. राहुल सोरटे"})").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("उपअभियंता").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().PaddingLeft(40).Column(c =>
-                            {
-                                c.Spacing(2);
-                                c.Item().Text($"({_model.AssEnggName ?? "डॉ. राहुल देवीडास साबळे"})").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("उपअभियंता").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
-                            });
                         });
                     });
 
@@ -1168,38 +1162,34 @@ namespace PMCRMS.API.Services
                         .FontSize(11)
                         .LineHeight(1.3f);
 
-                    // "क्ष मान्य" text aligned to right
-                    signatureColumn.Item().PaddingTop(20).AlignRight().PaddingRight(70).Text("क्ष मान्य")
-                        .FontFamily(MarathiFont)
-                        .FontSize(11);
-
                     // Second row of signatures (EE and CE)
-                    signatureColumn.Item().PaddingTop(15).Row(row =>
+                    signatureColumn.Item().PaddingTop(20).Row(row =>
                     {
                         // EE signature (left)
                         row.RelativeItem().Column(col =>
                         {
+                            col.Spacing(2);
+                            col.Item().Text($"({_model.ExeEnggName ?? "श्री. मुकुंद शिंदे"})").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("कार्यकारी अभियंता").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().PaddingLeft(40).Column(c =>
-                            {
-                                c.Spacing(2);
-                                c.Item().Text($"({_model.ExeEnggName ?? "श्री शंकुर शिंदे"})").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("कार्यकारी अभियंता").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
-                            });
                         });
 
-                        // CE signature (right)
+                        // CE signature (right) with "क्ष मान्य" above it
                         row.RelativeItem().Column(col =>
                         {
+                            // "क्ष मान्य" text aligned to center above CE signature
+                            col.Item().AlignCenter().Text("क्ष मान्य")
+                                .FontFamily(MarathiFont)
+                                .FontSize(11);
+                            
+                            col.Item().PaddingTop(10); // Space between "क्ष मान्य" and signature
+                            
+                            col.Spacing(2);
+                            col.Item().Text($"({_model.CityEnggName ?? "श्री. प्रशांत वाघमारे"})").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("शहर अभियंता").FontFamily(MarathiFont).FontSize(10);
+                            col.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().PaddingLeft(40).Column(c =>
-                            {
-                                c.Spacing(2);
-                                c.Item().Text($"({_model.CityEnggName ?? "श्री संजय डोके"})").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("शहर अभियंता").FontFamily(MarathiFont).FontSize(10);
-                                c.Item().Text("पुणे महानगरपालिका").FontFamily(MarathiFont).FontSize(10);
-                            });
                         });
                     });
                 });

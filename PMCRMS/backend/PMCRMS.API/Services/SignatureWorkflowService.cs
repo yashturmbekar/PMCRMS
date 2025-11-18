@@ -56,18 +56,18 @@ namespace PMCRMS.API.Services
             // PDF coordinates: (llx, lly, urx, ury) where origin (0,0) is bottom-left of page
             // A4 page dimensions: 595 (width) x 842 (height) points
             // Layout from bottom up:
-            //   First row (Y: 450-520):  शाखा अभियंता (JE) left | उपअभियंता (AE) right
+            //   First row (Y: 200-270):  शाखा अभियंता (JE) left | उपअभियंता (AE) right
             //   Recommendation text (centered)
             //   "क्ष मान्य" text (right-aligned)
-            //   Second row (Y: 300-370): कार्यकारी अभियंता (EE) left | शहर अभियंता (CE) right
+            //   Second row (Y: 80-150): कार्यकारी अभियंता (EE) left | शहर अभियंता (CE) right
             
             // First row signatures (JE and AE)
-            public const string JuniorEngineer = "50,450,200,520";         // First row, left side
-            public const string AssistantEngineer = "350,450,500,520";     // First row, right side
+            public const string JuniorEngineer = "50,200,200,270";         // First row, left side
+            public const string AssistantEngineer = "350,200,500,270";     // First row, right side
             
             // Second row signatures (EE and CE)
-            public const string ExecutiveEngineer = "50,300,200,370";     // Second row, left side
-            public const string CityEngineer = "350,300,500,370";         // Second row, right side
+            public const string ExecutiveEngineer = "50,80,200,150";       // Second row, left side
+            public const string CityEngineer = "350,80,500,150";           // Second row, right side
         }
 
         public SignatureWorkflowService(
