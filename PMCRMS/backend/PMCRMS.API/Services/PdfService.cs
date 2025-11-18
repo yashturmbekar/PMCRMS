@@ -1174,7 +1174,7 @@ namespace PMCRMS.API.Services
                         // EE signature (left)
                         row.RelativeItem().Column(col =>
                         {
-                            col.Item().Height(110); // Space for digital signature
+                            col.Item().Height(120); // Space for digital signature
                             col.Item().PaddingLeft(40).Column(c =>
                             {
                                 c.Spacing(2);
@@ -1194,7 +1194,7 @@ namespace PMCRMS.API.Services
                             
                             col.Item().PaddingTop(15); // Space between "क्ष मान्य" and signature
                             
-                            col.Item().Height(90); // Space for digital signature
+                            col.Item().Height(100); // Space for digital signature
                             col.Item().PaddingLeft(40).Column(c =>
                             {
                                 c.Spacing(2);

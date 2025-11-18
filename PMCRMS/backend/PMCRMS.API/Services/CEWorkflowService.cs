@@ -307,13 +307,14 @@ namespace PMCRMS.API.Services
                 var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
 
                 // Sign PDF with HSM using the SAME KeyLabel used for OTP generation
+                var coordinates = _configuration["HSM:SignatureCoordinates:CityEngineer"] ?? "350,80,500,150";
                 var signRequest = new HsmSignRequest
                 {
                     TransactionId = applicationId.ToString(),
                     KeyLabel = keyLabel, // Must match the KeyLabel used in GenerateOtpAsync
                     Base64Pdf = base64Pdf,
                     Otp = otp,
-                    Coordinates = "516,383,635,324" // City Engineer position (bottom-right)
+                    Coordinates = coordinates
                 };
 
                 var signResult = await _hsmService.SignPdfAsync(signRequest);

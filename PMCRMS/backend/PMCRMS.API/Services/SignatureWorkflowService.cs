@@ -50,26 +50,6 @@ namespace PMCRMS.API.Services
         private readonly IWebHostEnvironment _environment;
         private readonly IConfiguration _configuration;
 
-        // Signature coordinates for each officer on recommendation form
-        private static class SignatureCoordinates
-        {
-            // PDF coordinates: (llx, lly, urx, ury) where origin (0,0) is bottom-left of page
-            // A4 page dimensions: 595 (width) x 842 (height) points
-            // Layout from bottom up:
-            //   First row (Y: 200-270):  शाखा अभियंता (JE) left | उपअभियंता (AE) right
-            //   Recommendation text (centered)
-            //   "क्ष मान्य" text (right-aligned)
-            //   Second row (Y: 80-150): कार्यकारी अभियंता (EE) left | शहर अभियंता (CE) right
-            
-            // First row signatures (JE and AE)
-            public const string JuniorEngineer = "50,200,200,270";         // First row, left side
-            public const string AssistantEngineer = "350,200,500,270";     // First row, right side
-            
-            // Second row signatures (EE and CE)
-            public const string ExecutiveEngineer = "50,80,200,150";       // Second row, left side
-            public const string CityEngineer = "350,80,500,150";           // Second row, right side
-        }
-
         public SignatureWorkflowService(
             PMCRMSDbContext context,
             IHsmService hsmService,
@@ -85,7 +65,7 @@ namespace PMCRMS.API.Services
         }
 
         /// <summary>
-        /// Get signature coordinates based on officer role
+        /// Get signature coordinates based on officer role from appsettings.json
         /// </summary>
         public string GetSignatureCoordinates(OfficerRole role, int signatureOrder)
         {
@@ -94,7 +74,7 @@ namespace PMCRMS.API.Services
                 role == OfficerRole.JuniorStructuralEngineer || role == OfficerRole.JuniorSupervisor1 ||
                 role == OfficerRole.JuniorSupervisor2)
             {
-                return SignatureCoordinates.JuniorEngineer;
+                return _configuration["HSM:SignatureCoordinates:JuniorEngineer"] ?? "50,200,200,270";
             }
 
             // Assistant roles get second signature position
@@ -102,22 +82,22 @@ namespace PMCRMS.API.Services
                 role == OfficerRole.AssistantStructuralEngineer || role == OfficerRole.AssistantSupervisor1 ||
                 role == OfficerRole.AssistantSupervisor2)
             {
-                return SignatureCoordinates.AssistantEngineer;
+                return _configuration["HSM:SignatureCoordinates:AssistantEngineer"] ?? "350,200,500,270";
             }
 
             // Executive Engineer gets third position
             if (role == OfficerRole.ExecutiveEngineer)
             {
-                return SignatureCoordinates.ExecutiveEngineer;
+                return _configuration["HSM:SignatureCoordinates:ExecutiveEngineer"] ?? "50,80,200,150";
             }
 
             // City Engineer gets fourth position
             if (role == OfficerRole.CityEngineer)
             {
-                return SignatureCoordinates.CityEngineer;
+                return _configuration["HSM:SignatureCoordinates:CityEngineer"] ?? "350,80,500,150";
             }
 
-            return SignatureCoordinates.JuniorEngineer; // Default
+            return _configuration["HSM:SignatureCoordinates:JuniorEngineer"] ?? "50,200,200,270"; // Default
         }
 
         /// <summary>
@@ -391,6 +371,10 @@ namespace PMCRMS.API.Services
 
                 // Get signature coordinates for this role
                 var coordinates = GetSignatureCoordinates(role, 0);
+                
+                _logger.LogInformation(
+                    "📍 Signature coordinates for {Role}: {Coordinates}",
+                    role, coordinates);
 
                 // Convert PDF to Base64
                 var base64Pdf = Convert.ToBase64String(pdfContent);
