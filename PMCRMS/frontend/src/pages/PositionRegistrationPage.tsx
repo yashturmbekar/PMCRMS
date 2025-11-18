@@ -97,7 +97,7 @@ B) Diploma in Civil Engineering or equivalent, having experience of 10 years in 
   [PositionType.StructuralEngineer]: {
     name: "Structural Engineer",
     icon: "🏗️",
-    fee: 1500,
+    fee: 3000,
     feeDuration: "3 years",
     sections: {
       basicInfo: true,

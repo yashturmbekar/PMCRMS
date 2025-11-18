@@ -561,7 +561,7 @@ namespace PMCRMS.API.Data
                     FormName = "Structural Engineer License",
                     FormType = FormType.StructuralEngineerLicense,
                     Description = "Application for Structural Engineer registration",
-                    BaseFee = 2500m,
+                    BaseFee = 3000m,
                     ProcessingFee = 500m,
                     LateFee = 250m,
                     IsActive = true,
