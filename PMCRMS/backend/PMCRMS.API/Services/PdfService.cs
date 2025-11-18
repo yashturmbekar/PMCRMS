@@ -963,13 +963,10 @@ namespace PMCRMS.API.Services
                 string endMonth = GetMarathiMonthName(endDate.Month);
 
                 // Subject line
-                column.Item().PaddingTop(12).PaddingLeft(40).Text(text =>
-                {
-                    text.Span($"विषय:- {startMonth} {startYear} ते {endMonth} {endYear} करीता {_model.Position} नवीन परवान्याबाबत.")
-                        .FontSize(11)
-                        .FontFamily(MarathiFont)
-                        .LineHeight(1.3f);
-                });
+                column.Item().PaddingTop(12).PaddingLeft(40).Text($"विषय:- {startMonth} {startYear} ते {endMonth} {endYear} करीता {_model.Position} नवीन परवान्याबाबत.")
+                    .FontSize(11)
+                    .FontFamily(MarathiFont)
+                    .LineHeight(1.3f);
 
                 // Main intro paragraph
                 column.Item().PaddingTop(12).PaddingLeft(40).Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने {startMonth} {startYear} ते {endMonth} {endYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
@@ -978,9 +975,9 @@ namespace PMCRMS.API.Services
                     .LineHeight(1.4f);
 
                 // Name field
-                column.Item().PaddingTop(12).PaddingLeft(40).Text(text =>
+                column.Item().PaddingTop(12).Text(text =>
                 {
-                    text.Span("• अर्जदाराचे नाव - ")
+                    text.Span("अर्जदाराचे नाव - ")
                         .FontSize(11)
                         .FontFamily(MarathiFont);
 
@@ -991,9 +988,9 @@ namespace PMCRMS.API.Services
                 });
 
                 // Education field
-                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
+                column.Item().PaddingTop(5).Text(text =>
                 {
-                    text.Span("• अर्जदाराचे शिक्षण - ")
+                    text.Span("अर्जदाराचे शिक्षण - ")
                         .FontSize(11)
                         .FontFamily(MarathiFont);
 
@@ -1015,9 +1012,9 @@ namespace PMCRMS.API.Services
                 });
 
                 // Address field
-                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
+                column.Item().PaddingTop(5).Text(text =>
                 {
-                    text.Span("• पत्ता : 1) ")
+                    text.Span("पत्ता : 1) ")
                         .FontSize(11)
                         .FontFamily(MarathiFont);
 
@@ -1036,9 +1033,9 @@ namespace PMCRMS.API.Services
                 });
 
                 // Mobile field
-                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
+                column.Item().PaddingTop(5).Text(text =>
                 {
-                    text.Span("• मोबाईलनं.- ")
+                    text.Span("मोबाईलनं.- ")
                         .FontSize(11)
                         .FontFamily(MarathiFont);
 
@@ -1049,15 +1046,15 @@ namespace PMCRMS.API.Services
                 });
 
                 // Required experience
-                column.Item().PaddingTop(5).PaddingLeft(40).Text("• आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
+                column.Item().PaddingTop(5).Text("आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
                     .FontFamily(MarathiFont)
                     .FontSize(11)
                     .LineHeight(1.3f);
 
                 // Actual experience
-                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
+                column.Item().PaddingTop(5).Text(text =>
                 {
-                    text.Span("• अनुभव- ")
+                    text.Span("अनुभव- ")
                         .FontSize(11)
                         .FontFamily(MarathiFont);
 
