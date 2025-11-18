@@ -1164,15 +1164,22 @@ namespace PMCRMS.API.Services
                     });
 
                     // Recommendation text
-                    bottomColumn.Item().PaddingTop(10).AlignLeft().Text("प्रस्तुत प्रकरणी उपरोक्त प्रमाणे छाननी झाली असल्याने मान्यतेस शिफारस आहे.")
+                    bottomColumn.Item().PaddingTop(10).AlignCenter().Text("प्रस्तुत प्रकरणी उपरोक्त प्रमाणे छाननी झाली असल्याने मान्यतेस शिफारस आहे.")
                         .FontFamily(MarathiFont)
                         .FontSize(11)
                         .LineHeight(1.3f);
 
-                    // "क्ष मान्य" text aligned to right
-                    bottomColumn.Item().PaddingTop(20).AlignRight().PaddingRight(80).Text("क्ष मान्य")
-                        .FontFamily(MarathiFont)
-                        .FontSize(11);
+                    // "क्ष मान्य" text row with proper alignment
+                    bottomColumn.Item().PaddingTop(20).Row(row =>
+                    {
+                        // Empty left column for alignment
+                        row.RelativeItem().Column(col => { });
+                        
+                        // "क्ष मान्य" text in right column aligned center
+                        row.RelativeItem().AlignCenter().Text("क्ष मान्य")
+                            .FontFamily(MarathiFont)
+                            .FontSize(11);
+                    });
 
                     // Second row of signatures (EE and CE)
                     bottomColumn.Item().PaddingTop(8).Row(row =>
