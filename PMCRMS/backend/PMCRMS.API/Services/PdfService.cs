@@ -946,13 +946,12 @@ namespace PMCRMS.API.Services
 
                 column.Item().PaddingTop(20);
 
-                // Centered "यांजकडे सादर...."
                 column.Item()
-                    .AlignCenter()
+                    .PaddingTop(12)
                     .Text("                 यांजकडे सादर....")
                     .FontSize(12)
                     .FontFamily(MarathiFont);
-
+;
                 DateTime date = _model.Date;
                 // Calculate end date: exactly 3 years minus 1 day from start date
                 DateTime endDate = date.AddYears(3).AddDays(-1);
@@ -1139,7 +1138,7 @@ namespace PMCRMS.API.Services
                         row.RelativeItem().Column(col =>
                         {
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().AlignCenter().Column(c =>
+                            col.Item().PaddingLeft(40).Column(c =>
                             {
                                 c.Spacing(2);
                                 c.Item().Text($"({_model.JrEnggName ?? "श्री. राजेंद्र पुंडे"})").FontFamily(MarathiFont).FontSize(10);
@@ -1153,7 +1152,7 @@ namespace PMCRMS.API.Services
                         row.RelativeItem().Column(col =>
                         {
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().AlignCenter().Column(c =>
+                            col.Item().PaddingLeft(40).Column(c =>
                             {
                                 c.Spacing(2);
                                 c.Item().Text($"({_model.AssEnggName ?? "डॉ. राहुल देवीडास साबळे"})").FontFamily(MarathiFont).FontSize(10);
@@ -1181,7 +1180,7 @@ namespace PMCRMS.API.Services
                         row.RelativeItem().Column(col =>
                         {
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().AlignCenter().Column(c =>
+                            col.Item().PaddingLeft(40).Column(c =>
                             {
                                 c.Spacing(2);
                                 c.Item().Text($"({_model.ExeEnggName ?? "श्री शंकुर शिंदे"})").FontFamily(MarathiFont).FontSize(10);
@@ -1194,7 +1193,7 @@ namespace PMCRMS.API.Services
                         row.RelativeItem().Column(col =>
                         {
                             col.Item().Height(70); // Space for digital signature
-                            col.Item().AlignCenter().Column(c =>
+                            col.Item().PaddingLeft(40).Column(c =>
                             {
                                 c.Spacing(2);
                                 c.Item().Text($"({_model.CityEnggName ?? "श्री संजय डोके"})").FontFamily(MarathiFont).FontSize(10);
