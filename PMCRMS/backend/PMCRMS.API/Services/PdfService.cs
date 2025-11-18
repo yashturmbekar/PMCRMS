@@ -949,7 +949,7 @@ namespace PMCRMS.API.Services
                 // Centered "यांजकडे सादर...."
                 column.Item()
                     .AlignCenter()
-                    .Text("यांजकडे सादर....")
+                    .Text("                 यांजकडे सादर....")
                     .FontSize(12)
                     .FontFamily(MarathiFont);
 
@@ -963,19 +963,19 @@ namespace PMCRMS.API.Services
                 string endMonth = GetMarathiMonthName(endDate.Month);
 
                 // Subject line
-                column.Item().PaddingTop(12).PaddingLeft(40).Text($"विषय:- {startMonth} {startYear} ते {endMonth} {endYear} करीता {_model.Position} नवीन परवान्याबाबत.")
+                column.Item().PaddingTop(12).Text($"         विषय:- {startMonth} {startYear} ते {endMonth} {endYear} करीता {_model.Position} नवीन परवान्याबाबत.")
                     .FontSize(11)
                     .FontFamily(MarathiFont)
                     .LineHeight(1.3f);
 
                 // Main intro paragraph
-                column.Item().PaddingTop(12).PaddingLeft(40).Text($"विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने {startMonth} {startYear} ते {endMonth} {endYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
+                column.Item().PaddingTop(12).Text($"         विषयांकित प्रकरणी खाली निर्देशित व्यक्तीने {startMonth} {startYear} ते {endMonth} {endYear} या कालावधीकरीता पुणे महानगरपालिकेच्या मा. शहर अभियंता कार्यालयाकडे {_model.Position} (नवीन) परवान्याकरिता अर्ज केला आहे.")
                     .FontSize(11)
                     .FontFamily(MarathiFont)
                     .LineHeight(1.4f);
 
                 // Name field
-                column.Item().PaddingTop(12).Text(text =>
+                column.Item().PaddingTop(12).PaddingLeft(40).Text(text =>
                 {
                     text.Span("अर्जदाराचे नाव - ")
                         .FontSize(11)
@@ -988,7 +988,7 @@ namespace PMCRMS.API.Services
                 });
 
                 // Education field
-                column.Item().PaddingTop(5).Text(text =>
+                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
                 {
                     text.Span("अर्जदाराचे शिक्षण - ")
                         .FontSize(11)
@@ -1012,7 +1012,7 @@ namespace PMCRMS.API.Services
                 });
 
                 // Address field
-                column.Item().PaddingTop(5).Text(text =>
+                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
                 {
                     text.Span("पत्ता : 1) ")
                         .FontSize(11)
@@ -1033,7 +1033,7 @@ namespace PMCRMS.API.Services
                 });
 
                 // Mobile field
-                column.Item().PaddingTop(5).Text(text =>
+                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
                 {
                     text.Span("मोबाईलनं.- ")
                         .FontSize(11)
@@ -1046,13 +1046,13 @@ namespace PMCRMS.API.Services
                 });
 
                 // Required experience
-                column.Item().PaddingTop(5).Text("आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
+                column.Item().PaddingTop(5).PaddingLeft(40).Text("आवश्यक अनुभव - २ वर्षे (युडीसीपीआर २०२० मधील अपेंडिक्स 'सी', सी-४.१(ii) नुसार)")
                     .FontFamily(MarathiFont)
                     .FontSize(11)
                     .LineHeight(1.3f);
 
                 // Actual experience
-                column.Item().PaddingTop(5).Text(text =>
+                column.Item().PaddingTop(5).PaddingLeft(40).Text(text =>
                 {
                     text.Span("अनुभव- ")
                         .FontSize(11)
@@ -1093,13 +1093,13 @@ namespace PMCRMS.API.Services
                 };
 
                 // Main verification paragraph
-                column.Item().PaddingTop(14).PaddingLeft(40).Text($"उपरोक्त नमूद केलेल्या व्यक्तीचा मागणी अर्ज, शैक्षणिक पात्रता, अनुभव व पत्त्याचा पुरावा इ. कागदपत्राची तपासणी केली ती बरोबर व नियमानुसार आहेत. त्यानुसार वरील अर्जदाराची मान्य युडीसीपीआर २०२० मधील अपेंडिक्स सी, सी-{num} नुसार पुणे महानगरपालिकेच्या {_model.Position} (नवीन) परवाना धारण करण्यास आवश्यक शैक्षणिक पात्रता व अनुभव असल्याने त्यांचा अर्ज आपले मान्यतेकरिता सादर करीत आहोत.")
+                column.Item().PaddingTop(14).Text($"         उपरोक्त नमूद केलेल्या व्यक्तीचा मागणी अर्ज, शैक्षणिक पात्रता, अनुभव व पत्त्याचा पुरावा इ. कागदपत्राची तपासणी केली ती बरोबर व नियमानुसार आहेत. त्यानुसार वरील अर्जदाराची मान्य युडीसीपीआर २०२० मधील अपेंडिक्स सी, सी-{num} नुसार पुणे महानगरपालिकेच्या {_model.Position} (नवीन) परवाना धारण करण्यास आवश्यक शैक्षणिक पात्रता व अनुभव असल्याने त्यांचा अर्ज आपले मान्यतेकरिता सादर करीत आहोत.")
                     .FontFamily(MarathiFont)
                     .FontSize(11)
                     .LineHeight(1.4f);
 
                 // Request paragraph
-                column.Item().PaddingTop(10).PaddingLeft(40).Text(text =>
+                column.Item().PaddingTop(10).Text(text =>
                 {
                     DateTime date = _model.Date;
                     // Calculate end date: exactly 3 years minus 1 day from start date
@@ -1125,7 +1125,7 @@ namespace PMCRMS.API.Services
                 });
 
                 // "मा.स.कळावे."
-                column.Item().PaddingTop(14).PaddingLeft(40).Text("मा.स.कळावे.")
+                column.Item().PaddingTop(14).Text("मा.स.कळावे.")
                     .FontFamily(MarathiFont)
                     .FontSize(11);
 

@@ -1096,6 +1096,9 @@ namespace PMCRMS.API.Controllers
                     .Include(a => a.Qualifications)
                     .Include(a => a.Experiences)
                     .Include(a => a.Documents)
+                    .Include(a => a.Appointments)  // Load appointments to delete them
+                    .Include(a => a.DocumentVerifications)  // Load verifications to delete them
+                    .Include(a => a.DigitalSignatures)  // Load digital signatures to delete them
                     .FirstOrDefaultAsync(a => a.Id == id);
 
                 if (application == null)
@@ -1146,48 +1149,187 @@ namespace PMCRMS.API.Controllers
                 application.UpdatedDate = DateTime.UtcNow;
                 application.SubmittedDate = DateTime.UtcNow; // Update submission date
                 
-                // Clear all rejection flags to allow fresh review
+                // ==================== CLEAR ALL OFFICER ASSIGNMENTS ====================
+                // Remove all officer assignments so resubmitted form looks like new submission
+                application.AssignedJuniorEngineerId = null;
+                application.AssignedToJEDate = null;
+                
+                application.AssignedAEArchitectId = null;
+                application.AssignedToAEArchitectDate = null;
+                
+                application.AssignedAEStructuralId = null;
+                application.AssignedToAEStructuralDate = null;
+                
+                application.AssignedAELicenceId = null;
+                application.AssignedToAELicenceDate = null;
+                
+                application.AssignedAESupervisor1Id = null;
+                application.AssignedToAESupervisor1Date = null;
+                
+                application.AssignedAESupervisor2Id = null;
+                application.AssignedToAESupervisor2Date = null;
+                
+                application.AssignedExecutiveEngineerId = null;
+                application.AssignedToExecutiveEngineerDate = null;
+                
+                application.AssignedCityEngineerId = null;
+                application.AssignedToCityEngineerDate = null;
+                
+                application.AssignedClerkId = null;
+                application.AssignedToClerkDate = null;
+                
+                application.AssignedEEStage2Id = null;
+                application.AssignedToEEStage2Date = null;
+                
+                application.AssignedCEStage2Id = null;
+                application.AssignedToCEStage2Date = null;
+
+                // ==================== CLEAR ALL JE WORKFLOW FIELDS ====================
+                application.JEAllDocumentsVerified = false;
+                application.JEDocumentVerificationDate = null;
+                application.JEDigitalSignatureApplied = false;
+                application.JEDigitalSignatureDate = null;
+                application.JEAppointmentScheduled = false;
+                application.JEAppointmentScheduledDate = null;
+                application.JEComments = null;
+                
+                // ==================== CLEAR ALL APPROVAL/REJECTION FLAGS ====================
+                // Junior Engineer
+                application.JEApprovalStatus = null;
+                application.JEApprovalComments = null;
+                application.JEApprovalDate = null;
                 application.JERejectionStatus = null;
                 application.JERejectionComments = null;
                 application.JERejectionDate = null;
                 
+                // Assistant Engineer - Architect
+                application.AEArchitectApprovalStatus = null;
+                application.AEArchitectApprovalComments = null;
+                application.AEArchitectApprovalDate = null;
                 application.AEArchitectRejectionStatus = null;
                 application.AEArchitectRejectionComments = null;
                 application.AEArchitectRejectionDate = null;
+                application.AEArchitectDigitalSignatureApplied = false;
+                application.AEArchitectDigitalSignatureDate = null;
                 
+                // Assistant Engineer - Structural
+                application.AEStructuralApprovalStatus = null;
+                application.AEStructuralApprovalComments = null;
+                application.AEStructuralApprovalDate = null;
                 application.AEStructuralRejectionStatus = null;
                 application.AEStructuralRejectionComments = null;
                 application.AEStructuralRejectionDate = null;
+                application.AEStructuralDigitalSignatureApplied = false;
+                application.AEStructuralDigitalSignatureDate = null;
                 
+                // Assistant Engineer - Licence
+                application.AELicenceApprovalStatus = null;
+                application.AELicenceApprovalComments = null;
+                application.AELicenceApprovalDate = null;
                 application.AELicenceRejectionStatus = null;
                 application.AELicenceRejectionComments = null;
                 application.AELicenceRejectionDate = null;
+                application.AELicenceDigitalSignatureApplied = false;
+                application.AELicenceDigitalSignatureDate = null;
                 
+                // Assistant Engineer - Supervisor 1
+                application.AESupervisor1ApprovalStatus = null;
+                application.AESupervisor1ApprovalComments = null;
+                application.AESupervisor1ApprovalDate = null;
                 application.AESupervisor1RejectionStatus = null;
                 application.AESupervisor1RejectionComments = null;
                 application.AESupervisor1RejectionDate = null;
+                application.AESupervisor1DigitalSignatureApplied = false;
+                application.AESupervisor1DigitalSignatureDate = null;
                 
+                // Assistant Engineer - Supervisor 2
+                application.AESupervisor2ApprovalStatus = null;
+                application.AESupervisor2ApprovalComments = null;
+                application.AESupervisor2ApprovalDate = null;
                 application.AESupervisor2RejectionStatus = null;
                 application.AESupervisor2RejectionComments = null;
                 application.AESupervisor2RejectionDate = null;
+                application.AESupervisor2DigitalSignatureApplied = false;
+                application.AESupervisor2DigitalSignatureDate = null;
                 
+                // Executive Engineer
+                application.ExecutiveEngineerApprovalStatus = null;
+                application.ExecutiveEngineerApprovalComments = null;
+                application.ExecutiveEngineerApprovalDate = null;
                 application.ExecutiveEngineerRejectionStatus = null;
                 application.ExecutiveEngineerRejectionComments = null;
                 application.ExecutiveEngineerRejectionDate = null;
+                application.ExecutiveEngineerDigitalSignatureApplied = false;
+                application.ExecutiveEngineerDigitalSignatureDate = null;
                 
+                // City Engineer
+                application.CityEngineerApprovalStatus = null;
+                application.CityEngineerApprovalComments = null;
+                application.CityEngineerApprovalDate = null;
                 application.CityEngineerRejectionStatus = null;
                 application.CityEngineerRejectionComments = null;
                 application.CityEngineerRejectionDate = null;
+                application.CityEngineerDigitalSignatureApplied = false;
+                application.CityEngineerDigitalSignatureDate = null;
                 
+                // Clerk
+                application.ClerkApprovalStatus = null;
+                application.ClerkApprovalComments = null;
+                application.ClerkApprovalDate = null;
                 application.ClerkRejectionStatus = null;
                 application.ClerkRejectionComments = null;
                 application.ClerkRejectionDate = null;
+                
+                // Executive Engineer Stage 2
+                application.EEStage2ApprovalStatus = null;
+                application.EEStage2ApprovalComments = null;
+                application.EEStage2ApprovalDate = null;
+                application.EEStage2DigitalSignatureApplied = false;
+                application.EEStage2DigitalSignatureDate = null;
+                
+                // City Engineer Stage 2
+                application.CEStage2ApprovalStatus = null;
+                application.CEStage2ApprovalComments = null;
+                application.CEStage2ApprovalDate = null;
+                application.CEStage2DigitalSignatureApplied = false;
+                application.CEStage2DigitalSignatureDate = null;
                 
                 // Reset recommendation form status - it will need to be regenerated after review
                 application.IsRecommendationFormGenerated = false;
                 application.RecommendationFormGeneratedDate = null;
                 application.RecommendationFormGenerationAttempts = 0;
                 application.RecommendationFormGenerationError = null;
+
+                // ==================== DELETE WORKFLOW TRACKING RECORDS ====================
+                // Remove all appointments - fresh appointment will be scheduled after resubmission
+                if (application.Appointments?.Any() == true)
+                {
+                    _logger.LogInformation("[Resubmit] Removing {Count} existing appointments", application.Appointments.Count);
+                    _context.Appointments.RemoveRange(application.Appointments);
+                }
+                
+                // Remove all document verifications - documents will be re-verified
+                if (application.DocumentVerifications?.Any() == true)
+                {
+                    _logger.LogInformation("[Resubmit] Removing {Count} existing document verifications", application.DocumentVerifications.Count);
+                    _context.DocumentVerifications.RemoveRange(application.DocumentVerifications);
+                }
+                
+                // Remove all digital signatures - fresh signatures will be applied
+                if (application.DigitalSignatures?.Any() == true)
+                {
+                    _logger.LogInformation("[Resubmit] Removing {Count} existing digital signatures", application.DigitalSignatures.Count);
+                    _context.DigitalSignatures.RemoveRange(application.DigitalSignatures);
+                }
+                
+                // Remove recommendation form document if it exists (it will be regenerated)
+                var recommendationFormDoc = application.Documents
+                    .FirstOrDefault(d => d.DocumentType == SEDocumentType.RecommendedForm);
+                if (recommendationFormDoc != null)
+                {
+                    _logger.LogInformation("[Resubmit] Removing existing recommendation form document");
+                    _context.SEDocuments.Remove(recommendationFormDoc);
+                }
 
                 // Update addresses
                 _context.SEAddresses.RemoveRange(application.Addresses);
@@ -1294,6 +1436,9 @@ namespace PMCRMS.API.Controllers
                         existingDoc.FileSize = doc.FileSize;
                         existingDoc.ContentType = doc.ContentType;
                         existingDoc.IsVerified = false; // Reset verification status
+                        existingDoc.VerifiedBy = null; // Clear verifier
+                        existingDoc.VerifiedDate = null; // Clear verification date
+                        existingDoc.VerificationRemarks = null; // Clear verification remarks
                         existingDoc.UpdatedBy = "User_Resubmission";
                         existingDoc.UpdatedDate = DateTime.UtcNow;
                         
@@ -1345,6 +1490,9 @@ namespace PMCRMS.API.Controllers
                             ContentType = doc.ContentType,
                             FilePath = null,
                             IsVerified = false,
+                            VerifiedBy = null,
+                            VerifiedDate = null,
+                            VerificationRemarks = null,
                             CreatedBy = "User_Resubmission",
                             CreatedDate = DateTime.UtcNow
                         });
