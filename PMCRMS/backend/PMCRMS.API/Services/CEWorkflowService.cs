@@ -21,7 +21,7 @@ namespace PMCRMS.API.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly IHsmService _hsmService;
-        private readonly IOptions<HsmConfiguration> _hsmConfig;
+        private readonly ISignatureWorkflowService _signatureWorkflowService;
         private readonly IAutoAssignmentService _autoAssignmentService;
 
         public CEWorkflowService(
@@ -33,7 +33,7 @@ namespace PMCRMS.API.Services
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
             IHsmService hsmService,
-            IOptions<HsmConfiguration> hsmConfig,
+            ISignatureWorkflowService signatureWorkflowService,
             IAutoAssignmentService autoAssignmentService)
         {
             _context = context;
@@ -44,7 +44,7 @@ namespace PMCRMS.API.Services
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _hsmService = hsmService;
-            _hsmConfig = hsmConfig;
+            _signatureWorkflowService = signatureWorkflowService;
             _autoAssignmentService = autoAssignmentService;
         }
 
@@ -264,88 +264,29 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Application not found" };
                 }
 
-                var officer = await _context.Officers.FindAsync(officerId);
-                if (officer == null)
-                {
-                    return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
-                }
-
-                // Get recommendation form PDF
-                var recommendationForm = await _context.SEDocuments
-                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId 
-                                            && d.DocumentType == SEDocumentType.RecommendedForm);
-
-                if (recommendationForm == null || recommendationForm.FileContent == null)
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "Recommendation form not found." 
-                    };
-                }
-
-                // For local development, use test KeyLabel; for production, use officer's KeyLabel
-                // IMPORTANT: Must use the SAME KeyLabel that was used for OTP generation
-                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
-                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
+                // Use unified signature workflow service
+                _logger.LogInformation("Starting digital signature process for CE application {ApplicationId}", applicationId);
                 
-                if (string.IsNullOrEmpty(keyLabel))
+                var signatureResult = await _signatureWorkflowService.SignAsCityEngineerAsync(
+                    applicationId,
+                    officerId,
+                    otp
+                );
+
+                if (!signatureResult.Success)
                 {
+                    _logger.LogError("Digital signature failed for application {ApplicationId}: {Error}", 
+                        applicationId, signatureResult.ErrorMessage);
+                    
                     return new WorkflowActionResultDto 
                     { 
                         Success = false, 
-                        Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
+                        Message = signatureResult.ErrorMessage ?? "Digital signature failed" 
                     };
                 }
 
                 _logger.LogInformation(
-                    "{Mode}: Using KeyLabel {KeyLabel} for CE officer {OfficerName} signature",
-                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
-                    keyLabel, officer.Name);
-
-                // Convert PDF to Base64 for HSM signing
-                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
-
-                // Sign PDF with HSM using the SAME KeyLabel used for OTP generation
-                var coordinates = _configuration["HSM:SignatureCoordinates:CityEngineer"] ?? "350,80,500,150";
-                var signRequest = new HsmSignRequest
-                {
-                    TransactionId = applicationId.ToString(),
-                    KeyLabel = keyLabel, // Must match the KeyLabel used in GenerateOtpAsync
-                    Base64Pdf = base64Pdf,
-                    Otp = otp,
-                    Coordinates = coordinates
-                };
-
-                var signResult = await _hsmService.SignPdfAsync(signRequest);
-
-                if (!signResult.Success)
-                {
-                    _logger.LogError("HSM PDF signing failed: {Error}", signResult.ErrorMessage);
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                    };
-                }
-
-                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = "Signed PDF content is empty" 
-                    };
-                }
-                
-                // Update recommendation form with signed PDF
-                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                recommendationForm.FileContent = signedPdfBytes;
-                recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                recommendationForm.UpdatedDate = DateTime.UtcNow;
-                
-                _logger.LogInformation(
-                    "Updated recommendation form with CE digitally signed PDF via HSM for application {ApplicationId}", 
+                    "CE digitally signed PDF for application {ApplicationId}", 
                     applicationId);
 
                 // Update application - CE Stage 1 Approval

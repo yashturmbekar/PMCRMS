@@ -74,7 +74,7 @@ namespace PMCRMS.API.Services
                 role == OfficerRole.JuniorStructuralEngineer || role == OfficerRole.JuniorSupervisor1 ||
                 role == OfficerRole.JuniorSupervisor2)
             {
-                return _configuration["HSM:SignatureCoordinates:JuniorEngineer"] ?? "50,200,200,270";
+                return _configuration["HSM:SignatureCoordinates:JuniorEngineer"] ?? "50,650,200,720";
             }
 
             // Assistant roles get second signature position
@@ -82,22 +82,22 @@ namespace PMCRMS.API.Services
                 role == OfficerRole.AssistantStructuralEngineer || role == OfficerRole.AssistantSupervisor1 ||
                 role == OfficerRole.AssistantSupervisor2)
             {
-                return _configuration["HSM:SignatureCoordinates:AssistantEngineer"] ?? "350,200,500,270";
+                return _configuration["HSM:SignatureCoordinates:AssistantEngineer"] ?? "350,650,500,720";
             }
 
             // Executive Engineer gets third position
             if (role == OfficerRole.ExecutiveEngineer)
             {
-                return _configuration["HSM:SignatureCoordinates:ExecutiveEngineer"] ?? "50,80,200,150";
+                return _configuration["HSM:SignatureCoordinates:ExecutiveEngineer"] ?? "50,200,200,270";
             }
 
             // City Engineer gets fourth position
             if (role == OfficerRole.CityEngineer)
             {
-                return _configuration["HSM:SignatureCoordinates:CityEngineer"] ?? "350,80,500,150";
+                return _configuration["HSM:SignatureCoordinates:CityEngineer"] ?? "350,200,500,270";
             }
 
-            return _configuration["HSM:SignatureCoordinates:JuniorEngineer"] ?? "50,200,200,270"; // Default
+            return _configuration["HSM:SignatureCoordinates:JuniorEngineer"] ?? "50,650,200,720"; // Default
         }
 
         /// <summary>

@@ -21,7 +21,7 @@ namespace PMCRMS.API.Services
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly IHsmService _hsmService;
-        private readonly IOptions<HsmConfiguration> _hsmConfig;
+        private readonly ISignatureWorkflowService _signatureWorkflowService;
         private readonly IAutoAssignmentService _autoAssignmentService;
 
         public AEWorkflowService(
@@ -33,7 +33,7 @@ namespace PMCRMS.API.Services
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
             IHsmService hsmService,
-            IOptions<HsmConfiguration> hsmConfig,
+            ISignatureWorkflowService signatureWorkflowService,
             IAutoAssignmentService autoAssignmentService)
         {
             _context = context;
@@ -44,7 +44,7 @@ namespace PMCRMS.API.Services
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _hsmService = hsmService;
-            _hsmConfig = hsmConfig;
+            _signatureWorkflowService = signatureWorkflowService;
             _autoAssignmentService = autoAssignmentService;
         }
 
@@ -237,89 +237,30 @@ namespace PMCRMS.API.Services
                     return new WorkflowActionResultDto { Success = false, Message = "Application not found" };
                 }
 
-                var officer = await _context.Officers.FindAsync(officerId);
-                if (officer == null)
-                {
-                    return new WorkflowActionResultDto { Success = false, Message = "Officer not found" };
-                }
+                // Use unified signature workflow service
+                _logger.LogInformation("Starting digital signature process for AE application {ApplicationId}", applicationId);
+                
+                var signatureResult = await _signatureWorkflowService.SignAsAssistantEngineerAsync(
+                    applicationId,
+                    officerId,
+                    otp
+                );
 
-                // Get recommendation form PDF
-                var recommendationForm = await _context.SEDocuments
-                    .FirstOrDefaultAsync(d => d.ApplicationId == applicationId 
-                                            && d.DocumentType == SEDocumentType.RecommendedForm);
-
-                if (recommendationForm == null || recommendationForm.FileContent == null)
+                if (!signatureResult.Success)
                 {
+                    _logger.LogError("Digital signature failed for application {ApplicationId}: {Error}", 
+                        applicationId, signatureResult.ErrorMessage);
+                    
                     return new WorkflowActionResultDto 
                     { 
                         Success = false, 
-                        Message = "Recommendation form not found." 
-                    };
-                }
-
-                _logger.LogInformation("Starting HSM digital signature process for AE application {ApplicationId}", applicationId);
-
-                // For local development, use test KeyLabel; for production, use officer's KeyLabel
-                // IMPORTANT: Must use the SAME KeyLabel that was used for OTP generation
-                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
-                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
-
-                if (string.IsNullOrEmpty(keyLabel))
-                {
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = $"Officer {officer.Name} does not have a KeyLabel configured for digital signature" 
+                        Message = signatureResult.ErrorMessage ?? "Digital signature failed" 
                     };
                 }
 
                 _logger.LogInformation(
-                    "{Mode}: Using KeyLabel {KeyLabel} for AE officer {OfficerName} signature", 
-                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
-                    keyLabel, officer.Name);
-
-                // Convert PDF to Base64
-                var base64Pdf = Convert.ToBase64String(recommendationForm.FileContent);
-
-                // Sign PDF with HSM using the SAME KeyLabel used for OTP generation
-                var coordinates = _configuration["HSM:SignatureCoordinates:AssistantEngineer"] ?? "350,200,500,270";
-                var signRequest = new HsmSignRequest
-                {
-                    TransactionId = applicationId.ToString(),
-                    KeyLabel = keyLabel, // Must match the KeyLabel used in GenerateOtpAsync
-                    Base64Pdf = base64Pdf,
-                    Otp = otp,
-                    Coordinates = coordinates,
-                    PageLocation = "last",
-                    OtpType = "single"
-                };
-
-                var signResult = await _hsmService.SignPdfAsync(signRequest);
-
-                if (!signResult.Success)
-                {
-                    _logger.LogError("HSM signature failed for application {ApplicationId}: {Error}", 
-                        applicationId, signResult.ErrorMessage);
-                    
-                    return new WorkflowActionResultDto 
-                    { 
-                        Success = false, 
-                        Message = $"Digital signature failed: {signResult.ErrorMessage}" 
-                    };
-                }
-
-                // Update recommendation form with signed PDF
-                if (!string.IsNullOrEmpty(signResult.SignedPdfBase64))
-                {
-                    var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
-                    recommendationForm.FileContent = signedPdfBytes;
-                    recommendationForm.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
-                    recommendationForm.UpdatedDate = DateTime.UtcNow;
-                    
-                    _logger.LogInformation(
-                        "Updated recommendation form with AE digitally signed PDF for application {ApplicationId}", 
-                        applicationId);
-                }
+                    "AE digitally signed PDF for application {ApplicationId}", 
+                    applicationId);
 
                 // Update application based on position type
                 UpdateApplicationAfterAESignature(application, positionType, comments, DateTime.UtcNow);
