@@ -633,8 +633,7 @@ const OfficerDashboard: React.FC = () => {
         );
         if (
           application?.isStage2 ||
-          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING" ||
-          application?.status === 32
+          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING"
         ) {
           // Use EE Stage 2 service for license certificate signature
           const result = await eeStage2WorkflowService.generateOtp(
@@ -700,8 +699,7 @@ const OfficerDashboard: React.FC = () => {
         );
         if (
           application?.isStage2 ||
-          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING" ||
-          application?.status === 32
+          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING"
         ) {
           // Use EE Stage 2 service for license certificate signature → CE Stage 2
           const result = await eeStage2WorkflowService.applyDigitalSignature(
