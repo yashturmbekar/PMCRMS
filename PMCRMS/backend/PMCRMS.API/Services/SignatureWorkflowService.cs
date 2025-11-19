@@ -352,7 +352,8 @@ namespace PMCRMS.API.Services
             try
             {
                 // Get KeyLabel from configuration based on officer role
-                var roleKey = role.ToString().Replace(" ", "");
+                // Map specific roles to generic categories
+                var roleKey = SignatureWorkflowHelpers.MapRoleToConfigKey(role);
                 var keyLabel = _configuration[$"HSM:KeyLabels:{roleKey}"];
 
                 if (string.IsNullOrEmpty(keyLabel))
@@ -566,6 +567,48 @@ namespace PMCRMS.API.Services
         public bool CityEngineerSigned { get; set; }
         public bool AllSignaturesComplete { get; set; }
         public string? NextSigner { get; set; }
+    }
+
+    #endregion
+
+    #region Helper Extensions
+
+    /// <summary>
+    /// Helper methods for role mapping
+    /// </summary>
+    public static class SignatureWorkflowHelpers
+    {
+        /// <summary>
+        /// Maps specific officer roles to generic configuration keys
+        /// </summary>
+        public static string MapRoleToConfigKey(OfficerRole role)
+        {
+            return role switch
+            {
+                // Junior Engineer variants
+                OfficerRole.JuniorArchitect or
+                OfficerRole.JuniorStructuralEngineer or
+                OfficerRole.JuniorLicenceEngineer or
+                OfficerRole.JuniorSupervisor1 or
+                OfficerRole.JuniorSupervisor2 => "JuniorEngineer",
+
+                // Assistant Engineer variants
+                OfficerRole.AssistantArchitect or
+                OfficerRole.AssistantStructuralEngineer or
+                OfficerRole.AssistantLicenceEngineer or
+                OfficerRole.AssistantSupervisor1 or
+                OfficerRole.AssistantSupervisor2 => "AssistantEngineer",
+
+                // Executive Engineer
+                OfficerRole.ExecutiveEngineer => "ExecutiveEngineer",
+
+                // City Engineer
+                OfficerRole.CityEngineer => "CityEngineer",
+
+                // Default fallback
+                _ => role.ToString().Replace(" ", "")
+            };
+        }
     }
 
     #endregion
