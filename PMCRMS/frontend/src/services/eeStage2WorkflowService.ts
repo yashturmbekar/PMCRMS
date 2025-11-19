@@ -189,7 +189,11 @@ class EEStage2WorkflowService {
         }
       );
       if (response.data.success) {
-        return response.data.data as EEStage2OtpResult;
+        return {
+          success: true,
+          message: response.data.message,
+          otpReference: response.data.data?.otpReference,
+        };
       }
       throw new Error(response.data.message || "Failed to generate OTP");
     } catch (error: unknown) {
@@ -224,7 +228,13 @@ class EEStage2WorkflowService {
         }
       );
       if (response.data.success) {
-        return response.data.data as EEStage2SignResult;
+        return {
+          success: true,
+          message: response.data.message,
+          applicationId: response.data.data?.applicationId,
+          newStatus: response.data.data?.newStatus,
+          signedCertificateUrl: response.data.data?.signedCertificateUrl,
+        };
       }
       throw new Error(
         response.data.message || "Failed to apply digital signature"
