@@ -627,10 +627,39 @@ const OfficerDashboard: React.FC = () => {
       if (officerConfig.type === "AE") {
         return await aeWorkflowService.generateOtpForSignature(applicationId);
       } else if (officerConfig.type === "EE") {
-        // Both Stage 1 and Stage 2 use the same EE workflow service
-        // Backend determines which document to sign based on workflow status
+        // Check if this is a Stage 2 application (license certificate signature)
+        const application = applications.find(
+          (app) => app.applicationId === applicationId
+        );
+        if (
+          application?.isStage2 ||
+          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING" ||
+          application?.status === 32
+        ) {
+          // Use EE Stage 2 service for license certificate signature
+          const result = await eeStage2WorkflowService.generateOtp(
+            applicationId
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use EE Stage 1 service for recommendation form signature
         return await eeWorkflowService.generateOtpForSignature(applicationId);
       } else if (officerConfig.type === "CE") {
+        // Check if this is a Stage 2 application (final license certificate signature)
+        const application = applications.find(
+          (app) => app.applicationId === applicationId
+        );
+        if (
+          application?.isStage2 ||
+          application?.status === "CITY_ENGINEER_SIGN_PENDING"
+        ) {
+          // Use CE Stage 2 service for final license certificate signature
+          const result = await ceStage2WorkflowService.generateOtp(
+            applicationId
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use CE Stage 1 service for recommendation form signature
         return await ceWorkflowService.generateOtpForSignature(applicationId);
       }
       return { success: false, message: "OTP generation not supported" };
@@ -665,14 +694,47 @@ const OfficerDashboard: React.FC = () => {
           comments,
         });
       } else if (officerConfig.type === "EE") {
-        // Both Stage 1 and Stage 2 use the same EE workflow service
-        // Backend determines which document to sign based on workflow status
+        // Check if this is a Stage 2 application (license certificate signature)
+        const application = applications.find(
+          (app) => app.applicationId === applicationId
+        );
+        if (
+          application?.isStage2 ||
+          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING" ||
+          application?.status === 32
+        ) {
+          // Use EE Stage 2 service for license certificate signature → CE Stage 2
+          const result = await eeStage2WorkflowService.applyDigitalSignature(
+            applicationId,
+            otp,
+            comments
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use EE Stage 1 service for recommendation form signature
         return await eeWorkflowService.verifyAndSignDocuments({
           applicationId,
           otp,
           comments,
         });
       } else if (officerConfig.type === "CE") {
+        // Check if this is a Stage 2 application (final license certificate signature)
+        const application = applications.find(
+          (app) => app.applicationId === applicationId
+        );
+        if (
+          application?.isStage2 ||
+          application?.status === "CITY_ENGINEER_SIGN_PENDING"
+        ) {
+          // Use CE Stage 2 service for final license certificate signature → APPROVED status
+          const result = await ceStage2WorkflowService.applyFinalSignature(
+            applicationId,
+            otp,
+            comments
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use CE Stage 1 service for recommendation form signature → Payment stage
         return await ceWorkflowService.verifyAndSignDocuments({
           applicationId,
           otp,

@@ -26,7 +26,9 @@ import AuthContext from "../contexts/AuthContext";
 import { jeWorkflowService } from "../services/jeWorkflowService";
 import { aeWorkflowService } from "../services/aeWorkflowService";
 import { eeWorkflowService } from "../services/eeWorkflowService";
+import eeStage2WorkflowService from "../services/eeStage2WorkflowService";
 import { ceWorkflowService } from "../services/ceWorkflowService";
+import ceStage2WorkflowService from "../services/ceStage2WorkflowService";
 import { clerkWorkflowService } from "../services/clerkWorkflowService";
 import type { PositionType } from "../types/aeWorkflow";
 import NotificationModal from "../components/common/NotificationModal";
@@ -900,8 +902,32 @@ const ViewPositionApplication: React.FC = () => {
       if (user?.role.includes("Assistant")) {
         return await aeWorkflowService.generateOtpForSignature(applicationId);
       } else if (user?.role.includes("Executive")) {
+        // Check if this is a Stage 2 application (license certificate signature)
+        if (
+          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING" ||
+          application?.status === 32
+        ) {
+          // Use EE Stage 2 service for license certificate signature
+          const result = await eeStage2WorkflowService.generateOtp(
+            applicationId
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use EE Stage 1 service for recommendation form signature
         return await eeWorkflowService.generateOtpForSignature(applicationId);
       } else if (user?.role.includes("City")) {
+        // Check if this is a Stage 2 application (final license certificate signature)
+        if (
+          application?.status === "CITY_ENGINEER_SIGN_PENDING" ||
+          application?.status === 34
+        ) {
+          // Use CE Stage 2 service for final license certificate signature
+          const result = await ceStage2WorkflowService.generateOtp(
+            applicationId
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use CE Stage 1 service for recommendation form signature
         return await ceWorkflowService.generateOtpForSignature(applicationId);
       }
       return { success: false, message: "OTP generation not supported" };
@@ -936,12 +962,40 @@ const ViewPositionApplication: React.FC = () => {
           comments,
         });
       } else if (user?.role.includes("Executive")) {
+        // Check if this is a Stage 2 application (license certificate signature)
+        if (
+          application?.status === "EXECUTIVE_ENGINEER_SIGN_PENDING" ||
+          application?.status === 32
+        ) {
+          // Use EE Stage 2 service for license certificate signature → CE Stage 2
+          const result = await eeStage2WorkflowService.applyDigitalSignature(
+            applicationId,
+            otp,
+            comments
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use EE Stage 1 service for recommendation form signature
         return await eeWorkflowService.verifyAndSignDocuments({
           applicationId,
           otp,
           comments,
         });
       } else if (user?.role.includes("City")) {
+        // Check if this is a Stage 2 application (final license certificate signature)
+        if (
+          application?.status === "CITY_ENGINEER_SIGN_PENDING" ||
+          application?.status === 34
+        ) {
+          // Use CE Stage 2 service for final license certificate signature → APPROVED status
+          const result = await ceStage2WorkflowService.applyFinalSignature(
+            applicationId,
+            otp,
+            comments
+          );
+          return { success: result.success, message: result.message };
+        }
+        // Use CE Stage 1 service for recommendation form signature → Payment stage
         return await ceWorkflowService.verifyAndSignDocuments({
           applicationId,
           otp,

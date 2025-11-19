@@ -219,7 +219,7 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                var result = await _workflowService.ApplyFinalSignatureAsync(id, ceUserId, request.OtpCode);
+                var result = await _workflowService.ApplyFinalSignatureAsync(id, ceUserId, request.OtpCode, request.Comments);
                 
                 if (!result.Success)
                 {

@@ -216,7 +216,7 @@ namespace PMCRMS.API.Controllers
 
                 _logger.LogInformation($"[EEStage2Controller] Apply digital signature for application {id} by user {userId}");
 
-                var result = await _eeStage2Service.ApplyDigitalSignatureAsync(id, userId, request.OtpCode);
+                var result = await _eeStage2Service.ApplyDigitalSignatureAsync(id, userId, request.OtpCode, request.Comments);
 
                 if (!result.Success)
                 {

@@ -141,6 +141,9 @@ namespace PMCRMS.API.Services
                 application.ClerkApprovalDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
                 application.UpdatedBy = $"Clerk_{clerkId}";
+                
+                // Add professional auto remarks
+                application.Remarks = $"License certificate generated and approved by Clerk on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Certificate forwarded to Executive Engineer for digital signature.";
 
                 await _context.SaveChangesAsync();
 
@@ -210,7 +213,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // Store rejection information
-                var rejectionInfo = $"Rejected by Clerk on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {rejectionReason}";
+                var rejectionInfo = $"Application REJECTED by Clerk on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Reason: {rejectionReason}. Applicant may revise and resubmit the application.";
                 application.Remarks = rejectionInfo;
 
                 // Set status to REJECTED

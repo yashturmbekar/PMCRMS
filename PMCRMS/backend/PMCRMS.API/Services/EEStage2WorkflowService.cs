@@ -252,13 +252,15 @@ namespace PMCRMS.API.Services
         /// Apply digital signature to certificate
         /// Updates status from EXECUTIVE_ENGINEER_SIGN_PENDING (32) to CITY_ENGINEER_SIGN_PENDING (34)
         /// </summary>
-        public async Task<EEStage2SignResult> ApplyDigitalSignatureAsync(int applicationId, int eeUserId, string otpCode)
+        public async Task<EEStage2SignResult> ApplyDigitalSignatureAsync(int applicationId, int eeUserId, string otpCode, string? comments = null)
         {
             try
             {
                 _logger.LogInformation($"[EEStage2Workflow] Applying digital signature for application {applicationId} by EE {eeUserId}");
 
+                // Fetch application with explicit tracking to ensure updates are saved
                 var application = await _context.PositionApplications
+                    .AsTracking()
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
 
                 if (application == null)
@@ -381,12 +383,28 @@ namespace PMCRMS.API.Services
                 application.EEStage2DigitalSignatureApplied = true;
                 application.EEStage2DigitalSignatureDate = DateTime.UtcNow;
                 application.EEStage2ApprovalStatus = true;
+                application.EEStage2ApprovalComments = comments;
                 application.EEStage2ApprovalDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
+                
+                // Add professional auto remarks
+                application.Remarks = $"License certificate digitally signed by Executive Engineer on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Certificate forwarded to City Engineer for final signature and approval.";
+                
+                // Clear EE Stage 2 assignment fields so application doesn't appear in EE workflow anymore
+                application.AssignedEEStage2Id = null;
+                application.AssignedExecutiveEngineerId = null;
+                application.AssignedToEEStage2Date = null;
 
                 _logger.LogInformation($"[EEStage2Workflow] BEFORE SaveChanges - Application {applicationId} Status: {application.Status} (Enum Value: {(int)application.Status}), Certificate bytes: {licenseCertificate.FileContent?.Length ?? 0}");
 
+                // Mark entities as modified explicitly to ensure EF tracks the changes
+                _context.Entry(application).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                _context.Entry(licenseCertificate).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+
                 await _context.SaveChangesAsync();
+                
+                // Reload application from database to verify the save
+                await _context.Entry(application).ReloadAsync();
 
                 _logger.LogInformation($"[EEStage2Workflow] AFTER SaveChanges - Application {applicationId} Status: {application.Status} (Enum Value: {(int)application.Status}), Digital signature applied successfully");
                 
@@ -577,5 +595,6 @@ namespace PMCRMS.API.Services
     public class EEStage2SignRequest
     {
         public string OtpCode { get; set; } = string.Empty;
+        public string? Comments { get; set; }
     }
 }

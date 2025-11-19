@@ -1144,7 +1144,7 @@ namespace PMCRMS.API.Controllers
                 
                 // Reset status to Junior Engineer Pending to restart workflow
                 application.Status = ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING;
-                application.Remarks = $"Resubmitted on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}. {rejectionHistory}";
+                application.Remarks = $"Application resubmitted by applicant on {DateTime.UtcNow:dd-MMM-yyyy HH:mm} after addressing rejection feedback. {rejectionHistory} Application re-entered workflow for review.";
                 application.UpdatedBy = "User_Resubmission";
                 application.UpdatedDate = DateTime.UtcNow;
                 application.SubmittedDate = DateTime.UtcNow; // Update submission date

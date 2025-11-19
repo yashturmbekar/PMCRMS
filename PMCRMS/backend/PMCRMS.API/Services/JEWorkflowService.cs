@@ -416,6 +416,9 @@ namespace PMCRMS.API.Services
                     application.JEComments = request.Comments;
                     application.JEApprovalComments = request.Comments;
                 }
+                
+                // Add professional auto remarks
+                application.Remarks = $"Documents verified and digitally signed by Junior Engineer on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Application forwarded to Assistant Engineer for technical review.";
 
                 // If digital signature was applied, auto-forward to Assistant Engineer
                 // TESTING MODE: Always forward since we auto-apply signature
@@ -1422,7 +1425,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // Store rejection information
-                var rejectionInfo = $"Rejected by Junior Engineer on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {rejectionComments}";
+                var rejectionInfo = $"Application REJECTED by Junior Engineer on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Reason: {rejectionComments}. Applicant may revise and resubmit the application.";
                 application.Remarks = rejectionInfo;
 
                 // Set status to REJECTED

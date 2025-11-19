@@ -296,13 +296,15 @@ namespace PMCRMS.API.Services
         /// Apply CE final digital signature to license certificate
         /// Updates status from CITY_ENGINEER_SIGN_PENDING (34) or CITY_ENGINEER_PENDING (33) to APPROVED (36)
         /// </summary>
-        public async Task<CEStage2SignResult> ApplyFinalSignatureAsync(int applicationId, int ceUserId, string otpCode)
+        public async Task<CEStage2SignResult> ApplyFinalSignatureAsync(int applicationId, int ceUserId, string otpCode, string? comments = null)
         {
             try
             {
                 _logger.LogInformation($"[CEStage2Workflow] Applying CE final digital signature for application {applicationId} by CE {ceUserId}");
 
+                // Fetch application with explicit tracking to ensure updates are saved
                 var application = await _context.PositionApplications
+                    .AsTracking()
                     .FirstOrDefaultAsync(a => a.Id == applicationId);
 
                 if (application == null)
@@ -438,15 +440,37 @@ namespace PMCRMS.API.Services
                 application.CEStage2DigitalSignatureApplied = true;
                 application.CEStage2DigitalSignatureDate = DateTime.UtcNow;
                 application.CEStage2ApprovalStatus = true;
+                application.CEStage2ApprovalComments = comments;
                 application.CEStage2ApprovalDate = DateTime.UtcNow;
                 application.ApprovedDate = DateTime.UtcNow;
                 application.UpdatedDate = DateTime.UtcNow;
+                
+                // Add professional auto remarks for final approval
+                application.Remarks = $"License certificate digitally signed by City Engineer on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Application APPROVED. License certificate is ready for download.";
+                
+                // Clear ALL assignment fields so application doesn't appear in any officer workflows
+                application.AssignedCEStage2Id = null;
+                application.AssignedCityEngineerId = null;
+                application.AssignedToCEStage2Date = null;
 
                 _logger.LogInformation($"[CEStage2Workflow] BEFORE SaveChanges - Application Status: {application.Status}, Certificate bytes: {licenseCertificate.FileContent?.Length ?? 0}");
 
-                await _context.SaveChangesAsync();
+                // Mark entities as modified explicitly to ensure EF tracks the changes
+                _context.Entry(application).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
+                _context.Entry(licenseCertificate).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
 
-                _logger.LogInformation($"[CEStage2Workflow] AFTER SaveChanges - CE final digital signature applied successfully for application {applicationId}. Status: APPROVED");
+                await _context.SaveChangesAsync();
+                
+                // Reload application from database to verify the save
+                await _context.Entry(application).ReloadAsync();
+                
+                _logger.LogInformation($"[CEStage2Workflow] AFTER SaveChanges - CE final digital signature applied successfully for application {applicationId}. Status: {application.Status} (Value: {(int)application.Status}), APPROVED enum value: {(int)ApplicationCurrentStatus.APPROVED}");
+                
+                if (application.Status != ApplicationCurrentStatus.APPROVED)
+                {
+                    _logger.LogError($"[CEStage2Workflow] ERROR: Application status was not properly updated! Current status: {application.Status}, Expected: APPROVED");
+                    throw new InvalidOperationException("Failed to update application status to APPROVED");
+                }
 
                 // Send certificate ready notification (async, non-blocking)
                 _ = Task.Run(async () =>
@@ -595,6 +619,7 @@ namespace PMCRMS.API.Services
     public class CEStage2SignRequest
     {
         public string OtpCode { get; set; } = string.Empty;
+        public string? Comments { get; set; }
     }
 
     #endregion

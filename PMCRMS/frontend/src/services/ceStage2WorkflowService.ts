@@ -53,6 +53,7 @@ export interface CEStage2SignResult {
 
 export interface CEStage2SignRequest {
   otpCode: string;
+  comments?: string;
 }
 
 export interface CEStage2Statistics {
@@ -190,11 +191,12 @@ class CEStage2WorkflowService {
    */
   async applyFinalSignature(
     applicationId: number,
-    otpCode: string
+    otpCode: string,
+    comments?: string
   ): Promise<CEStage2SignResult> {
     try {
       const token = getToken();
-      const requestData: CEStage2SignRequest = { otpCode };
+      const requestData: CEStage2SignRequest = { otpCode, comments };
       const response = await axios.post(
         `${getApiUrl()}/position/ce-stage2/${applicationId}/ApplySignature`,
         requestData,

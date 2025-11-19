@@ -304,7 +304,7 @@ namespace PMCRMS.API.Services
                     
                     // Set status to CLERK_PENDING and auto-assign to clerk
                     application.Status = ApplicationCurrentStatus.CLERK_PENDING;
-                    application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. No payment required for Architect position. Assigned to Clerk for certificate processing.";
+                    application.Remarks = $"Application reviewed and recommendation form digitally signed by City Engineer on {signatureDate:dd-MMM-yyyy HH:mm}. Architect position approved - no payment required. Application forwarded to Clerk for license certificate generation.";
                     
                     // Auto-assign to an active clerk
                     var clerk = await _context.Officers
@@ -350,7 +350,7 @@ namespace PMCRMS.API.Services
                 {
                     // For non-Architect positions, route to Payment
                     application.Status = ApplicationCurrentStatus.PaymentPending;
-                    application.Remarks = $"Approved by City Engineer on {signatureDate:yyyy-MM-dd HH:mm:ss}. Payment required to proceed to Clerk for certificate generation.";
+                    application.Remarks = $"Application reviewed and recommendation form digitally signed by City Engineer on {signatureDate:dd-MMM-yyyy HH:mm}. Application approved - payment required. Awaiting license fee payment to proceed to certificate generation.";
                     
                     await _context.SaveChangesAsync();
 
@@ -405,7 +405,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // Store rejection information
-                var rejectionInfo = $"Rejected by City Engineer on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {rejectionComments}";
+                var rejectionInfo = $"Application REJECTED by City Engineer on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Reason: {rejectionComments}. Applicant may revise and resubmit the application.";
                 application.Remarks = rejectionInfo;
 
                 // Set status to REJECTED

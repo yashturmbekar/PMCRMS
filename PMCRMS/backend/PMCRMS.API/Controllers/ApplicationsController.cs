@@ -654,6 +654,23 @@ namespace PMCRMS.API.Controllers
                 ApplicationCurrentStatus.UnderFinalApprovalByCE2 => 8, // CITY_ENGINEER_SIGN_PENDING
                 ApplicationCurrentStatus.CertificateIssued => 9, // APPROVED
                 ApplicationCurrentStatus.Completed => 9, // APPROVED
+                
+                // Position Application (Licensing) Workflow Statuses
+                ApplicationCurrentStatus.JUNIOR_ENGINEER_PENDING => 0, // JE Stage - Initial
+                ApplicationCurrentStatus.APPOINTMENT_SCHEDULED => 0, // JE Stage - Appointment
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_PENDING => 1, // JE Stage - Verification
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_IN_PROGRESS => 1, // JE Stage - Verification
+                ApplicationCurrentStatus.DOCUMENT_VERIFICATION_COMPLETED => 1, // JE Stage - Verification
+                ApplicationCurrentStatus.AWAITING_JE_DIGITAL_SIGNATURE => 2, // JE Stage - Signature
+                ApplicationCurrentStatus.ASSISTANT_ENGINEER_PENDING => 3, // AE Stage
+                ApplicationCurrentStatus.EXECUTIVE_ENGINEER_PENDING => 4, // EE Stage 1
+                ApplicationCurrentStatus.EXECUTIVE_ENGINEER_SIGN_PENDING => 7, // EE Stage 2 - Signature
+                ApplicationCurrentStatus.CITY_ENGINEER_PENDING => 5, // CE Stage 1
+                ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING => 8, // CE Stage 2 - Final Signature
+                ApplicationCurrentStatus.CLERK_PENDING => 6, // Clerk Processing
+                ApplicationCurrentStatus.APPROVED => 9, // FINAL APPROVED STATE
+                ApplicationCurrentStatus.REJECTED => 10, // REJECTED
+                
                 _ => 0
             };
         }

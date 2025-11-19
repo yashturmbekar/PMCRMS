@@ -75,6 +75,7 @@ export interface EEStage2SignResult {
 
 export interface EEStage2SignRequest {
   otpCode: string;
+  comments?: string;
 }
 
 export interface EEStage2Statistics {
@@ -206,11 +207,12 @@ class EEStage2WorkflowService {
    */
   async applyDigitalSignature(
     applicationId: number,
-    otpCode: string
+    otpCode: string,
+    comments?: string
   ): Promise<EEStage2SignResult> {
     try {
       const token = getToken();
-      const requestData: EEStage2SignRequest = { otpCode };
+      const requestData: EEStage2SignRequest = { otpCode, comments };
       const response = await axios.post(
         `${getApiUrl()}/EEStage2/Sign/${applicationId}`,
         requestData,

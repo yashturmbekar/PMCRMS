@@ -290,6 +290,9 @@ namespace PMCRMS.API.Services
                 application.ExecutiveEngineerApprovalDate = signatureDate;
                 application.ExecutiveEngineerDigitalSignatureApplied = true;
                 application.ExecutiveEngineerDigitalSignatureDate = signatureDate;
+                
+                // Add professional auto remarks
+                application.Remarks = $"Application reviewed and recommendation form digitally signed by Executive Engineer on {signatureDate:dd-MMM-yyyy HH:mm}. Application forwarded to City Engineer for review.";
 
                 // Use auto-assignment service for intelligent workload-based assignment to CE
                 var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
@@ -364,7 +367,7 @@ namespace PMCRMS.API.Services
                 }
 
                 // Store rejection information
-                var rejectionInfo = $"Rejected by Executive Engineer on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {rejectionComments}";
+                var rejectionInfo = $"Application REJECTED by Executive Engineer on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Reason: {rejectionComments}. Applicant may revise and resubmit the application.";
                 application.Remarks = rejectionInfo;
 
                 // Set status to REJECTED

@@ -262,6 +262,18 @@ namespace PMCRMS.API.Services
 
                 // Update application based on position type
                 UpdateApplicationAfterAESignature(application, positionType, comments, DateTime.UtcNow);
+                
+                // Add professional auto remarks
+                var positionName = positionType switch
+                {
+                    PositionType.Architect => "Architect",
+                    PositionType.StructuralEngineer => "Structural Engineer",
+                    PositionType.LicenceEngineer => "Licence Engineer",
+                    PositionType.Supervisor1 => "Supervisor-1",
+                    PositionType.Supervisor2 => "Supervisor-2",
+                    _ => "Assistant Engineer"
+                };
+                application.Remarks = $"Technical review completed and recommendation form digitally signed by Assistant Engineer ({positionName}) on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Application forwarded to Executive Engineer for review and approval.";
 
                 // Use auto-assignment service for intelligent workload-based assignment to EE
                 var assignment = await _autoAssignmentService.AutoAssignToNextWorkflowStageAsync(
@@ -337,7 +349,16 @@ namespace PMCRMS.API.Services
                 }
 
                 // Store rejection information
-                var rejectionInfo = $"Rejected by Assistant Engineer ({positionType}) on {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}: {rejectionComments}";
+                var positionName = positionType switch
+                {
+                    PositionType.Architect => "Architect",
+                    PositionType.StructuralEngineer => "Structural Engineer",
+                    PositionType.LicenceEngineer => "Licence Engineer",
+                    PositionType.Supervisor1 => "Supervisor-1",
+                    PositionType.Supervisor2 => "Supervisor-2",
+                    _ => "Assistant Engineer"
+                };
+                var rejectionInfo = $"Application REJECTED by Assistant Engineer ({positionName}) on {DateTime.UtcNow:dd-MMM-yyyy HH:mm}. Reason: {rejectionComments}. Applicant may revise and resubmit the application.";
                 application.Remarks = rejectionInfo;
 
                 // Set status to REJECTED
