@@ -317,7 +317,7 @@ namespace PMCRMS.API.Services
             {
                 container.Page(page =>
                 {
-                    page.Size(PageSizes.A4);
+                    page.Size(595, 950); // Custom size: A4 width (595) x increased height (950) instead of 842
                     page.Margin(20);
                     page.PageColor(Colors.White);
 
@@ -567,7 +567,7 @@ namespace PMCRMS.API.Services
                                 .FontSize(10);
                         });
 
-                        column.Item().Height(60);
+                        column.Item().Height(100);
 
                         // Signatures
                         var engg = marathiPosition == "स्ट्रक्चरल इंजिनिअर" ? "कार्यकारी" : "उप";
@@ -585,7 +585,7 @@ namespace PMCRMS.API.Services
                                 .LineHeight(1.4f);
                         });
 
-                        column.Item().Height(10);
+                        column.Item().Height(15);
 
                         // Note (टीप)
                         column.Item().Text($"टीप – प्रस्तुत परवान्याची मुदत ३१ डिसेंबर रोजी संपते जर पुढील वर्षासाठी त्याचे नूतनीकरण करणे असेल तर यासाठी कमीत कमी १५ दिवस परवाना मुदत संपण्या अगोदर परवाना शुल्कासहित अर्ज सादर केला पाहिजे. परवान्याचे नूतनीकरण करून घेण्याबद्दल तुम्हास वेगळी समज दली जाणार नाही जोपर्यंत परवान्याच्या नूतनीकरणासाठी परवाना शुल्कासहित अर्ज दिलेला नाही तोपर्यंत {marathiPosition} म्हणून काम करता येणार नाही. तसेच परवाना नाकारल्यासही तुम्हास {marathiPosition} म्हणून काम करता येणार नाही.")
