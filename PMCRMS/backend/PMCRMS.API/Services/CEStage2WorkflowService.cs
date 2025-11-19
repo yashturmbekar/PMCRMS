@@ -16,20 +16,20 @@ namespace PMCRMS.API.Services
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<CEStage2WorkflowService> _logger;
         private readonly IEmailService _emailService;
-        private readonly IDigitalSignatureService _digitalSignatureService;
+        private readonly IHsmService _hsmService;
         private readonly IConfiguration _configuration;
 
         public CEStage2WorkflowService(
             PMCRMSDbContext context,
             ILogger<CEStage2WorkflowService> logger,
             IEmailService emailService,
-            IDigitalSignatureService digitalSignatureService,
+            IHsmService hsmService,
             IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
-            _digitalSignatureService = digitalSignatureService;
+            _hsmService = hsmService;
             _configuration = configuration;
         }
 
@@ -229,24 +229,37 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Save certificate temporarily for signing
-                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
-                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
+                // Get CE officer and KeyLabel for OTP generation
+                var ceOfficer = await _context.Officers.FindAsync(ceUserId);
+                if (ceOfficer == null)
+                {
+                    return new CEStage2OtpResult
+                    {
+                        Success = false,
+                        Message = "City Engineer not found"
+                    };
+                }
 
-                // Get CE signature coordinates from configuration for license certificate
-                var ceCoordinates = _configuration["HSM:LicenseCertificateSignatureCoordinates:CityEngineer"] 
-                    ?? "320,50,470,110,1";
-                
-                _logger.LogInformation($"[CEStage2Workflow] Using CE signature coordinates for license certificate: {ceCoordinates}");
-                
-                var otpResult = await _digitalSignatureService.InitiateSignatureAsync(
-                    applicationId,
-                    ceUserId,
-                    SignatureType.CityEngineer,
-                    tempCertPath,
-                    ceCoordinates,
-                    null,
-                    null
+                var keyLabel = _configuration[$"HSM:KeyLabels:CityEngineer"];
+
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new CEStage2OtpResult
+                    {
+                        Success = false,
+                        Message = "KeyLabel not configured for CityEngineer role"
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Generating OTP for CE Stage 2 using KeyLabel '{KeyLabel}' for officer {OfficerId}",
+                    keyLabel, ceUserId);
+
+                // Generate OTP using HSM
+                var otpResult = await _hsmService.GenerateOtpAsync(
+                    transactionId: applicationId.ToString(),
+                    keyLabel: keyLabel,
+                    otpType: "single"
                 );
                 
                 if (!otpResult.Success)
@@ -254,17 +267,18 @@ namespace PMCRMS.API.Services
                     return new CEStage2OtpResult
                     {
                         Success = false,
-                        Message = $"Failed to generate OTP: {otpResult.Message}"
+                        Message = $"Failed to generate OTP: {otpResult.ErrorMessage}"
                     };
                 }
 
-                _logger.LogInformation($"[CEStage2Workflow] OTP generated successfully for application {applicationId}");
+                _logger.LogInformation("✅ [CEStage2Workflow] OTP generated and sent by HSM for application {ApplicationId}: {Message}",
+                    applicationId, otpResult.Message);
 
                 return new CEStage2OtpResult
                 {
                     Success = true,
-                    Message = "OTP generated successfully. Please check your registered mobile/email.",
-                    OtpReference = otpResult.SignatureId.ToString()
+                    Message = otpResult.Message ?? "OTP sent successfully. Please check your registered mobile/email.",
+                    OtpReference = applicationId.ToString()
                 };
             }
             catch (Exception ex)
@@ -347,94 +361,77 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Save certificate temporarily for signing
-                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
-                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
+                // Get KeyLabel for CE from configuration
+                var keyLabel = _configuration[$"HSM:KeyLabels:CityEngineer"];
+
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new CEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "KeyLabel not configured for CityEngineer role"
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Signing license certificate for CE Stage 2 using KeyLabel '{KeyLabel}' for officer {OfficerId}",
+                    keyLabel, ceUserId);
 
                 // Get CE signature coordinates from configuration for license certificate
                 var ceCoordinates = _configuration["HSM:LicenseCertificateSignatureCoordinates:CityEngineer"] 
                     ?? "320,50,470,110,1";
                 
-                _logger.LogInformation($"[CEStage2Workflow] Using CE signature coordinates for license certificate: {ceCoordinates}");
+                _logger.LogInformation(
+                    "📍 Signature coordinates for {Role} on license certificate: {Coordinates}",
+                    ceOfficer.Role, ceCoordinates);
+
+                // Convert PDF to Base64
+                var base64Pdf = Convert.ToBase64String(licenseCertificate.FileContent);
+
+                // Sign PDF using HSM
+                var signRequest = new HsmSignRequest
+                {
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = keyLabel,
+                    Base64Pdf = base64Pdf,
+                    Otp = otpCode,
+                    Coordinates = ceCoordinates,
+                    PageLocation = "last",
+                    OtpType = "single"
+                };
+
+                var signResult = await _hsmService.SignPdfAsync(signRequest);
+
+                if (!signResult.Success)
+                {
+                    _logger.LogError("HSM signature failed for application {ApplicationId}: {Error}", 
+                        applicationId, signResult.ErrorMessage);
+                    
+                    return new CEStage2SignResult
+                    {
+                        Success = false,
+                        Message = $"Digital signature failed: {signResult.ErrorMessage}"
+                    };
+                }
+
+                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                {
+                    return new CEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "Signed PDF not returned by HSM"
+                    };
+                }
+
+                // Convert Base64 back to bytes and update database
+                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                licenseCertificate.FileContent = signedPdfBytes;
+                licenseCertificate.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                licenseCertificate.UpdatedDate = DateTime.UtcNow;
                 
-                var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
-                    applicationId,
-                    ceUserId,
-                    SignatureType.CityEngineer,
-                    tempCertPath,
-                    ceCoordinates,
-                    null,
-                    null
-                );
-
-                if (!initiateResult.Success || !initiateResult.SignatureId.HasValue)
-                {
-                    return new CEStage2SignResult
-                    {
-                        Success = false,
-                        Message = $"Failed to initiate signature: {initiateResult.Message}"
-                    };
-                }
-
-                // Complete signature with OTP
-                var completeResult = await _digitalSignatureService.CompleteSignatureAsync(
-                    initiateResult.SignatureId.Value,
-                    otpCode,
-                    ceOfficer.Email
-                );
-
-                if (!completeResult.Success)
-                {
-                    _logger.LogError($"[CEStage2Workflow] CompleteSignature failed: {completeResult.Message}");
-                    return new CEStage2SignResult
-                    {
-                        Success = false,
-                        Message = $"Digital signature failed: {completeResult.Message}"
-                    };
-                }
-
-                _logger.LogInformation($"[CEStage2Workflow] CompleteSignature SUCCESS. SignedDocumentPath: {completeResult.SignedDocumentPath}");
-
-                // Update the license certificate in database with final signed version
-                if (string.IsNullOrEmpty(completeResult.SignedDocumentPath))
-                {
-                    _logger.LogError($"[CEStage2Workflow] SignedDocumentPath is null or empty for application {applicationId}");
-                    return new CEStage2SignResult
-                    {
-                        Success = false,
-                        Message = "Signed document path is missing"
-                    };
-                }
-
-                if (!File.Exists(completeResult.SignedDocumentPath))
-                {
-                    _logger.LogError($"[CEStage2Workflow] Signed document file does not exist at path: {completeResult.SignedDocumentPath}");
-                    return new CEStage2SignResult
-                    {
-                        Success = false,
-                        Message = "Signed document file not found"
-                    };
-                }
-
-                try
-                {
-                    var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
-                    _logger.LogInformation($"[CEStage2Workflow] Read {signedPdfBytes.Length} bytes from signed PDF");
-                    
-                    licenseCertificate.FileContent = signedPdfBytes;
-                    licenseCertificate.UpdatedDate = DateTime.UtcNow;
-                    
-                    _logger.LogInformation($"[CEStage2Workflow] Updated license certificate FileContent in memory ({signedPdfBytes.Length} bytes) for application {applicationId}");
-                }
-                catch (Exception certEx)
-                {
-                    _logger.LogError(certEx, $"[CEStage2Workflow] CRITICAL: Failed to read/update license certificate for application {applicationId}");
-                    return new CEStage2SignResult
-                    {
-                        Success = false,
-                        Message = $"Failed to update certificate: {certEx.Message}"
-                    };
-                }
+                _logger.LogInformation(
+                    "[CEStage2Workflow] Updated license certificate FileContent in database ({Size} KB) for application {ApplicationId}",
+                    licenseCertificate.FileSize, applicationId);
 
                 // Update application - final approval
                 application.Status = ApplicationCurrentStatus.APPROVED;
@@ -481,7 +478,7 @@ namespace PMCRMS.API.Services
                     Message = "Final digital signature applied successfully. License certificate is now approved and ready for download.",
                     ApplicationId = applicationId,
                     NewStatus = ApplicationCurrentStatus.APPROVED.ToString(),
-                    SignedCertificateUrl = completeResult.SignedDocumentPath
+                    SignedCertificateUrl = $"/api/Download/certificate/{applicationId}"
                 };
             }
             catch (Exception ex)

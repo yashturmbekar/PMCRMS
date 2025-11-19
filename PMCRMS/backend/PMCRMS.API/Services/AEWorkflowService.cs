@@ -179,18 +179,16 @@ namespace PMCRMS.API.Services
                 _logger.LogInformation("Generating OTP from HSM for AE application {ApplicationId} and officer {OfficerId}", 
                     applicationId, officerId);
 
-                // Validate officer has KeyLabel (unless using test mode)
-                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
-                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
+                // Get KeyLabel from configuration based on officer role
+                var keyLabel = _configuration[$"HSM:KeyLabels:AssistantEngineer"];
 
                 if (string.IsNullOrEmpty(keyLabel))
                 {
-                    throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
+                    throw new Exception($"KeyLabel not configured for AssistantEngineer role");
                 }
 
                 _logger.LogInformation(
-                    "{Mode}: Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
-                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    "Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
                     keyLabel, officer.Name, officer.Role);
 
                 // Call HSM OTP service with KeyLabel

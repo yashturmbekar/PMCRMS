@@ -532,15 +532,13 @@ namespace PMCRMS.API.Services
                     applicationId, officerId);
 
                 // Validate officer has KeyLabel
-                if (string.IsNullOrEmpty(officer.KeyLabel))
-                {
-                    throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
-                }
+                // Get KeyLabel from configuration based on officer role
+                var keyLabel = _configuration[$"HSM:KeyLabels:JuniorEngineer"];
 
-                // For local development, use test KeyLabel; for production, use officer's KeyLabel
-                var keyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false) 
-                    ? "Test2025Sign" 
-                    : officer.KeyLabel;
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    throw new Exception($"KeyLabel not configured for JuniorEngineer role");
+                }
 
                 _logger.LogInformation("Using KeyLabel {KeyLabel} for officer {OfficerName} ({Role})", 
                     keyLabel, officer.Name, officer.Role);

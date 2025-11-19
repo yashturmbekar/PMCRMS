@@ -14,7 +14,7 @@ namespace PMCRMS.API.Services
         private readonly PMCRMSDbContext _context;
         private readonly ILogger<EEStage2WorkflowService> _logger;
         private readonly IEmailService _emailService;
-        private readonly IDigitalSignatureService _digitalSignatureService;
+        private readonly IHsmService _hsmService;
         private readonly IAutoAssignmentService _autoAssignmentService;
         private readonly IConfiguration _configuration;
 
@@ -22,14 +22,14 @@ namespace PMCRMS.API.Services
             PMCRMSDbContext context,
             ILogger<EEStage2WorkflowService> logger,
             IEmailService emailService,
-            IDigitalSignatureService digitalSignatureService,
+            IHsmService hsmService,
             IAutoAssignmentService autoAssignmentService,
             IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
             _emailService = emailService;
-            _digitalSignatureService = digitalSignatureService;
+            _hsmService = hsmService;
             _autoAssignmentService = autoAssignmentService;
             _configuration = configuration;
         }
@@ -185,24 +185,37 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Save certificate temporarily for signing
-                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
-                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
+                // Get EE officer and KeyLabel for OTP generation
+                var eeOfficer = await _context.Officers.FindAsync(eeUserId);
+                if (eeOfficer == null)
+                {
+                    return new EEStage2OtpResult
+                    {
+                        Success = false,
+                        Message = "Executive Engineer not found"
+                    };
+                }
 
-                // Get EE signature coordinates from configuration for license certificate
-                var eeCoordinates = _configuration["HSM:LicenseCertificateSignatureCoordinates:ExecutiveEngineer"] 
-                    ?? "100,50,250,110,1";
-                
-                _logger.LogInformation($"[EEStage2Workflow] Using EE signature coordinates for license certificate: {eeCoordinates}");
-                
-                var otpResult = await _digitalSignatureService.InitiateSignatureAsync(
-                    applicationId,
-                    eeUserId,
-                    SignatureType.ExecutiveEngineer,
-                    tempCertPath,
-                    eeCoordinates,
-                    null,
-                    null
+                var keyLabel = _configuration[$"HSM:KeyLabels:ExecutiveEngineer"];
+
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new EEStage2OtpResult
+                    {
+                        Success = false,
+                        Message = "KeyLabel not configured for ExecutiveEngineer role"
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Generating OTP for EE Stage 2 using KeyLabel '{KeyLabel}' for officer {OfficerId}",
+                    keyLabel, eeUserId);
+
+                // Generate OTP using HSM
+                var otpResult = await _hsmService.GenerateOtpAsync(
+                    transactionId: applicationId.ToString(),
+                    keyLabel: keyLabel,
+                    otpType: "single"
                 );
                 
                 if (!otpResult.Success)
@@ -210,17 +223,18 @@ namespace PMCRMS.API.Services
                     return new EEStage2OtpResult
                     {
                         Success = false,
-                        Message = $"Failed to generate OTP: {otpResult.Message}"
+                        Message = $"Failed to generate OTP: {otpResult.ErrorMessage}"
                     };
                 }
 
-                _logger.LogInformation($"[EEStage2Workflow] OTP generated successfully for application {applicationId}, SignatureId: {otpResult.SignatureId}");
+                _logger.LogInformation("✅ [EEStage2Workflow] OTP generated and sent by HSM for application {ApplicationId}: {Message}",
+                    applicationId, otpResult.Message);
 
                 return new EEStage2OtpResult
                 {
                     Success = true,
-                    Message = "OTP generated successfully. Please check your registered mobile/email for the OTP code.",
-                    OtpReference = otpResult.SignatureId.ToString()
+                    Message = otpResult.Message ?? "OTP sent successfully. Please check your registered mobile/email for the OTP code.",
+                    OtpReference = applicationId.ToString()
                 };
             }
             catch (Exception ex)
@@ -290,95 +304,77 @@ namespace PMCRMS.API.Services
                     };
                 }
 
-                // Save certificate temporarily for signing
-                var tempCertPath = Path.Combine(Path.GetTempPath(), $"LICENSE_CERT_{application.ApplicationNumber}_{Guid.NewGuid()}.pdf");
-                await File.WriteAllBytesAsync(tempCertPath, licenseCertificate.FileContent);
+                // Get KeyLabel for EE from configuration
+                var keyLabel = _configuration[$"HSM:KeyLabels:ExecutiveEngineer"];
+
+                if (string.IsNullOrEmpty(keyLabel))
+                {
+                    return new EEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "KeyLabel not configured for ExecutiveEngineer role"
+                    };
+                }
+
+                _logger.LogInformation(
+                    "Signing license certificate for EE Stage 2 using KeyLabel '{KeyLabel}' for officer {OfficerId}",
+                    keyLabel, eeUserId);
 
                 // Get EE signature coordinates from configuration for license certificate
                 var eeCoordinates = _configuration["HSM:LicenseCertificateSignatureCoordinates:ExecutiveEngineer"] 
                     ?? "100,50,250,110,1";
                 
-                _logger.LogInformation($"[EEStage2Workflow] Using EE signature coordinates for license certificate: {eeCoordinates}");
+                _logger.LogInformation(
+                    "📍 Signature coordinates for {Role} on license certificate: {Coordinates}",
+                    eeOfficer.Role, eeCoordinates);
 
-                // Initiate signature on license certificate
-                var initiateResult = await _digitalSignatureService.InitiateSignatureAsync(
-                    applicationId,
-                    eeUserId,
-                    SignatureType.ExecutiveEngineer,
-                    tempCertPath,
-                    eeCoordinates,
-                    null,
-                    null
-                );
+                // Convert PDF to Base64
+                var base64Pdf = Convert.ToBase64String(licenseCertificate.FileContent);
 
-                if (!initiateResult.Success || !initiateResult.SignatureId.HasValue)
+                // Sign PDF using HSM
+                var signRequest = new HsmSignRequest
                 {
-                    return new EEStage2SignResult
-                    {
-                        Success = false,
-                        Message = $"Failed to initiate signature: {initiateResult.Message}"
-                    };
-                }
+                    TransactionId = applicationId.ToString(),
+                    KeyLabel = keyLabel,
+                    Base64Pdf = base64Pdf,
+                    Otp = otpCode,
+                    Coordinates = eeCoordinates,
+                    PageLocation = "last",
+                    OtpType = "single"
+                };
 
-                // Complete the signature with OTP verification
-                var completeResult = await _digitalSignatureService.CompleteSignatureAsync(
-                    initiateResult.SignatureId.Value,
-                    otpCode,
-                    eeOfficer.Email // Use Email as the identifier for completion
-                );
+                var signResult = await _hsmService.SignPdfAsync(signRequest);
 
-                if (!completeResult.Success)
+                if (!signResult.Success)
                 {
-                    _logger.LogError($"[EEStage2Workflow] CompleteSignature failed: {completeResult.Message}");
-                    return new EEStage2SignResult
-                    {
-                        Success = false,
-                        Message = $"Digital signature failed: {completeResult.Message}"
-                    };
-                }
-
-                _logger.LogInformation($"[EEStage2Workflow] CompleteSignature SUCCESS. SignedDocumentPath: {completeResult.SignedDocumentPath}");
-
-                // Update the license certificate in database with signed version
-                if (string.IsNullOrEmpty(completeResult.SignedDocumentPath))
-                {
-                    _logger.LogError($"[EEStage2Workflow] SignedDocumentPath is null or empty for application {applicationId}");
-                    return new EEStage2SignResult
-                    {
-                        Success = false,
-                        Message = "Signed document path is missing"
-                    };
-                }
-
-                if (!File.Exists(completeResult.SignedDocumentPath))
-                {
-                    _logger.LogError($"[EEStage2Workflow] Signed document file does not exist at path: {completeResult.SignedDocumentPath}");
-                    return new EEStage2SignResult
-                    {
-                        Success = false,
-                        Message = "Signed document file not found"
-                    };
-                }
-
-                try
-                {
-                    var signedPdfBytes = await File.ReadAllBytesAsync(completeResult.SignedDocumentPath);
-                    _logger.LogInformation($"[EEStage2Workflow] Read {signedPdfBytes.Length} bytes from signed PDF");
+                    _logger.LogError("HSM signature failed for application {ApplicationId}: {Error}", 
+                        applicationId, signResult.ErrorMessage);
                     
-                    licenseCertificate.FileContent = signedPdfBytes;
-                    licenseCertificate.UpdatedDate = DateTime.UtcNow;
-                    
-                    _logger.LogInformation($"[EEStage2Workflow] Updated license certificate FileContent in memory ({signedPdfBytes.Length} bytes) for application {applicationId}");
-                }
-                catch (Exception certEx)
-                {
-                    _logger.LogError(certEx, $"[EEStage2Workflow] CRITICAL: Failed to read/update license certificate for application {applicationId}");
                     return new EEStage2SignResult
                     {
                         Success = false,
-                        Message = $"Failed to update certificate: {certEx.Message}"
+                        Message = $"Digital signature failed: {signResult.ErrorMessage}"
                     };
                 }
+
+                if (string.IsNullOrEmpty(signResult.SignedPdfBase64))
+                {
+                    return new EEStage2SignResult
+                    {
+                        Success = false,
+                        Message = "Signed PDF not returned by HSM"
+                    };
+                }
+
+                // Convert Base64 back to bytes and update database
+                var signedPdfBytes = Convert.FromBase64String(signResult.SignedPdfBase64);
+                licenseCertificate.FileContent = signedPdfBytes;
+                licenseCertificate.FileSize = (decimal)(signedPdfBytes.Length / 1024.0);
+                licenseCertificate.UpdatedDate = DateTime.UtcNow;
+                
+                _logger.LogInformation(
+                    "[EEStage2Workflow] Updated license certificate FileContent in database ({Size} KB) for application {ApplicationId}",
+                    licenseCertificate.FileSize, applicationId);
 
                 // Update application status to CITY_ENGINEER_SIGN_PENDING and mark EE Stage 2 signature complete
                 application.Status = ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING;
@@ -465,7 +461,7 @@ namespace PMCRMS.API.Services
                     Message = "Digital signature applied successfully. Application forwarded to City Engineer for final approval.",
                     ApplicationId = applicationId,
                     NewStatus = ApplicationCurrentStatus.CITY_ENGINEER_SIGN_PENDING.ToString(),
-                    SignedCertificateUrl = completeResult.SignedDocumentPath
+                    SignedCertificateUrl = $"/api/Download/certificate/{applicationId}"
                 };
             }
             catch (Exception ex)

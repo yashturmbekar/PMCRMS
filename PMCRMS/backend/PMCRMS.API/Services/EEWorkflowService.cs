@@ -203,18 +203,16 @@ namespace PMCRMS.API.Services
                     throw new Exception("Application not found");
                 }
 
-                // Validate officer has KeyLabel (unless using test mode)
-                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
-                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officer.KeyLabel;
+                // Get KeyLabel from configuration based on officer role
+                var keyLabel = _configuration[$"HSM:KeyLabels:ExecutiveEngineer"];
 
                 if (string.IsNullOrEmpty(keyLabel))
                 {
-                    throw new Exception($"Officer {officer.Name} does not have a KeyLabel configured");
+                    throw new Exception($"KeyLabel not configured for ExecutiveEngineer role");
                 }
 
                 _logger.LogInformation(
-                    "{Mode}: Generating OTP from HSM for EE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
-                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    "Generating OTP from HSM for EE officer {OfficerId} ({OfficerName}) with KeyLabel {KeyLabel}",
                     officerId, officer.Name, keyLabel);
 
                 // Call HSM OTP service with KeyLabel

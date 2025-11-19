@@ -351,22 +351,21 @@ namespace PMCRMS.API.Services
         {
             try
             {
-                // For local development, use test KeyLabel; for production, use officer's KeyLabel
-                var useTestKeyLabel = _configuration.GetValue<bool>("HSM:UseTestKeyLabel", false);
-                var keyLabel = useTestKeyLabel ? "Test2025Sign" : officerKeyLabel;
+                // Get KeyLabel from configuration based on officer role
+                var roleKey = role.ToString().Replace(" ", "");
+                var keyLabel = _configuration[$"HSM:KeyLabels:{roleKey}"];
 
                 if (string.IsNullOrEmpty(keyLabel))
                 {
                     return new HsmWorkflowSignResult
                     {
                         Success = false,
-                        ErrorMessage = "Officer does not have a KeyLabel configured and test mode is disabled"
+                        ErrorMessage = $"KeyLabel not configured for {roleKey} role"
                     };
                 }
                 
                 _logger.LogInformation(
-                    "{Mode}: Signing PDF for officer {OfficerId} ({Role}) using KeyLabel '{KeyLabel}'",
-                    useTestKeyLabel ? "🧪 TESTING MODE" : "PRODUCTION MODE",
+                    "Signing PDF for officer {OfficerId} ({Role}) using KeyLabel '{KeyLabel}'",
                     officerId, role, keyLabel);
 
                 // Get signature coordinates for this role
