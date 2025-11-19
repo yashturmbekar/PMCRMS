@@ -767,7 +767,7 @@ namespace PMCRMS.API.Services
                             column.Item().Height(20);
 
                             // Determine engineer title
-                            var engg = marathiPosition == "स्ट्रक्चरल इंजिनिअर" ? "कार्यकारी" : "उप";
+                            var engg = marathiPosition == "उप";
 
                             // Signature Boxes - Reserved space for digital signatures
                             // NEW Coordinates: EE at (50,120,250,200,1) and CE at (450,120,650,200,1)
@@ -777,7 +777,7 @@ namespace PMCRMS.API.Services
                                 // Executive Engineer Signature Box (Left)
                                 row.RelativeItem(2).Column(col =>
                                 {
-                                    col.Item().Height(80).Border(1).BorderColor(Colors.Grey.Lighten1)
+                                    col.Item().Height(110).Border(1).BorderColor(Colors.Grey.Lighten1)
                                         .Background(Colors.Grey.Lighten4);
                                     col.Item().PaddingTop(50).AlignCenter().Text($"{engg} अभियंता")
                                         .FontSize(10).Bold();
@@ -792,7 +792,7 @@ namespace PMCRMS.API.Services
                                 // City Engineer Signature Box (Right)
                                 row.RelativeItem(2).Column(col =>
                                 {
-                                    col.Item().Height(80).Border(1).BorderColor(Colors.Grey.Lighten1)
+                                    col.Item().Height(110).Border(1).BorderColor(Colors.Grey.Lighten1)
                                         .Background(Colors.Grey.Lighten4);
                                     col.Item().PaddingTop(50).AlignCenter().Text("शहर अभियंता")
                                         .FontSize(10).Bold();
