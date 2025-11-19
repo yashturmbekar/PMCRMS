@@ -4948,6 +4948,13 @@ const ViewPositionApplication: React.FC = () => {
                   Reject Application
                 </button>
               </div>
+
+              {/* Modal Loader Overlay */}
+              <ModalLoader
+                isOpen={isRejecting}
+                message="Rejecting Application"
+                submessage="Please wait while we process the rejection..."
+              />
             </div>
           </div>
         )}

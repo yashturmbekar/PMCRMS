@@ -331,17 +331,17 @@ namespace PMCRMS.API.Services
                             {
                                 col.Item().Text("बांधकाम विकास विभाग")
                                     .FontFamily(FontService.MarathiFontFamily)
-                                    .FontSize(7)
+                                    .FontSize(9)
                                     .Bold();
 
                                 col.Item().Text("पुणे महानगरपालिका")
                                     .FontFamily(FontService.MarathiFontFamily)
-                                    .FontSize(7)
+                                    .FontSize(9)
                                     .Bold();
                             });
                         });
 
-                        column.Item().Height(5);
+                        column.Item().Height(10);
 
                         // Header section: QR Code (Left) | PMC Logo (Center) | Profile Photo (Right)
                         column.Item().Row(row =>
@@ -415,155 +415,159 @@ namespace PMCRMS.API.Services
                             });
                         });
 
-                        column.Item().Height(8);
+                        column.Item().Height(12);
 
                         // Main title - पुणे महानगरपालिका (Centered, large and bold)
                         column.Item().AlignCenter().Text("पुणे महानगरपालिका")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(16)
+                            .FontSize(18)
                             .Bold();
 
-                        column.Item().Height(3);
+                        column.Item().Height(6);
 
                         // Subtitle - स्ट्रक्चरल इंजिनिअर च्या कामासाठी परवाना (Centered with underline)
                         column.Item().AlignCenter().Text($"{marathiPosition} च्या कामासाठी परवाना")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(10)
+                            .FontSize(12)
                             .Underline();
 
-                        column.Item().Height(8);
+                        column.Item().Height(12);
 
                         // Legal reference paragraph
                         column.Item().Text($"महाराष्ट्र प्रादेशिक अधिनियम १९६६ चे कलम ३७ (१ कक )(ग) कलम २० (४)/ नवि-१३ दि.२/१२/२०२० अन्वये पुणे शहरासाठी मान्य झालेल्या एकत्रिकृत विकास नियंत्रण व प्रोत्साहन नियमावली (यूडीसीपीआर -२०२०) नियम क्र.अपेंडिक्स 'सी' अन्वये आणि महाराष्ट्र महानगरपालिका अधिनियम १९४९ चे कलम ३७२ अन्वये {marathiPosition} काम करण्यास परवाना देण्यात येत आहे.")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(9)
-                            .LineHeight(1.2f);
+                            .FontSize(10)
+                            .LineHeight(1.5f);
 
-                        column.Item().Height(5);
+                        column.Item().Height(10);
 
                         // Certificate number and validity
                         column.Item().Text(text =>
                         {
                             text.Span($"परवाना क्र. :- ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span($"{certificateNumber}                     From {fromDate:dd/MM/yyyy} to 31/12/{toYear}                 ({englishPosition})")
                                 .FontFamily("Times New Roman")
                                 .Bold()
-                                .FontSize(9);
+                                .FontSize(10);
                         });
 
-                        column.Item().Height(5);
+                        column.Item().Height(8);
 
                         // Applicant Name
                         column.Item().Text(text =>
                         {
                             text.Span($"नाव :- ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(applicantName)
                                 .FontFamily("Times New Roman")
                                 .Bold()
-                                .FontSize(9);
+                                .FontSize(10);
                         });
+
+                        column.Item().Height(4);
 
                         // Address
                         column.Item().Text(text =>
                         {
                             text.Span("पत्ता :- ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(fullAddress)
                                 .FontFamily("Times New Roman")
                                 .Bold()
-                                .FontSize(9);
+                                .FontSize(10);
                         });
+
+                        column.Item().Height(4);
 
                         // Date (Right aligned on separate row)
                         column.Item().AlignRight().Text(text =>
                         {
                             text.Span("दिनांक :- ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span($"{fromDate:dd/MM/yyyy}")
                                 .FontFamily("Times New Roman")
-                                .FontSize(9);
+                                .FontSize(10);
                         });
 
-                        column.Item().Height(5);
+                        column.Item().Height(10);
 
                         // Terms and conditions - Paragraph 1
                         column.Item().Text($"महाराष्ट्र प्रादेशिक अधिनियम १९६६ चे कलम ३७ (१ कक )(ग) कलम २० (४)/ नवि-१३ दि.२/१२/२०२० अन्वये पुणे शहरासाठी मान्य झालेल्या एकत्रिकृत विकास नियंत्रण व प्रोत्साहन नियमावली (यूडीसीपीआर -२०२०) नियम क्र.अपेंडिक्स 'सी' अन्वये आणि महाराष्ट्र महानगरपालिका अधिनियम, १९४९ चे कलम ३७२ अन्वये मी तुम्हांस वर निर्देश केलेल्या कायदा व नियमानुसार ३ वर्षांकरीता दि. {fromDate:dd/MM/yyyy} ते 31/12/{toYear} अखेर {marathiPosition} म्हणून 'खालील मर्यादा व अटी यांचे पालन करणार' या अटीवर परवाना देत आहे.")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(9)
-                            .LineHeight(1.2f);
+                            .FontSize(10)
+                            .LineHeight(1.5f);
 
-                        column.Item().Height(3);
+                        column.Item().Height(6);
 
                         // Terms and conditions - Paragraph 2
                         column.Item().Text("'मा. महापालिका आयुक्त, यांनी वेळोवेळी स्थायी समितीच्या संमतीने वरील कायद्याचे कलम ३७३ परवानाधारण करणार यांच्या माहितीसाठी काढण्यात आलेल्या आज्ञेचे आणि विकास (बांधकाम) नियंत्रण व प्रोत्साहन नियमावलीतील अपेंडिक्स 'सी' मधील कर्तव्ये व जबाबदारी यांचे पालन करणार' ही परवानगीची अट राहील आणि धंद्याच्या प्रत्येक बाबतीत परवान्याच्या मुदतीत ज्यावेळी तुमचा सल्ला घेण्यात येईल त्यावेळी तुम्ही आतापावेतो निघालेल्या आज्ञांचे पालन करून त्याप्रमाणे काम करावयाचे आहे.")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(9)
-                            .LineHeight(1.2f);
+                            .FontSize(10)
+                            .LineHeight(1.5f);
 
-                        column.Item().Height(3);
+                        column.Item().Height(6);
 
                         // Terms and conditions - Paragraph 3
                         column.Item().Text("जी आज्ञापत्रक वेळोवेळी काढण्यात आलेली आहेत, ती मुख्य कार्यालयाकडे माहितीसाठी ठेवण्यात आलेली असून, जरूर त्यावेळी कार्यालयाच्या वेळेमध्ये त्यांची पाहणी करता येईल.")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(9)
-                            .LineHeight(1.2f);
+                            .FontSize(10)
+                            .LineHeight(1.5f);
 
-                        column.Item().Height(3);
+                        column.Item().Height(6);
 
                         // Terms and conditions - Paragraph 4
                         column.Item().Text("मात्र हे लक्षात घेणे जरूर आहे की, मा. महापालिका आयुक्त सदरचा परवाना महाराष्ट्र महानगरपालिका अधिनियम, कलम ३८६ अनुसार जरूर तेव्हा तात्पुरता बंद अगर रद्द करू शकतात जर वर निर्दिष्ट केलेली बंधने अगर शर्थी यांचा भंग झाला अगर टाळल्या गेल्या अथवा तुम्ही सदर कायद्याच्या नियमांचे अगर वेळोवेळी काढण्यात आलेल्या आज्ञापत्रकाचे उल्लंघन केल्याचे दृष्टोपतीस आल्यास आणि जर सदरचा परवाना तात्पुरता तहकूब अगर रद्द झाल्यास अथवा सदरच्या परवान्याची मुदत संपल्यावर तुम्हास परवाना नसल्याचे समजले जाईल आणि महानगरपालिका अधिनियमाचे कलम ६९ अन्वये मा.महापालिका आयुक्त, अगर त्यांनी अधिकार दिलेल्या अधिका-यांनी सदर परवान्याची मागणी केल्यास सदरचा परवाना तुम्हास त्या त्या वेळी हजर करावा लागेल.")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(9)
-                            .LineHeight(1.2f);
+                            .FontSize(10)
+                            .LineHeight(1.5f);
 
-                        column.Item().Height(3);
+                        column.Item().Height(6);
 
                         // Payment information
                         column.Item().Text(text =>
                         {
                             text.Span("महाराष्ट्र शासनाने पुणे शहरासाठी मान्य केलेल्या विकास (बांधकाम) नियंत्रण व प्रोत्साहन नियमावलीनुसार परवाना शुल्क म्हणून रु. ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(challan.Amount.ToString())
                                 .FontFamily("Times New Roman")
                                 .Bold()
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(" चलन क्र. ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(challan.ChallanNumber)
                                 .FontFamily("Times New Roman")
                                 .Bold()
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(" दि. ")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span($"{challan.ChallanDate:dd/MM/yyyy}")
                                 .FontFamily("Times New Roman")
                                 .Bold()
-                                .FontSize(9);
+                                .FontSize(10);
 
                             text.Span(" अन्वये भरले आहे.")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10);
                         });
 
-                        column.Item().Height(50);
+                        column.Item().Height(60);
 
                         // Signatures
                         var engg = marathiPosition == "स्ट्रक्चरल इंजिनिअर" ? "कार्यकारी" : "उप";
@@ -572,20 +576,22 @@ namespace PMCRMS.API.Services
                         {
                             sigRow.RelativeItem(1).AlignCenter().Text($"{engg} अभियंता\n(बांधकाम विकास विभाग)\nपुणे महानगरपालिका")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10)
+                                .LineHeight(1.4f);
 
                             sigRow.RelativeItem(1).AlignCenter().Text("शहर अभियंता\nपुणे महानगरपालिका")
                                 .FontFamily(FontService.MarathiFontFamily)
-                                .FontSize(9);
+                                .FontSize(10)
+                                .LineHeight(1.4f);
                         });
 
-                        column.Item().Height(5);
+                        column.Item().Height(10);
 
                         // Note (टीप)
                         column.Item().Text($"टीप – प्रस्तुत परवान्याची मुदत ३१ डिसेंबर रोजी संपते जर पुढील वर्षासाठी त्याचे नूतनीकरण करणे असेल तर यासाठी कमीत कमी १५ दिवस परवाना मुदत संपण्या अगोदर परवाना शुल्कासहित अर्ज सादर केला पाहिजे. परवान्याचे नूतनीकरण करून घेण्याबद्दल तुम्हास वेगळी समज दली जाणार नाही जोपर्यंत परवान्याच्या नूतनीकरणासाठी परवाना शुल्कासहित अर्ज दिलेला नाही तोपर्यंत {marathiPosition} म्हणून काम करता येणार नाही. तसेच परवाना नाकारल्यासही तुम्हास {marathiPosition} म्हणून काम करता येणार नाही.")
                             .FontFamily(FontService.MarathiFontFamily)
-                            .FontSize(9)
-                            .LineHeight(1.2f);
+                            .FontSize(10)
+                            .LineHeight(1.5f);
                     });
                 });
             });
