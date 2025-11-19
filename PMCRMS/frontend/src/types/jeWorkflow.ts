@@ -22,7 +22,8 @@ export interface JEWorkflowStatusDto {
   signatureInfo: SignatureInfoDto | null;
   canProceed: boolean;
   blockers: string[];
-  lastUpdated: string;
+  createdDate: string;
+  completedDate?: string | null;
 }
 
 export interface AssignedOfficerDto {

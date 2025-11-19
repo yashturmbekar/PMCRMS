@@ -255,7 +255,7 @@ const OfficerDashboard: React.FC = () => {
               status: app.currentStage || "JUNIOR_ENGINEER_PENDING",
               currentStage: app.currentStage,
               currentStatus: app.currentStatus,
-              createdDate: app.lastUpdated || new Date().toISOString(),
+              createdDate: app.createdDate || new Date().toISOString(),
               position: "Architect",
               verificationInfo: app.verificationInfo,
               workflow: app,
