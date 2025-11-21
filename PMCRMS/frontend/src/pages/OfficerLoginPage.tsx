@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { apiService } from "../services/apiService";
 import { ADMIN_EMAILS } from "../constants";
 
@@ -439,12 +439,12 @@ const OfficerLoginPage: React.FC = () => {
                           Remember me on this device
                         </span>
                       </label>
-                      <button
-                        type="button"
-                        className="pmc-text-sm pmc-text-primary pmc-font-semibold"
+                      <Link
+                        to="/officer/forgot-password"
+                        className="pmc-text-sm pmc-text-primary pmc-font-semibold hover:pmc-text-sky-800"
                       >
-                        Reset password?
-                      </button>
+                        Forgot password?
+                      </Link>
                     </div>
 
                     {/* Login Button */}

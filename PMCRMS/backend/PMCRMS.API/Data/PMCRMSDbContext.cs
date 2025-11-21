@@ -27,6 +27,7 @@ namespace PMCRMS.API.Data
         public DbSet<OtpVerification> OtpVerifications { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<OfficerInvitation> OfficerInvitations { get; set; }
+        public DbSet<OfficerPasswordReset> OfficerPasswordResets { get; set; }
         public DbSet<FormConfiguration> FormConfigurations { get; set; }
         public DbSet<FormFeeHistory> FormFeeHistories { get; set; }
         

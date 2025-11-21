@@ -18,6 +18,9 @@ import {
   OfficerProfileSetupPage,
   ChangePasswordPage,
   ProfileSetupPage,
+  OfficerChangePasswordPage,
+  OfficerForgotPasswordPage,
+  OfficerResetPasswordPage,
 } from "./pages/officer";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import ViewPositionApplication from "./pages/ViewPositionApplication";
@@ -206,6 +209,16 @@ function App() {
                 element={<SetPasswordPage />}
               />
 
+              {/* Officer password reset flow - Public routes */}
+              <Route
+                path="/officer/forgot-password"
+                element={<OfficerForgotPasswordPage />}
+              />
+              <Route
+                path="/officer/reset-password"
+                element={<OfficerResetPasswordPage />}
+              />
+
               {/* First-time password change for invited officers */}
               <Route
                 path="/officer/change-password"
@@ -232,6 +245,16 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <OfficerProfileSetupPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Officer security settings - requires authentication */}
+              <Route
+                path="/officer/security"
+                element={
+                  <ProtectedRoute>
+                    <OfficerChangePasswordPage />
                   </ProtectedRoute>
                 }
               />

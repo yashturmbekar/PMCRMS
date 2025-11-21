@@ -15,6 +15,7 @@ namespace PMCRMS.API.Services
         Task<bool> SendApplicationRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectedBy, string rejectedRole, string remarks, string viewUrl);
         Task<bool> SendAssignmentNotificationEmailAsync(string toEmail, string officerName, string applicationNumber, string applicationType, string applicantName, string assignedBy, string viewUrl);
         Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string invitationToken, string invitationLink);
+        Task<bool> SendOfficerPasswordResetEmailAsync(string toEmail, string officerName, string resetToken, string resetLink);
         Task<bool> SendClerkApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string remarks, string viewUrl);
         Task<bool> SendClerkRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectionReason, string viewUrl);
         
@@ -2071,6 +2072,172 @@ namespace PMCRMS.API.Services
             {
                 _logger.LogError(ex, "[EmailService] Error sending workflow stage email to {Email} for application {ApplicationNumber}, stage {StageName}", 
                     toEmail, applicationNumber, stageName);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Send password reset email to officer with reset link
+        /// </summary>
+        public async Task<bool> SendOfficerPasswordResetEmailAsync(
+            string toEmail,
+            string officerName,
+            string resetToken,
+            string resetLink)
+        {
+            try
+            {
+                var subject = "Password Reset Request - PMCRMS";
+                
+                var logoDataUri = GetPmcLogoUrl();
+                
+                var body = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }}
+        .container {{
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }}
+        .header {{
+            background-color: #0c4a6e;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }}
+        .logo-container {{
+            margin-bottom: 15px;
+        }}
+        .badge {{
+            background-color: #f59e0b;
+            color: white;
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+        }}
+        .header h1 {{
+            margin: 10px 0 5px 0;
+            font-size: 24px;
+        }}
+        .header p {{
+            margin: 5px 0;
+            font-size: 14px;
+            opacity: 0.9;
+        }}
+        .content {{
+            background-color: white;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+        }}
+        .btn-primary {{
+            display: inline-block;
+            background-color: #ef4444;
+            color: white;
+            padding: 16px 40px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-size: 18px;
+        }}
+        .footer {{
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }}
+        .warning {{
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 12px;
+            margin: 15px 0;
+        }}
+        .info-box {{
+            background-color: #f0f9ff;
+            border: 2px solid #0c4a6e;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <div class='logo-container'>
+                <img src='{logoDataUri}' alt='PMC Logo' style='width: 100px; height: 100px; border-radius: 50%; background-color: white; padding: 10px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);' />
+            </div>
+            <div class='badge'>GOVERNMENT OF MAHARASHTRA</div>
+            <h1>Pune Municipal Corporation</h1>
+            <p>Permit Management & Certificate Recommendation System</p>
+        </div>
+        <div class='content'>
+            <div style='text-align: center; font-size: 48px; margin: 10px 0;'>🔒</div>
+            <h2 style='text-align: center; color: #ef4444;'>Password Reset Request</h2>
+            
+            <p>Dear <strong>{officerName}</strong>,</p>
+            <p>We received a request to reset your password for your PMCRMS officer account. If you made this request, click the button below to reset your password:</p>
+            
+            <div style='text-align: center; margin: 30px 0;'>
+                <a href='{resetLink}' class='btn-primary'>Reset Your Password</a>
+                <p style='margin: 16px 0 0 0; font-size: 13px; color: #6b7280;'>This link is valid for 1 hour</p>
+            </div>
+            
+            <div class='info-box'>
+                <p style='margin: 0; font-size: 14px; color: #374151;'><strong>Reset Token:</strong></p>
+                <p style='margin: 8px 0 0 0; font-size: 16px; font-family: monospace; background-color: white; padding: 10px; border-radius: 6px; word-break: break-all;'>{resetToken}</p>
+                <p style='margin: 8px 0 0 0; font-size: 12px; color: #6b7280;'>You can also manually enter this token if the link doesn't work</p>
+            </div>
+            
+            <div class='warning'>
+                <strong>⚠️ Security Notice:</strong>
+                <ul style='margin: 5px 0; padding-left: 20px;'>
+                    <li>This password reset link expires in 1 hour</li>
+                    <li>If you didn't request this reset, please ignore this email</li>
+                    <li>Never share your reset link or token with anyone</li>
+                    <li>Contact IT support immediately if you suspect unauthorized access</li>
+                </ul>
+            </div>
+            
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style='word-break: break-all; color: #3b82f6; font-size: 14px;'>{resetLink}</p>
+            
+            <p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+            
+            <p>Best regards,<br>
+            <strong>PMCRMS Team</strong><br>
+            Pune Municipal Corporation</p>
+        </div>
+        <div class='footer'>
+            <p>This is an automated message, please do not reply to this email.</p>
+            <p>&copy; 2025 Pune Municipal Corporation. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>";
+
+                return await SendEmailAsync(toEmail, subject, body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending password reset email to {Email}", toEmail);
                 return false;
             }
         }

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PMCRMS.API.Data;
@@ -11,9 +12,11 @@ using PMCRMS.API.Data;
 namespace PMCRMS.API.Migrations
 {
     [DbContext(typeof(PMCRMSDbContext))]
-    partial class PMCRMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251121145358_AddOfficerPasswordResets")]
+    partial class AddOfficerPasswordResets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1490,52 +1493,6 @@ namespace PMCRMS.API.Migrations
                         .IsUnique();
 
                     b.ToTable("OfficerInvitations");
-                });
-
-            modelBuilder.Entity("PMCRMS.API.Models.OfficerPasswordReset", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsUsed")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("OfficerId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ResetToken")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime?>("UpdatedDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("UsedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OfficerId");
-
-                    b.ToTable("OfficerPasswordResets");
                 });
 
             modelBuilder.Entity("PMCRMS.API.Models.OtpVerification", b =>
@@ -3052,17 +3009,6 @@ namespace PMCRMS.API.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("InvitedByAdmin");
-
-                    b.Navigation("Officer");
-                });
-
-            modelBuilder.Entity("PMCRMS.API.Models.OfficerPasswordReset", b =>
-                {
-                    b.HasOne("PMCRMS.API.Models.Officer", "Officer")
-                        .WithMany()
-                        .HasForeignKey("OfficerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Officer");
                 });

@@ -131,4 +131,74 @@ export const authService = {
   ): Promise<ApiResponse> {
     return apiClient.post(`${endpoint}/reset-password`, { token, newPassword });
   },
+
+  /**
+   * Change password for authenticated officer
+   */
+  async officerChangePassword(
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<ApiResponse> {
+    return apiClient.post(`${endpoint}/officer/change-password`, {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    });
+  },
+
+  /**
+   * Request password reset for officer (forgot password)
+   */
+  async officerForgotPassword(email: string): Promise<ApiResponse> {
+    return apiClient.post(`${endpoint}/officer/forgot-password`, { email });
+  },
+
+  /**
+   * Reset officer password using reset token
+   */
+  async officerResetPassword(
+    token: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<ApiResponse> {
+    return apiClient.post(`${endpoint}/officer/reset-password`, {
+      token,
+      newPassword,
+      confirmPassword,
+    });
+  },
+
+  /**
+   * Validate officer password reset token
+   */
+  async validateOfficerResetToken(
+    token: string
+  ): Promise<ApiResponse<{ officerName: string; email: string }>> {
+    return apiClient.get(`${endpoint}/officer/validate-reset-token/${token}`);
+  },
+
+  /**
+   * Validate officer invitation token
+   */
+  async validateInvitationToken(
+    token: string
+  ): Promise<ApiResponse<{ name: string; email: string; role: string }>> {
+    return apiClient.get(`${endpoint}/validate-invitation/${token}`);
+  },
+
+  /**
+   * Set password for officer using invitation token
+   */
+  async setPassword(
+    token: string,
+    password: string,
+    confirmPassword: string
+  ): Promise<ApiResponse<AuthResponse>> {
+    return apiClient.post(`${endpoint}/set-password`, {
+      token,
+      password,
+      confirmPassword,
+    });
+  },
 };

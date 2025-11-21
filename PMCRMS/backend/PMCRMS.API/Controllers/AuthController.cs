@@ -1572,6 +1572,278 @@ ORDER BY ""EmployeeId"";
         }
 
         #endregion
+
+        #region Officer Password Management
+
+        /// <summary>
+        /// Change password for authenticated officer
+        /// </summary>
+        [HttpPost("officer/change-password")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse>> OfficerChangePassword([FromBody] OfficerChangePasswordRequest request)
+        {
+            try
+            {
+                var officerIdClaim = User.FindFirst("officer_id")?.Value;
+                if (string.IsNullOrEmpty(officerIdClaim) || !int.TryParse(officerIdClaim, out var officerId))
+                {
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid authentication token",
+                        Errors = new List<string> { "Unauthorized" }
+                    });
+                }
+
+                var officer = await _context.Officers.FindAsync(officerId);
+                if (officer == null || !officer.IsActive)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer not found or inactive",
+                        Errors = new List<string> { "Officer not found" }
+                    });
+                }
+
+                // Verify current password
+                if (!_passwordHasher.VerifyPassword(request.CurrentPassword, officer.PasswordHash))
+                {
+                    _logger.LogWarning("Failed password change attempt for officer {OfficerId}", officerId);
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Current password is incorrect",
+                        Errors = new List<string> { "Invalid current password" }
+                    });
+                }
+
+                // Hash and update new password
+                officer.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+                officer.PasswordChangedAt = DateTime.UtcNow;
+                officer.UpdatedBy = officer.Email;
+                officer.UpdatedDate = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Password changed successfully for officer {OfficerId}", officerId);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Password changed successfully"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing officer password");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to change password",
+                    Errors = new List<string> { "Internal server error" }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Request password reset for officer (forgot password)
+        /// </summary>
+        [HttpPost("officer/forgot-password")]
+        public async Task<ActionResult<ApiResponse>> OfficerForgotPassword([FromBody] OfficerForgotPasswordRequest request)
+        {
+            try
+            {
+                var officer = await _context.Officers
+                    .FirstOrDefaultAsync(o => o.Email == request.Email && o.IsActive);
+
+                // Always return success to prevent email enumeration
+                if (officer == null)
+                {
+                    _logger.LogWarning("Password reset requested for non-existent email: {Email}", request.Email);
+                    return Ok(new ApiResponse
+                    {
+                        Success = true,
+                        Message = "If an account exists with this email, a password reset link has been sent."
+                    });
+                }
+
+                // Invalidate previous reset tokens
+                var previousTokens = await _context.OfficerPasswordResets
+                    .Where(r => r.OfficerId == officer.Id && !r.IsUsed && r.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync();
+
+                foreach (var token in previousTokens)
+                {
+                    token.IsUsed = true;
+                    token.UsedAt = DateTime.UtcNow;
+                }
+
+                // Generate reset token (32-character hex string)
+                var resetToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+
+                // Create password reset record
+                var passwordReset = new OfficerPasswordReset
+                {
+                    OfficerId = officer.Id,
+                    ResetToken = resetToken,
+                    ExpiresAt = DateTime.UtcNow.AddHours(1), // 1 hour expiry
+                    IsUsed = false,
+                    CreatedBy = "System",
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.OfficerPasswordResets.Add(passwordReset);
+                await _context.SaveChangesAsync();
+
+                // Send reset email
+                var frontendUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var resetLink = $"{frontendUrl}/officer/reset-password?token={resetToken}";
+
+                await _emailService.SendOfficerPasswordResetEmailAsync(
+                    officer.Email,
+                    officer.Name,
+                    resetToken,
+                    resetLink
+                );
+
+                _logger.LogInformation("Password reset email sent to officer {OfficerId}", officer.Id);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "If an account exists with this email, a password reset link has been sent."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing password reset request");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to process password reset request",
+                    Errors = new List<string> { "Internal server error" }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Reset officer password using reset token
+        /// </summary>
+        [HttpPost("officer/reset-password")]
+        public async Task<ActionResult<ApiResponse>> OfficerResetPassword([FromBody] OfficerResetPasswordRequest request)
+        {
+            try
+            {
+                // Find valid reset token
+                var passwordReset = await _context.OfficerPasswordResets
+                    .Include(r => r.Officer)
+                    .FirstOrDefaultAsync(r => 
+                        r.ResetToken == request.Token && 
+                        !r.IsUsed && 
+                        r.ExpiresAt > DateTime.UtcNow);
+
+                if (passwordReset == null || passwordReset.Officer == null)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid or expired reset token",
+                        Errors = new List<string> { "The password reset link is invalid or has expired. Please request a new one." }
+                    });
+                }
+
+                var officer = passwordReset.Officer;
+
+                if (!officer.IsActive)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer account is inactive",
+                        Errors = new List<string> { "This account has been deactivated" }
+                    });
+                }
+
+                // Update password
+                officer.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+                officer.PasswordChangedAt = DateTime.UtcNow;
+                officer.UpdatedBy = officer.Email;
+                officer.UpdatedDate = DateTime.UtcNow;
+
+                // Mark token as used
+                passwordReset.IsUsed = true;
+                passwordReset.UsedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Password reset successfully for officer {OfficerId}", officer.Id);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Password has been reset successfully. You can now login with your new password."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resetting officer password");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to reset password",
+                    Errors = new List<string> { "Internal server error" }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Validate password reset token (check if token is valid)
+        /// </summary>
+        [HttpGet("officer/validate-reset-token/{token}")]
+        public async Task<ActionResult<ApiResponse>> ValidateResetToken(string token)
+        {
+            try
+            {
+                var passwordReset = await _context.OfficerPasswordResets
+                    .Include(r => r.Officer)
+                    .FirstOrDefaultAsync(r => 
+                        r.ResetToken == token && 
+                        !r.IsUsed && 
+                        r.ExpiresAt > DateTime.UtcNow);
+
+                if (passwordReset == null || passwordReset.Officer == null || !passwordReset.Officer.IsActive)
+                {
+                    return Ok(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid or expired reset token"
+                    });
+                }
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Token is valid",
+                    Data = new
+                    {
+                        OfficerName = passwordReset.Officer.Name,
+                        Email = passwordReset.Officer.Email
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating reset token");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to validate token"
+                });
+            }
+        }
+
+        #endregion
     }
 }
 
