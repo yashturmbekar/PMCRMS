@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { notificationService } from "../services/notificationService";
 import { useAuth } from "../hooks/useAuth";
 import type { Notification, NotificationSummary } from "../types";
-import { NOTIFICATION_POLL_INTERVAL } from "../constants";
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -26,6 +25,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [summary, setSummary] = useState<NotificationSummary | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -41,6 +41,19 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
       console.error("Error fetching notifications:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSummary = async () => {
+    if (!user) return;
+    try {
+      const response = await notificationService.getSummary();
+      if (response.success && response.data) {
+        setSummary(response.data);
+        setUnreadCount(response.data.unreadCount);
+      }
+    } catch (error) {
+      console.error("Error fetching notification summary:", error);
     }
   };
 
@@ -96,9 +109,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
     <NotificationContext.Provider
       value={{
         notifications,
+        summary,
         unreadCount,
         loading,
         fetchNotifications,
+        fetchSummary,
         markAsRead,
         markAllAsRead,
         deleteNotification,

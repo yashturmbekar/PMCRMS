@@ -2,6 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { Bell, X } from "lucide-react";
 import { useNotifications } from "../hooks/useNotifications";
+import type { Notification } from "../types";
 
 const NotificationBell: React.FC = () => {
   const navigate = useNavigate();
@@ -147,7 +148,7 @@ const NotificationBell: React.FC = () => {
           <div style={{ maxHeight: "400px", overflowY: "auto" }}>
             {summary?.recentNotifications &&
             summary.recentNotifications.length > 0 ? (
-              summary.recentNotifications.map((notification) => (
+              summary.recentNotifications.map((notification: Notification) => (
                 <div
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification.id)}

@@ -390,6 +390,12 @@ export interface CreateNotificationRequest {
   priority?: NotificationPriority;
 }
 
+export interface NotificationSummary {
+  unreadCount: number;
+  totalCount: number;
+  recentNotifications: Notification[];
+}
+
 // Search and Filter Types
 export interface ApplicationFilters {
   status?: ApplicationCurrentStatus;

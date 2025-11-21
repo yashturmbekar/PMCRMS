@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import type { Notification, ApiResponse } from "../types";
+import type { Notification, ApiResponse, NotificationSummary } from "../types";
 
 class NotificationService {
   async getNotifications(
@@ -13,6 +13,15 @@ class NotificationService {
       });
     } catch (error) {
       console.error("Error fetching notifications:", error);
+      throw error;
+    }
+  }
+
+  async getSummary(): Promise<ApiResponse<NotificationSummary>> {
+    try {
+      return await apiClient.get("/notifications/summary");
+    } catch (error) {
+      console.error("Error fetching notification summary:", error);
       throw error;
     }
   }
