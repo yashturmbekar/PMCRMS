@@ -9,6 +9,9 @@ import {
   XCircle,
   Clock,
   Edit,
+  ArrowLeft,
+  Home,
+  ChevronRight,
 } from "lucide-react";
 import { PageLoader, Pagination } from "../../components";
 import { parseLocalDateTime } from "../../utils/dateUtils";
@@ -139,19 +142,77 @@ const AdminApplicationsPage: React.FC = () => {
 
   return (
     <div className="pmc-fadeIn">
+      {/* Breadcrumbs */}
+      <div
+        className="pmc-fadeInDown"
+        style={{
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "14px",
+          color: "var(--pmc-gray-600)",
+        }}
+      >
+        <button
+          onClick={() => navigate("/admin")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--pmc-primary)",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            transition: "background 0.2s",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "var(--pmc-gray-100)")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+        >
+          <Home style={{ width: "16px", height: "16px" }} />
+          Dashboard
+        </button>
+        <ChevronRight style={{ width: "16px", height: "16px" }} />
+        <span style={{ color: "var(--pmc-gray-900)", fontWeight: "600" }}>
+          Applications
+        </span>
+      </div>
+
+      {/* Header with Back Button */}
       <div className="pmc-content-header pmc-fadeInDown">
-        <h1
-          className="pmc-content-title pmc-text-3xl pmc-font-bold"
-          style={{ color: "var(--pmc-gray-900)" }}
-        >
-          Applications Management 📋
-        </h1>
-        <p
-          className="pmc-content-subtitle pmc-text-base"
-          style={{ color: "var(--pmc-gray-600)" }}
-        >
-          Review and manage all position applications
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          <button
+            onClick={() => navigate("/admin")}
+            className="pmc-button pmc-button-secondary"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 16px",
+            }}
+          >
+            <ArrowLeft style={{ width: "18px", height: "18px" }} />
+            Back
+          </button>
+          <div>
+            <h1
+              className="pmc-content-title pmc-text-3xl pmc-font-bold"
+              style={{ color: "var(--pmc-gray-900)", marginBottom: "4px" }}
+            >
+              Applications Management 📋
+            </h1>
+            <p
+              className="pmc-content-subtitle pmc-text-base"
+              style={{ color: "var(--pmc-gray-600)", margin: 0 }}
+            >
+              Review and manage all position applications
+            </p>
+          </div>
+        </div>
       </div>
 
       <div

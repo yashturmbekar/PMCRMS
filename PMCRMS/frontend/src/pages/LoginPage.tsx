@@ -161,7 +161,7 @@ const LoginPage: React.FC = () => {
               </div>
               <div className="pmc-auth-title-group">
                 <h1 className="pmc-auth-main-title">
-                  Pimpri Chinchwad Municipal Corporation
+                  Pune Municipal Corporation
                 </h1>
                 <p className="pmc-auth-subtitle">
                   Permit Management & Certificate Recommendation System
@@ -595,7 +595,7 @@ const LoginPage: React.FC = () => {
                 />
               </svg>
               <span className="pmc-auth-footer-text">
-                © 2024 Pimpri Chinchwad Municipal Corporation - Secure
+                © {new Date().getFullYear()} Pune Municipal Corporation - Secure
                 Government Portal
               </span>
             </div>

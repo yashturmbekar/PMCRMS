@@ -13,6 +13,8 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
 import FormManagementPage from "./pages/admin/FormManagementPage";
+import AdminReportsPage from "./pages/admin/AdminReportsPage";
+import { SetPasswordPage, OfficerProfileSetupPage } from "./pages/officer";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import ViewPositionApplication from "./pages/ViewPositionApplication";
 import PaymentCallback from "./pages/PaymentCallback";
@@ -194,6 +196,22 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/officer-login" element={<OfficerLoginPage />} />
 
+              {/* Officer invitation flow routes */}
+              <Route
+                path="/officer/setup-password/:token"
+                element={<SetPasswordPage />}
+              />
+
+              {/* Officer profile setup - requires authentication */}
+              <Route
+                path="/officer/setup-profile"
+                element={
+                  <ProtectedRoute>
+                    <OfficerProfileSetupPage />
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Payment callback - No auth required (BillDesk redirect) */}
               <Route path="/payment/callback" element={<PaymentCallback />} />
 
@@ -257,6 +275,16 @@ function App() {
                   <AdminRoute>
                     <Layout>
                       <FormManagementPage />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/reports"
+                element={
+                  <AdminRoute>
+                    <Layout>
+                      <AdminReportsPage />
                     </Layout>
                   </AdminRoute>
                 }

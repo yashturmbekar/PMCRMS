@@ -1,6 +1,17 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { adminService, type Officer } from "../../services/adminService";
-import { UserPlus, Search, Edit2, Mail, User, Shield } from "lucide-react";
+import {
+  UserPlus,
+  Search,
+  Edit2,
+  Mail,
+  User,
+  Shield,
+  ArrowLeft,
+  Home,
+  ChevronRight,
+} from "lucide-react";
 import { PageLoader } from "../../components";
 import {
   SUCCESS_MESSAGE_TIMEOUT,
@@ -34,6 +45,7 @@ const formatDesignation = (designation: string): string => {
 };
 
 const OfficerManagementPage: React.FC = () => {
+  const navigate = useNavigate();
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -183,11 +195,91 @@ const OfficerManagementPage: React.FC = () => {
   );
 
   if (loading) {
-    return <PageLoader message="Loading officers..." />;
+    return <PageLoader message="Loading Officers..." />;
   }
 
   return (
     <div className="pmc-fadeIn" style={{ padding: "24px" }}>
+      {/* Breadcrumbs */}
+      <div
+        className="pmc-fadeInDown"
+        style={{
+          marginBottom: "16px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          fontSize: "14px",
+          color: "var(--pmc-gray-600)",
+        }}
+      >
+        <button
+          onClick={() => navigate("/admin")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--pmc-primary)",
+            padding: "4px 8px",
+            borderRadius: "4px",
+            transition: "background 0.2s",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "var(--pmc-gray-100)")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+        >
+          <Home style={{ width: "16px", height: "16px" }} />
+          Dashboard
+        </button>
+        <ChevronRight style={{ width: "16px", height: "16px" }} />
+        <span style={{ color: "var(--pmc-gray-900)", fontWeight: "600" }}>
+          Officer Management
+        </span>
+      </div>
+
+      {/* Header with Back Button */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "24px",
+        }}
+      >
+        <button
+          onClick={() => navigate("/admin")}
+          className="pmc-button pmc-button-secondary"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "10px 16px",
+          }}
+        >
+          <ArrowLeft style={{ width: "18px", height: "18px" }} />
+          Back
+        </button>
+        <div>
+          <h1
+            className="pmc-text-3xl pmc-font-bold"
+            style={{ color: "var(--pmc-gray-900)", marginBottom: "4px" }}
+          >
+            Officer Management
+          </h1>
+          <p
+            style={{
+              color: "var(--pmc-gray-600)",
+              margin: 0,
+              fontSize: "14px",
+            }}
+          >
+            Invite and manage municipal officers
+          </p>
+        </div>
+      </div>
       {/* Header */}
       <div
         style={{

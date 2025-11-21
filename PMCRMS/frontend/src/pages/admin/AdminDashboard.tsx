@@ -48,9 +48,14 @@ const AdminDashboard: React.FC = () => {
         adminService.getAllApplications({ pageSize: 5 }),
       ]);
 
+      console.log("Dashboard stats response:", statsResponse);
+      console.log("Applications response:", applicationsResponse);
+
       if (statsResponse.success && statsResponse.data) {
+        console.log("Setting stats:", statsResponse.data);
         setStats(statsResponse.data);
       } else {
+        console.error("Stats response failed:", statsResponse);
         setError(
           statsResponse.message || "Failed to load dashboard statistics"
         );

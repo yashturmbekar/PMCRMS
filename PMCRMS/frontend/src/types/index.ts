@@ -443,3 +443,6 @@ export interface ReportData {
 
 // JE Workflow Types
 export * from "./jeWorkflow";
+
+// Report Types (PMC Admin Drill-Down)
+export * from "./reports";

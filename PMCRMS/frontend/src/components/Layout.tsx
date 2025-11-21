@@ -78,7 +78,7 @@ const getNavigation = (userRole?: string): NavItem[] => [
   },
   {
     name: "Reports",
-    href: "/reports",
+    href: userRole === "Admin" ? "/admin/reports" : "/reports",
     icon: BarChart3,
     roles: ["Admin", "ExecutiveEngineer", "CityEngineer"],
   },
