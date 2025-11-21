@@ -47,20 +47,20 @@ namespace PMCRMS.API.Controllers
 
                 var stats = new AdminDashboardStats();
 
-                // Application statistics
-                var allApplications = await _context.Applications.ToListAsync();
+                // Application statistics - Use PositionApplications table
+                var allApplications = await _context.PositionApplications.ToListAsync();
                 stats.TotalApplications = allApplications.Count;
                 stats.PendingApplications = allApplications.Count(a => 
-                    a.CurrentStatus == ApplicationCurrentStatus.Draft || 
-                    a.CurrentStatus == ApplicationCurrentStatus.Submitted ||
-                    a.CurrentStatus.ToString().Contains("UnderReview") ||
-                    a.CurrentStatus.ToString().Contains("UnderProcessing") ||
-                    a.CurrentStatus == ApplicationCurrentStatus.PaymentPending);
+                    a.Status == ApplicationCurrentStatus.Draft || 
+                    a.Status == ApplicationCurrentStatus.Submitted ||
+                    a.Status.ToString().Contains("UnderReview") ||
+                    a.Status.ToString().Contains("UnderProcessing") ||
+                    a.Status == ApplicationCurrentStatus.PaymentPending);
                 stats.ApprovedApplications = allApplications.Count(a => 
-                    a.CurrentStatus == ApplicationCurrentStatus.Completed ||
-                    a.CurrentStatus == ApplicationCurrentStatus.CertificateIssued);
+                    a.Status == ApplicationCurrentStatus.Completed ||
+                    a.Status == ApplicationCurrentStatus.CertificateIssued);
                 stats.RejectedApplications = allApplications.Count(a => 
-                    a.CurrentStatus.ToString().Contains("Rejected"));
+                    a.Status.ToString().Contains("Rejected"));
 
                 // Officer statistics
                 var allOfficers = await _context.Officers.ToListAsync();
