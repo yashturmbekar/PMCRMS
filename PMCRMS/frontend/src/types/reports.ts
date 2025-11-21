@@ -4,6 +4,11 @@ export interface PositionSummary {
   positionType: string;
   positionName: string;
   totalApplications: number;
+  pendingCount: number;
+  approvedCount: number;
+  rejectedCount: number;
+  underReviewCount: number;
+  inProgressCount: number;
 }
 
 export interface StageSummary {

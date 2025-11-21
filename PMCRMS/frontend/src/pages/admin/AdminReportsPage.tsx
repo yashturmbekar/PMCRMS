@@ -11,7 +11,6 @@ import { PageLoader } from "../../components";
 import PositionSummaryCards from "../../components/reports/PositionSummaryCards";
 import StageSummaryCards from "../../components/reports/StageSummaryCards";
 import ApplicationsTable from "../../components/reports/ApplicationsTable";
-import PieChart from "../../components/charts/PieChart";
 import { reportService } from "../../services/reportService";
 import type {
   PositionSummary,
@@ -239,22 +238,6 @@ const AdminReportsPage: React.FC = () => {
 
     switch (drillDownState.view) {
       case "positions": {
-        // Define color palette for positions
-        const positionColors: Record<string, string> = {
-          Architect: "#667eea",
-          LicenceEngineer: "#f59e0b",
-          StructuralEngineer: "#10b981",
-          Supervisor1: "#ef4444",
-          Supervisor2: "#8b5cf6",
-        };
-
-        // Transform positions data for pie chart
-        const chartData = positions.map((pos) => ({
-          label: pos.positionName,
-          value: pos.totalApplications,
-          color: positionColors[pos.positionType] || "#6b7280",
-        }));
-
         return (
           <>
             <PositionSummaryCards
@@ -262,81 +245,23 @@ const AdminReportsPage: React.FC = () => {
               onPositionClick={handlePositionClick}
               isLoading={positionsLoading}
             />
-
-            {/* Pie Chart Section */}
-            {positions.length > 0 && !positionsLoading && (
-              <div
-                className="pmc-card"
-                style={{
-                  marginTop: "32px",
-                  padding: "24px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    marginBottom: "24px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "10px",
-                      background:
-                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <BarChart3
-                      style={{ width: "20px", height: "20px", color: "#fff" }}
-                    />
-                  </div>
-                  <h2
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: 600,
-                      color: "#111827",
-                    }}
-                  >
-                    Application Distribution
-                  </h2>
-                </div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    width: "100%",
-                  }}
-                >
-                  <PieChart
-                    data={chartData}
-                    width={500}
-                    height={400}
-                    showLegend
-                  />
-                </div>
-              </div>
-            )}
           </>
         );
       }
 
-      case "stages":
+      case "stages": {
         return (
-          <StageSummaryCards
-            stages={stages}
-            positionName={drillDownState.selectedPosition?.name || ""}
-            onStageClick={handleStageClick}
-            onBack={handleBackToPositions}
-            isLoading={stagesLoading}
-          />
+          <>
+            <StageSummaryCards
+              stages={stages}
+              positionName={drillDownState.selectedPosition?.name || ""}
+              onStageClick={handleStageClick}
+              onBack={handleBackToPositions}
+              isLoading={stagesLoading}
+            />
+          </>
         );
+      }
 
       case "applications":
         return (
@@ -364,61 +289,222 @@ const AdminReportsPage: React.FC = () => {
     return <PageLoader message="Loading Reports..." />;
   }
 
+  // Render breadcrumbs for all views
+  const renderBreadcrumbs = () => {
+    const breadcrumbStyle = {
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      fontSize: "14px",
+      padding: "12px 20px",
+      background: "#f8fafc",
+      borderRadius: "10px",
+      border: "1px solid #e2e8f0",
+    };
+
+    const buttonStyle = {
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      background: "transparent",
+      border: "none",
+      cursor: "pointer",
+      color: "#667eea",
+      padding: "6px 12px",
+      borderRadius: "6px",
+      transition: "all 0.2s",
+      fontSize: "14px",
+      fontWeight: "600",
+    };
+
+    const separatorStyle = {
+      color: "#cbd5e1",
+      fontSize: "16px",
+    };
+
+    const currentStyle = {
+      color: "#1e293b",
+      fontWeight: "700",
+      fontSize: "14px",
+    };
+
+    switch (drillDownState.view) {
+      case "positions":
+        return (
+          <div className="pmc-fadeInDown" style={breadcrumbStyle}>
+            <button
+              onClick={() => navigate("/admin")}
+              style={buttonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ede9fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Home style={{ width: "18px", height: "18px" }} />
+              Dashboard
+            </button>
+            <ChevronRight
+              style={{ width: "18px", height: "18px", ...separatorStyle }}
+            />
+            <span style={currentStyle}>Reports</span>
+          </div>
+        );
+
+      case "stages":
+        return (
+          <div className="pmc-fadeInDown" style={breadcrumbStyle}>
+            <button
+              onClick={() => navigate("/admin")}
+              style={buttonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ede9fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Home style={{ width: "18px", height: "18px" }} />
+              Dashboard
+            </button>
+            <ChevronRight
+              style={{ width: "18px", height: "18px", ...separatorStyle }}
+            />
+            <button
+              onClick={handleBackToPositions}
+              style={buttonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ede9fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              Reports
+            </button>
+            <ChevronRight
+              style={{ width: "18px", height: "18px", ...separatorStyle }}
+            />
+            <span style={currentStyle}>
+              {drillDownState.selectedPosition?.name}
+            </span>
+          </div>
+        );
+
+      case "applications":
+        return (
+          <div className="pmc-fadeInDown" style={breadcrumbStyle}>
+            <button
+              onClick={() => navigate("/admin")}
+              style={buttonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ede9fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Home style={{ width: "18px", height: "18px" }} />
+              Dashboard
+            </button>
+            <ChevronRight
+              style={{ width: "18px", height: "18px", ...separatorStyle }}
+            />
+            <button
+              onClick={handleBackToPositions}
+              style={buttonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ede9fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              Reports
+            </button>
+            <ChevronRight
+              style={{ width: "18px", height: "18px", ...separatorStyle }}
+            />
+            <button
+              onClick={handleBackToStages}
+              style={buttonStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#ede9fe";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+              }}
+            >
+              {drillDownState.selectedPosition?.name}
+            </button>
+            <ChevronRight
+              style={{ width: "18px", height: "18px", ...separatorStyle }}
+            />
+            <span style={currentStyle}>
+              {drillDownState.selectedStage?.displayName}
+            </span>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="pmc-fadeIn" style={{ padding: "24px" }}>
-      {/* Breadcrumbs - Only show on positions view */}
-      {drillDownState.view === "positions" && (
-        <div
-          className="pmc-fadeInDown"
-          style={{
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
-            color: "var(--pmc-gray-600)",
-          }}
-        >
-          <button
-            onClick={() => navigate("/admin")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--pmc-primary)",
-              padding: "4px 8px",
-              borderRadius: "4px",
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.background = "var(--pmc-gray-100)")
-            }
-            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-          >
-            <Home style={{ width: "16px", height: "16px" }} />
-            Dashboard
-          </button>
-          <ChevronRight style={{ width: "16px", height: "16px" }} />
-          <span style={{ color: "var(--pmc-gray-900)", fontWeight: "600" }}>
-            Reports
-          </span>
-        </div>
-      )}
+    <div
+      className="pmc-fadeIn"
+      style={{ padding: "32px", maxWidth: "1400px", margin: "0 auto" }}
+    >
+      {/* Breadcrumbs for all views */}
+      <div style={{ marginBottom: "24px" }}>{renderBreadcrumbs()}</div>
 
       {/* Page Header - Only show on positions view */}
       {drillDownState.view === "positions" && (
-        <div className="mb-8">
+        <div style={{ marginBottom: "32px" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "16px",
-              marginBottom: "8px",
+              justifyContent: "space-between",
+              marginBottom: "24px",
             }}
           >
+            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+              <div
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  borderRadius: "14px",
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 8px 20px rgba(102, 126, 234, 0.25)",
+                }}
+              >
+                <BarChart3
+                  style={{ width: "28px", height: "28px", color: "#fff" }}
+                />
+              </div>
+              <div>
+                <h1
+                  style={{
+                    fontSize: "32px",
+                    fontWeight: "700",
+                    color: "#1f2937",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Application Reports
+                </h1>
+                <p style={{ fontSize: "15px", color: "#6b7280" }}>
+                  Select a position to view detailed stage reports
+                </p>
+              </div>
+            </div>
             <button
               onClick={() => navigate("/admin")}
               className="pmc-button pmc-button-secondary"
@@ -426,45 +512,13 @@ const AdminReportsPage: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                padding: "10px 16px",
+                padding: "12px 24px",
+                fontSize: "15px",
               }}
             >
-              <ArrowLeft style={{ width: "18px", height: "18px" }} />
-              Back
+              <ArrowLeft style={{ width: "20px", height: "20px" }} />
+              Back to Dashboard
             </button>
-          </div>
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <BarChart3
-                style={{ width: "24px", height: "24px", color: "#fff" }}
-              />
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "700",
-                  color: "#1f2937",
-                }}
-              >
-                Application Reports
-              </h1>
-              <p
-                style={{ fontSize: "14px", color: "#6b7280", marginTop: "4px" }}
-              >
-                Comprehensive drill-down reporting for all position applications
-              </p>
-            </div>
           </div>
         </div>
       )}
