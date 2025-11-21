@@ -60,29 +60,20 @@ const getNavigation = (userRole?: string): NavItem[] => [
     name: "Officers",
     href: "/admin/officers",
     icon: Users,
-    roles: [
-      "Admin",
-      "JuniorArchitect",
-      "AssistantArchitect",
-      "JuniorLicenceEngineer",
-      "AssistantLicenceEngineer",
-      "JuniorStructuralEngineer",
-      "AssistantStructuralEngineer",
-      "JuniorSupervisor1",
-      "AssistantSupervisor1",
-      "JuniorSupervisor2",
-      "AssistantSupervisor2",
-      "ExecutiveEngineer",
-      "CityEngineer",
-    ],
+    roles: ["Admin"],
   },
   {
     name: "Reports",
     href: userRole === "Admin" ? "/admin/reports" : "/reports",
     icon: BarChart3,
-    roles: ["Admin", "ExecutiveEngineer", "CityEngineer"],
+    roles: ["Admin"],
   },
-  { name: "Settings", href: "/settings", icon: Settings },
+  {
+    name: "Settings",
+    href: "/settings",
+    icon: Settings,
+    roles: ["Admin"],
+  },
 ];
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
