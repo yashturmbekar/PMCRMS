@@ -42,7 +42,11 @@ namespace PMCRMS.API.Controllers
                                                    a.Status == ApplicationCurrentStatus.PaymentPending),
                         approvedCount = g.Count(a => a.Status == ApplicationCurrentStatus.Completed ||
                                                     a.Status == ApplicationCurrentStatus.CertificateIssued),
-                        rejectedCount = g.Count(a => a.Status.ToString().Contains("Rejected")),
+                        rejectedCount = g.Count(a => a.Status == ApplicationCurrentStatus.REJECTED ||
+                                                    a.Status == ApplicationCurrentStatus.RejectedByJE ||
+                                                    a.Status == ApplicationCurrentStatus.RejectedByAE ||
+                                                    a.Status == ApplicationCurrentStatus.RejectedByEE1 ||
+                                                    a.Status == ApplicationCurrentStatus.RejectedByCE1),
                         underReviewCount = g.Count(a => a.Status.ToString().Contains("UnderReview")),
                         inProgressCount = g.Count(a => a.Status.ToString().Contains("UnderProcessing") ||
                                                       a.Status.ToString().Contains("Stage"))

@@ -60,7 +60,11 @@ namespace PMCRMS.API.Controllers
                     a.Status == ApplicationCurrentStatus.Completed ||
                     a.Status == ApplicationCurrentStatus.CertificateIssued);
                 stats.RejectedApplications = allApplications.Count(a => 
-                    a.Status.ToString().Contains("Rejected"));
+                    a.Status == ApplicationCurrentStatus.REJECTED ||
+                    a.Status == ApplicationCurrentStatus.RejectedByJE ||
+                    a.Status == ApplicationCurrentStatus.RejectedByAE ||
+                    a.Status == ApplicationCurrentStatus.RejectedByEE1 ||
+                    a.Status == ApplicationCurrentStatus.RejectedByCE1);
 
                 // Officer statistics
                 var allOfficers = await _context.Officers.ToListAsync();
