@@ -105,7 +105,7 @@ export const reportService = {
     ApiResponse<GetPositionSummariesResponse>
   > {
     try {
-      const response = await apiClient.get("/api/admin/reports/positions");
+      const response = await apiClient.get("/admin/reports/positions");
       return {
         success: true,
         data: response.data,
@@ -131,7 +131,7 @@ export const reportService = {
   ): Promise<ApiResponse<GetStageSummariesResponse>> {
     try {
       const response = await apiClient.get(
-        `/api/admin/reports/positions/${positionType}/stages`
+        `/admin/reports/positions/${positionType}/stages`
       );
       return {
         success: true,
@@ -172,7 +172,7 @@ export const reportService = {
       }
 
       const response = await apiClient.get(
-        `/api/admin/reports/positions/${request.positionType}/stages/${request.stageName}/applications`,
+        `/admin/reports/positions/${request.positionType}/stages/${request.stageName}/applications`,
         { params }
       );
 
