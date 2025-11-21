@@ -308,7 +308,13 @@ const AdminReportsPage: React.FC = () => {
           label: pos.positionName,
           value: pos.totalApplications,
           color: positionColors[pos.positionType] || "#6b7280",
+          id: pos.positionType,
         }));
+
+        const totalApps = positions.reduce(
+          (sum, pos) => sum + pos.totalApplications,
+          0
+        );
 
         return (
           <>
@@ -320,7 +326,7 @@ const AdminReportsPage: React.FC = () => {
             />
 
             {/* Pie Chart Below Position Cards */}
-            {positions.length > 0 && !positionsLoading && (
+            {positions.length > 0 && totalApps > 0 && !positionsLoading && (
               <div
                 className="pmc-card"
                 style={{
@@ -379,8 +385,55 @@ const AdminReportsPage: React.FC = () => {
                     width={600}
                     height={450}
                     showLegend
+                    onSliceClick={(item) => {
+                      const position = positions.find(
+                        (p) => p.positionType === item.id
+                      );
+                      if (position) {
+                        handlePositionClick(
+                          position.positionType,
+                          position.positionName
+                        );
+                      }
+                    }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Show message when no data */}
+            {positions.length > 0 && totalApps === 0 && !positionsLoading && (
+              <div
+                className="pmc-card"
+                style={{
+                  marginTop: "32px",
+                  padding: "48px",
+                  textAlign: "center",
+                  background:
+                    "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+                }}
+              >
+                <AlertCircle
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    margin: "0 auto 16px",
+                    color: "#94a3b8",
+                  }}
+                />
+                <h3
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: "600",
+                    color: "#475569",
+                    marginBottom: "8px",
+                  }}
+                >
+                  No Applications Found
+                </h3>
+                <p style={{ color: "#64748b", fontSize: "14px" }}>
+                  There are currently no applications to display in the system.
+                </p>
               </div>
             )}
           </>
@@ -388,14 +441,170 @@ const AdminReportsPage: React.FC = () => {
       }
 
       case "stages": {
+        // Define color palette for stages
+        const stageColors: Record<string, string> = {
+          JUNIOR_ENGINEER_PENDING: "#f59e0b",
+          APPOINTMENT_SCHEDULED: "#8b5cf6",
+          DOCUMENT_VERIFICATION_PENDING: "#06b6d4",
+          DOCUMENT_VERIFICATION_IN_PROGRESS: "#3b82f6",
+          DOCUMENT_VERIFICATION_COMPLETED: "#10b981",
+          AWAITING_JE_DIGITAL_SIGNATURE: "#f59e0b",
+          ASSISTANT_ENGINEER_PENDING: "#8b5cf6",
+          EXECUTIVE_ENGINEER_PENDING: "#06b6d4",
+          EXECUTIVE_ENGINEER_SIGN_PENDING: "#3b82f6",
+          CITY_ENGINEER_PENDING: "#10b981",
+          CITY_ENGINEER_SIGN_PENDING: "#f59e0b",
+          CLERK_PENDING: "#8b5cf6",
+          APPROVED: "#10b981",
+          REJECTED: "#ef4444",
+        };
+
+        // Filter stages with count > 0 and not Draft/Submitted
+        const filteredStages = stages.filter(
+          (stage) =>
+            stage.stageName !== "Draft" &&
+            stage.stageName !== "Submitted" &&
+            stage.applicationCount > 0
+        );
+
+        // Transform stages data for pie chart
+        const stageChartData = filteredStages.map((stage) => ({
+          label: stage.stageDisplayName,
+          value: stage.applicationCount,
+          color: stageColors[stage.stageName] || "#6b7280",
+          id: stage.stageName,
+        }));
+
+        const totalStageApps = filteredStages.reduce(
+          (sum, stage) => sum + stage.applicationCount,
+          0
+        );
+
         return (
-          <StageSummaryCards
-            stages={stages}
-            positionName={drillDownState.selectedPosition?.name || ""}
-            onStageClick={handleStageClick}
-            onBack={handleBackToPositions}
-            isLoading={stagesLoading}
-          />
+          <>
+            <StageSummaryCards
+              stages={stages}
+              positionName={drillDownState.selectedPosition?.name || ""}
+              onStageClick={handleStageClick}
+              onBack={handleBackToPositions}
+              isLoading={stagesLoading}
+            />
+
+            {/* Pie Chart Below Stage Cards */}
+            {filteredStages.length > 0 &&
+              totalStageApps > 0 &&
+              !stagesLoading && (
+                <div
+                  className="pmc-card"
+                  style={{
+                    marginTop: "32px",
+                    padding: "32px",
+                    background:
+                      "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      marginBottom: "32px",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "48px",
+                        height: "48px",
+                        borderRadius: "12px",
+                        background:
+                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
+                      }}
+                    >
+                      <BarChart3
+                        style={{ width: "24px", height: "24px", color: "#fff" }}
+                      />
+                    </div>
+                    <h2
+                      style={{
+                        fontSize: "24px",
+                        fontWeight: "700",
+                        color: "#111827",
+                      }}
+                    >
+                      Application Distribution by Stage
+                    </h2>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      width: "100%",
+                    }}
+                  >
+                    <PieChart
+                      data={stageChartData}
+                      width={600}
+                      height={450}
+                      showLegend
+                      onSliceClick={(item) => {
+                        const stage = filteredStages.find(
+                          (s) => s.stageName === item.id
+                        );
+                        if (stage) {
+                          handleStageClick(
+                            stage.stageName,
+                            stage.stageDisplayName
+                          );
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+            {/* Show message when no stage data */}
+            {filteredStages.length === 0 && !stagesLoading && (
+              <div
+                className="pmc-card"
+                style={{
+                  marginTop: "32px",
+                  padding: "48px",
+                  textAlign: "center",
+                  background:
+                    "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+                }}
+              >
+                <AlertCircle
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    margin: "0 auto 16px",
+                    color: "#94a3b8",
+                  }}
+                />
+                <h3
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: "600",
+                    color: "#475569",
+                    marginBottom: "8px",
+                  }}
+                >
+                  No Applications in Stages
+                </h3>
+                <p style={{ color: "#64748b", fontSize: "14px" }}>
+                  There are currently no applications in any processing stages
+                  for {drillDownState.selectedPosition?.name}.
+                </p>
+              </div>
+            )}
+          </>
         );
       }
 

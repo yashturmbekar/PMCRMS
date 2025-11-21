@@ -156,39 +156,39 @@ export interface UpdateFormConfigurationRequest {
 class AdminService {
   // Dashboard
   async getDashboardStats(): Promise<ApiResponse<AdminDashboardStats>> {
-    return apiClient.get("/Admin/dashboard");
+    return apiClient.get("/admin/dashboard");
   }
 
   // Officer Invitations
   async inviteOfficer(
     data: InviteOfficerRequest
   ): Promise<ApiResponse<OfficerInvitation>> {
-    return apiClient.post("/Admin/invite-officer", data);
+    return apiClient.post("/admin/invite-officer", data);
   }
 
   async getInvitations(
     status?: string
   ): Promise<ApiResponse<OfficerInvitation[]>> {
     const params = status ? { status } : {};
-    return apiClient.get("/Admin/invitations", { params });
+    return apiClient.get("/admin/invitations", { params });
   }
 
   async resendInvitation(
     invitationId: number,
     expiryDays: number = 7
   ): Promise<ApiResponse<void>> {
-    return apiClient.post("/Admin/resend-invitation", {
+    return apiClient.post("/admin/resend-invitation", {
       invitationId,
       expiryDays,
     });
   }
 
   async revokeInvitation(invitationId: number): Promise<ApiResponse<void>> {
-    return apiClient.post(`/Admin/revoke-invitation`, { invitationId });
+    return apiClient.post(`/admin/revoke-invitation`, { invitationId });
   }
 
   async deleteInvitation(invitationId: number): Promise<ApiResponse<void>> {
-    return apiClient.delete(`/Admin/invitations/${invitationId}`);
+    return apiClient.delete(`/admin/invitations/${invitationId}`);
   }
 
   // Officer Management
@@ -199,22 +199,22 @@ class AdminService {
     const params: Record<string, string | boolean> = {};
     if (role) params.role = role;
     if (isActive !== undefined) params.isActive = isActive;
-    return apiClient.get("/Admin/officers", { params });
+    return apiClient.get("/admin/officers", { params });
   }
 
   async getOfficerDetail(id: number): Promise<ApiResponse<OfficerDetail>> {
-    return apiClient.get(`/Admin/officers/${id}`);
+    return apiClient.get(`/admin/officers/${id}`);
   }
 
   async updateOfficer(
     id: number,
     data: UpdateOfficerRequest
   ): Promise<ApiResponse<void>> {
-    return apiClient.put(`/Admin/officers/${id}`, data);
+    return apiClient.put(`/admin/officers/${id}`, data);
   }
 
   async deleteOfficer(id: number): Promise<ApiResponse<void>> {
-    return apiClient.delete(`/Admin/officers/${id}`);
+    return apiClient.delete(`/admin/officers/${id}`);
   }
 
   // Form Configuration
@@ -250,13 +250,13 @@ class AdminService {
 
   // Form Fee Management (Admin endpoints)
   async getAllForms(): Promise<ApiResponse<FormConfiguration[]>> {
-    return apiClient.get("/Admin/forms");
+    return apiClient.get("/admin/forms");
   }
 
   async getFormDetail(
     formId: number
   ): Promise<ApiResponse<FormConfiguration & { feeHistory: unknown[] }>> {
-    return apiClient.get(`/Admin/forms/${formId}`);
+    return apiClient.get(`/admin/forms/${formId}`);
   }
 
   async updateFormFees(
@@ -269,14 +269,14 @@ class AdminService {
       changeReason?: string;
     }
   ): Promise<ApiResponse<void>> {
-    return apiClient.put(`/Admin/forms/${formId}/fees`, data);
+    return apiClient.put(`/admin/forms/${formId}/fees`, data);
   }
 
   async updateFormCustomFields(
     formId: number,
     customFieldsJson: string
   ): Promise<ApiResponse<void>> {
-    return apiClient.put(`/Admin/forms/${formId}/custom-fields`, {
+    return apiClient.put(`/admin/forms/${formId}/custom-fields`, {
       customFieldsJson,
     });
   }
@@ -294,11 +294,11 @@ class AdminService {
       requiredDocuments?: string;
     }
   ): Promise<ApiResponse<void>> {
-    return apiClient.put(`/Admin/forms/${formId}`, data);
+    return apiClient.put(`/admin/forms/${formId}`, data);
   }
 
   async deleteForm(formId: number): Promise<ApiResponse<void>> {
-    return apiClient.delete(`/Admin/forms/${formId}`);
+    return apiClient.delete(`/admin/forms/${formId}`);
   }
 
   // Applications Management - Admin View
@@ -309,11 +309,11 @@ class AdminService {
     page?: number;
     pageSize?: number;
   }): Promise<ApiResponse<unknown[]>> {
-    return apiClient.get("/Admin/applications", { params: filters });
+    return apiClient.get("/admin/applications", { params: filters });
   }
 
   async getApplicationDetail(id: number): Promise<ApiResponse<unknown>> {
-    return apiClient.get(`/Admin/applications/${id}`);
+    return apiClient.get(`/admin/applications/${id}`);
   }
 }
 

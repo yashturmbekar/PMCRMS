@@ -4,6 +4,7 @@ interface PieChartDataItem {
   label: string;
   value: number;
   color: string;
+  id?: string;
 }
 
 interface PieChartProps {
@@ -11,6 +12,7 @@ interface PieChartProps {
   width?: number;
   height?: number;
   showLegend?: boolean;
+  onSliceClick?: (item: PieChartDataItem) => void;
 }
 
 const PieChart: React.FC<PieChartProps> = ({
@@ -18,6 +20,7 @@ const PieChart: React.FC<PieChartProps> = ({
   width = 400,
   height = 400,
   showLegend = true,
+  onSliceClick,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -106,6 +109,7 @@ const PieChart: React.FC<PieChartProps> = ({
                 }}
                 onMouseEnter={() => setHoveredIndex(slice.index)}
                 onMouseLeave={() => setHoveredIndex(null)}
+                onClick={() => onSliceClick?.(slice.item)}
               />
             </g>
           ))}
@@ -175,6 +179,7 @@ const PieChart: React.FC<PieChartProps> = ({
               }}
               onMouseEnter={() => setHoveredIndex(slice.index)}
               onMouseLeave={() => setHoveredIndex(null)}
+              onClick={() => onSliceClick?.(slice.item)}
             >
               <div
                 style={{
