@@ -132,7 +132,7 @@ const ViewPositionApplication: React.FC = () => {
   };
 
   const backPath = isAdminView
-    ? "/admin/applications"
+    ? "/admin/reports"
     : isJEOfficer
     ? "/je-dashboard"
     : isClerkOfficer

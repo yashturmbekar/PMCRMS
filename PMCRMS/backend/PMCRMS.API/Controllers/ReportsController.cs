@@ -215,14 +215,12 @@ namespace PMCRMS.API.Controllers
                 {
                     applicationId = a.Id,
                     applicationNumber = a.ApplicationNumber ?? "N/A",
-                    applicantName = $"{a.FirstName} {a.MiddleName} {a.LastName}".Replace("  ", " ").Trim(),
-                    applicantEmail = a.EmailAddress,
-                    applicantPhone = a.MobileNumber,
+                    firstName = a.FirstName,
+                    lastName = a.LastName,
                     positionType = a.PositionType.ToString(),
-                    status = a.Status.ToString(),
-                    createdDate = a.CreatedDate.ToString("yyyy-MM-ddTHH:mm:ss"),
-                    updatedDate = (a.UpdatedDate ?? a.CreatedDate).ToString("yyyy-MM-ddTHH:mm:ss"),
-                    daysSinceCreation = (DateTime.UtcNow - a.CreatedDate).Days
+                    currentStage = a.Status.ToString(),
+                    submittedDate = a.CreatedDate.ToString("yyyy-MM-dd'T'HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture),
+                    createdDate = a.CreatedDate.ToString("yyyy-MM-dd'T'HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
                 }).ToList();
 
                 var data = new

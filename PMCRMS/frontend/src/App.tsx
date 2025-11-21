@@ -10,7 +10,6 @@ import Dashboard from "./pages/Dashboard";
 import OfficerDashboard from "./pages/OfficerDashboard";
 import CertificateDownloadPortal from "./pages/CertificateDownloadPortal";
 import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminApplicationsPage from "./pages/admin/AdminApplicationsPage";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
 import FormManagementPage from "./pages/admin/FormManagementPage";
 import AdminReportsPage from "./pages/admin/AdminReportsPage";
@@ -235,16 +234,6 @@ function App() {
                   <AdminRoute>
                     <Layout>
                       <AdminDashboard />
-                    </Layout>
-                  </AdminRoute>
-                }
-              />
-              <Route
-                path="/admin/applications"
-                element={
-                  <AdminRoute>
-                    <Layout>
-                      <AdminApplicationsPage />
                     </Layout>
                   </AdminRoute>
                 }

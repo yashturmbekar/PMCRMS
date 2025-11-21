@@ -1,18 +1,9 @@
 import React, { useState, useEffect } from "react";
-import {
-  ArrowLeft,
-  Search,
-  ChevronUp,
-  ChevronDown,
-  Calendar,
-  User,
-  FileText,
-  Eye,
-} from "lucide-react";
+import { Search, ChevronUp, ChevronDown, FileText, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { ReportApplication } from "../../types/reports";
 import { PositionDisplayNames, StageDisplayNames } from "../../types/reports";
-import { formatLocalDateTime, parseLocalDateTime } from "../../utils/dateUtils";
+import { formatDisplayDate } from "../../utils/dateUtils";
 
 interface ApplicationsTableProps {
   applications: ReportApplication[];
@@ -24,7 +15,6 @@ interface ApplicationsTableProps {
   onPageChange: (page: number) => void;
   onSearch: (searchTerm: string) => void;
   onSort: (sortBy: string, sortDirection: "asc" | "desc") => void;
-  onBack: () => void;
   isLoading?: boolean;
 }
 
@@ -38,7 +28,6 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   onPageChange,
   onSearch,
   onSort,
-  onBack,
   isLoading = false,
 }) => {
   const navigate = useNavigate();
@@ -94,41 +83,27 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <button
-          onClick={onBack}
-          className="pmc-button pmc-button-secondary flex items-center gap-2 mb-4"
-        >
-          <ArrowLeft style={{ width: "16px", height: "16px" }} />
-          Back to Stages
-        </button>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2
-              style={{ fontSize: "24px", fontWeight: "700", color: "#1f2937" }}
-            >
-              {positionDisplayName}
-            </h2>
-            <p style={{ fontSize: "14px", color: "#6b7280", marginTop: "4px" }}>
-              {stageDisplayName} • {totalCount}{" "}
-              {totalCount === 1 ? "application" : "applications"}
-            </p>
-          </div>
-        </div>
+      <div className="pmc-card-header">
+        <h2 className="pmc-card-title">{positionDisplayName}</h2>
+        <p className="pmc-card-subtitle">
+          {stageDisplayName} • {totalCount}{" "}
+          {totalCount === 1 ? "application" : "applications"}
+        </p>
       </div>
 
       {/* Search Bar */}
-      <div className="pmc-card mb-6" style={{ padding: "16px" }}>
+      <div style={{ marginBottom: "24px" }}>
         <div style={{ position: "relative" }}>
           <Search
             style={{
               position: "absolute",
-              left: "12px",
+              left: "16px",
               top: "50%",
               transform: "translateY(-50%)",
               width: "20px",
               height: "20px",
-              color: "#9ca3af",
+              color: "var(--pmc-gray-400)",
+              zIndex: 10,
             }}
           />
           <input
@@ -137,294 +112,218 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="pmc-input"
-            style={{ paddingLeft: "44px", width: "100%" }}
+            style={{ paddingLeft: "48px", width: "100%" }}
           />
         </div>
       </div>
 
       {/* Table */}
-      <div className="pmc-card" style={{ overflow: "hidden" }}>
+      <div className="pmc-card-body">
         {isLoading ? (
           <div style={{ padding: "48px", textAlign: "center" }}>
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p style={{ marginTop: "16px", color: "#6b7280" }}>
+            <div className="pmc-loader" style={{ margin: "0 auto 16px" }}></div>
+            <p style={{ color: "var(--pmc-gray-600)" }}>
               Loading applications...
             </p>
           </div>
         ) : applications.length === 0 ? (
-          <div style={{ padding: "48px", textAlign: "center" }}>
+          <div
+            style={{
+              padding: "48px 24px",
+              textAlign: "center",
+              color: "var(--pmc-gray-500)",
+            }}
+          >
             <FileText
               style={{
                 width: "48px",
                 height: "48px",
                 margin: "0 auto 16px",
-                color: "#9ca3af",
+                opacity: 0.3,
               }}
             />
-            <h3
-              style={{ fontSize: "18px", fontWeight: "600", color: "#374151" }}
+            <p
+              className="pmc-text-base pmc-font-medium"
+              style={{ marginBottom: "8px" }}
             >
-              No Applications Found
-            </h3>
-            <p style={{ color: "#6b7280", marginTop: "8px" }}>
+              No applications found
+            </p>
+            <p className="pmc-text-sm">
               {searchTerm
-                ? "No applications match your search criteria."
-                : "There are no applications at this stage."}
+                ? "Try adjusting your search criteria"
+                : "There are no applications at this stage"}
             </p>
           </div>
         ) : (
           <>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr
-                    style={{
-                      background: "#f9fafb",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      onClick={() => handleSort("createdDate")}
-                    >
-                      <div
+            <div className="pmc-table-container">
+              <div className="pmc-table-responsive">
+                <table className="pmc-table">
+                  <thead>
+                    <tr>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                          cursor: "pointer",
                         }}
+                        onClick={() => handleSort("applicationNumber")}
                       >
-                        <Calendar style={{ width: "14px", height: "14px" }} />
-                        Created Date
-                        <SortIcon column="createdDate" />
-                      </div>
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      onClick={() => handleSort("applicationNumber")}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <FileText style={{ width: "14px", height: "14px" }} />
-                        Application ID
-                        <SortIcon column="applicationNumber" />
-                      </div>
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      onClick={() => handleSort("firstName")}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <User style={{ width: "14px", height: "14px" }} />
-                        First Name
-                        <SortIcon column="firstName" />
-                      </div>
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                        userSelect: "none",
-                      }}
-                      onClick={() => handleSort("lastName")}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        Last Name
-                        <SortIcon column="lastName" />
-                      </div>
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Position
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Stage
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "center",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        color: "#6b7280",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {applications.map((app) => (
-                    <tr
-                      key={app.applicationId}
-                      style={{
-                        borderBottom: "1px solid #e5e7eb",
-                        transition: "background 0.15s",
-                      }}
-                      className="hover:bg-gray-50"
-                    >
-                      <td style={{ padding: "16px", fontSize: "14px" }}>
-                        <span style={{ color: "#374151" }}>
-                          {formatLocalDateTime(
-                            parseLocalDateTime(app.createdDate)
-                          )}
-                        </span>
-                      </td>
-                      <td style={{ padding: "16px", fontSize: "14px" }}>
-                        <span
+                        <div
                           style={{
-                            fontFamily: "monospace",
-                            fontWeight: "600",
-                            color: "#3b82f6",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
                           }}
+                        >
+                          Application #
+                          <SortIcon column="applicationNumber" />
+                        </div>
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleSort("firstName")}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          Applicant
+                          <SortIcon column="firstName" />
+                        </div>
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Type
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => handleSort("createdDate")}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          Submitted
+                          <SortIcon column="createdDate" />
+                        </div>
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Status
+                      </th>
+                      <th
+                        className="pmc-text-xs pmc-font-semibold"
+                        style={{
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--pmc-gray-700)",
+                        }}
+                      >
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {applications.map((app) => (
+                      <tr key={app.applicationId}>
+                        <td
+                          className="pmc-text-sm pmc-font-medium"
+                          style={{ color: "var(--pmc-primary)" }}
                         >
                           {app.applicationNumber}
-                        </span>
-                      </td>
-                      <td style={{ padding: "16px", fontSize: "14px" }}>
-                        <span style={{ color: "#374151", fontWeight: "500" }}>
-                          {app.firstName}
-                        </span>
-                      </td>
-                      <td style={{ padding: "16px", fontSize: "14px" }}>
-                        <span style={{ color: "#374151", fontWeight: "500" }}>
-                          {app.lastName}
-                        </span>
-                      </td>
-                      <td style={{ padding: "16px", fontSize: "14px" }}>
-                        <span
-                          style={{
-                            display: "inline-block",
-                            padding: "4px 12px",
-                            borderRadius: "6px",
-                            background: "#dbeafe",
-                            color: "#1e40af",
-                            fontSize: "12px",
-                            fontWeight: "500",
-                          }}
-                        >
+                        </td>
+                        <td className="pmc-text-sm">
+                          {app.firstName} {app.lastName}
+                        </td>
+                        <td className="pmc-text-sm">
                           {PositionDisplayNames[app.positionType] ||
                             app.positionType}
-                        </span>
-                      </td>
-                      <td style={{ padding: "16px", fontSize: "14px" }}>
-                        <span style={{ color: "#6b7280" }}>
-                          {StageDisplayNames[app.currentStage] ||
-                            app.currentStage}
-                        </span>
-                      </td>
-                      <td
-                        style={{
-                          padding: "16px",
-                          fontSize: "14px",
-                          textAlign: "center",
-                        }}
-                      >
-                        <button
-                          onClick={() =>
-                            navigate(`/admin/applications/${app.applicationId}`)
-                          }
-                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                          style={{
-                            background: "#eff6ff",
-                            color: "#3b82f6",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = "#dbeafe";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = "#eff6ff";
-                          }}
+                        </td>
+                        <td
+                          className="pmc-text-sm"
+                          style={{ color: "var(--pmc-gray-600)" }}
                         >
-                          <Eye style={{ width: "16px", height: "16px" }} />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          {formatDisplayDate(app.createdDate)}
+                        </td>
+                        <td>
+                          <span className="pmc-status-badge">
+                            {StageDisplayNames[app.currentStage] ||
+                              app.currentStage}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/admin/applications/${app.applicationId}`,
+                                {
+                                  state: {
+                                    from: "reports",
+                                    positionType,
+                                    stageName,
+                                    stageDisplayName,
+                                  },
+                                }
+                              )
+                            }
+                            className="pmc-button pmc-button-secondary pmc-button-sm"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <Eye style={{ width: "16px", height: "16px" }} />
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div
-                style={{
-                  padding: "16px",
-                  borderTop: "1px solid #e5e7eb",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <div style={{ fontSize: "14px", color: "#6b7280" }}>
+              <div className="pmc-table-footer">
+                <div
+                  className="pmc-text-sm"
+                  style={{ color: "var(--pmc-gray-600)" }}
+                >
                   Showing {(currentPage - 1) * pageSize + 1} to{" "}
                   {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
                   applications
@@ -433,65 +332,45 @@ const ApplicationsTable: React.FC<ApplicationsTableProps> = ({
                   <button
                     onClick={() => onPageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="pmc-button pmc-button-secondary"
-                    style={{
-                      padding: "8px 16px",
-                      fontSize: "14px",
-                      opacity: currentPage === 1 ? 0.5 : 1,
-                    }}
+                    className="pmc-button pmc-button-secondary pmc-button-sm"
                   >
                     Previous
                   </button>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "4px",
-                      alignItems: "center",
-                    }}
-                  >
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter(
-                        (page) =>
-                          page === 1 ||
-                          page === totalPages ||
-                          Math.abs(page - currentPage) <= 1
-                      )
-                      .map((page, idx, arr) => (
-                        <React.Fragment key={page}>
-                          {idx > 0 && arr[idx - 1] !== page - 1 && (
-                            <span
-                              style={{ padding: "0 4px", color: "#9ca3af" }}
-                            >
-                              ...
-                            </span>
-                          )}
-                          <button
-                            onClick={() => onPageChange(page)}
-                            className={
-                              page === currentPage
-                                ? "pmc-button pmc-button-primary"
-                                : "pmc-button pmc-button-secondary"
-                            }
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(
+                      (page) =>
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - currentPage) <= 1
+                    )
+                    .map((page, idx, arr) => (
+                      <React.Fragment key={page}>
+                        {idx > 0 && arr[idx - 1] !== page - 1 && (
+                          <span
                             style={{
-                              padding: "8px 12px",
-                              fontSize: "14px",
-                              minWidth: "40px",
+                              padding: "0 4px",
+                              color: "var(--pmc-gray-400)",
                             }}
                           >
-                            {page}
-                          </button>
-                        </React.Fragment>
-                      ))}
-                  </div>
+                            ...
+                          </span>
+                        )}
+                        <button
+                          onClick={() => onPageChange(page)}
+                          className={
+                            page === currentPage
+                              ? "pmc-button pmc-button-primary pmc-button-sm"
+                              : "pmc-button pmc-button-secondary pmc-button-sm"
+                          }
+                        >
+                          {page}
+                        </button>
+                      </React.Fragment>
+                    ))}
                   <button
                     onClick={() => onPageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="pmc-button pmc-button-secondary"
-                    style={{
-                      padding: "8px 16px",
-                      fontSize: "14px",
-                      opacity: currentPage === totalPages ? 0.5 : 1,
-                    }}
+                    className="pmc-button pmc-button-secondary pmc-button-sm"
                   >
                     Next
                   </button>

@@ -11,6 +11,7 @@ import {
   Clock,
   Eye,
   UserCog,
+  BarChart3,
 } from "lucide-react";
 import { PageLoader } from "../../components";
 import { parseLocalDateTime } from "../../utils/dateUtils";
@@ -157,7 +158,7 @@ const AdminDashboard: React.FC = () => {
             color: "white",
             cursor: "pointer",
           }}
-          onClick={() => navigate("/admin/applications")}
+          onClick={() => navigate("/admin/reports")}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
@@ -197,7 +198,7 @@ const AdminDashboard: React.FC = () => {
             color: "white",
             cursor: "pointer",
           }}
-          onClick={() => navigate("/admin/applications?status=pending")}
+          onClick={() => navigate("/admin/reports")}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
@@ -237,7 +238,7 @@ const AdminDashboard: React.FC = () => {
             color: "white",
             cursor: "pointer",
           }}
-          onClick={() => navigate("/admin/applications?status=approved")}
+          onClick={() => navigate("/admin/reports")}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
@@ -276,7 +277,7 @@ const AdminDashboard: React.FC = () => {
             color: "white",
             cursor: "pointer",
           }}
-          onClick={() => navigate("/admin/applications?status=rejected")}
+          onClick={() => navigate("/admin/reports")}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <div
@@ -339,7 +340,7 @@ const AdminDashboard: React.FC = () => {
             </button>
             <button
               className="pmc-button pmc-button-secondary"
-              onClick={() => navigate("/admin/applications")}
+              onClick={() => navigate("/admin/reports")}
               style={{
                 padding: "16px 20px",
                 display: "flex",
@@ -348,18 +349,20 @@ const AdminDashboard: React.FC = () => {
                 justifyContent: "center",
               }}
             >
-              <FileText style={{ width: "20px", height: "20px" }} />
-              <span className="pmc-font-semibold">View All Applications</span>
+              <BarChart3 style={{ width: "20px", height: "20px" }} />
+              <span className="pmc-font-semibold">View Reports</span>
             </button>
             <button
               className="pmc-button pmc-button-secondary"
-              onClick={() => navigate("/admin/forms")}
+              disabled
               style={{
                 padding: "16px 20px",
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
                 justifyContent: "center",
+                opacity: 0.5,
+                cursor: "not-allowed",
               }}
             >
               <FileText style={{ width: "20px", height: "20px" }} />
@@ -383,12 +386,6 @@ const AdminDashboard: React.FC = () => {
               <h2 className="pmc-card-title">Recent Submitted Applications</h2>
               <p className="pmc-card-subtitle">Latest 5 applications</p>
             </div>
-            <button
-              className="pmc-button pmc-button-primary pmc-button-sm"
-              onClick={() => navigate("/admin/applications")}
-            >
-              View All
-            </button>
           </div>
         </div>
         <div className="pmc-card-body">
@@ -527,7 +524,8 @@ const AdminDashboard: React.FC = () => {
                           <button
                             onClick={() =>
                               navigate(
-                                `/admin/applications/${app.applicationId}`
+                                `/admin/applications/${app.applicationId}`,
+                                { state: { from: "dashboard" } }
                               )
                             }
                             className="pmc-button pmc-button-primary pmc-button-sm"

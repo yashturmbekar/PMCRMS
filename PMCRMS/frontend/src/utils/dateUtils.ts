@@ -52,3 +52,45 @@ export const formatLocalDateTime = (
 
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
+
+/**
+ * Format a date string for display in a human-readable format
+ *
+ * @param dateString - ISO format date string (e.g., "2025-10-17T05:22:00")
+ * @returns Formatted display string (e.g., "Oct 17, 2025 05:22 AM")
+ */
+export const formatDisplayDate = (dateString: string): string => {
+  if (!dateString) return "-";
+
+  const date = parseLocalDateTime(dateString);
+
+  if (isNaN(date.getTime())) return "-";
+
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const month = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+
+  return `${month} ${day}, ${year} ${String(displayHours).padStart(
+    2,
+    "0"
+  )}:${minutes} ${ampm}`;
+};

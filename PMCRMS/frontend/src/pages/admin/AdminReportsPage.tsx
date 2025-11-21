@@ -356,7 +356,6 @@ const AdminReportsPage: React.FC = () => {
             onPageChange={handlePageChange}
             onSearch={handleSearch}
             onSort={handleSort}
-            onBack={handleBackToStages}
             isLoading={applicationsLoading}
           />
         );

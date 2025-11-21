@@ -542,7 +542,8 @@ const AdminApplicationsPage: React.FC = () => {
                             <button
                               onClick={() =>
                                 navigate(
-                                  `/admin/applications/${app.applicationId}`
+                                  `/admin/applications/${app.applicationId}`,
+                                  { state: { from: "applications" } }
                                 )
                               }
                               className="pmc-button pmc-button-primary"

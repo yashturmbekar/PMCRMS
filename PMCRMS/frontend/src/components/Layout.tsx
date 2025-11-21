@@ -3,7 +3,6 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import {
   Home,
-  FileText,
   Users,
   BarChart3,
   Settings,
@@ -50,11 +49,6 @@ const getNavigation = (userRole?: string): NavItem[] => [
     href: "/admin",
     icon: Settings,
     roles: ["Admin"],
-  },
-  {
-    name: "Applications",
-    href: userRole === "Admin" ? "/admin/applications" : "/dashboard",
-    icon: FileText,
   },
   {
     name: "Officers",
