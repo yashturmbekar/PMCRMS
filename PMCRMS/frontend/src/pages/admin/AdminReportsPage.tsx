@@ -11,6 +11,7 @@ import { PageLoader } from "../../components";
 import PositionSummaryCards from "../../components/reports/PositionSummaryCards";
 import StageSummaryCards from "../../components/reports/StageSummaryCards";
 import ApplicationsTable from "../../components/reports/ApplicationsTable";
+import PieChart from "../../components/charts/PieChart";
 import { reportService } from "../../services/reportService";
 import type {
   PositionSummary,
@@ -238,28 +239,108 @@ const AdminReportsPage: React.FC = () => {
 
     switch (drillDownState.view) {
       case "positions": {
+        // Define color palette for positions
+        const positionColors: Record<string, string> = {
+          Architect: "#667eea",
+          LicenceEngineer: "#f59e0b",
+          StructuralEngineer: "#10b981",
+          Supervisor1: "#ef4444",
+          Supervisor2: "#8b5cf6",
+        };
+
+        // Transform positions data for pie chart
+        const chartData = positions.map((pos) => ({
+          label: pos.positionName,
+          value: pos.totalApplications,
+          color: positionColors[pos.positionType] || "#6b7280",
+        }));
+
         return (
           <>
+            {/* Position Cards in Single Row */}
             <PositionSummaryCards
               positions={positions}
               onPositionClick={handlePositionClick}
               isLoading={positionsLoading}
             />
+
+            {/* Pie Chart Below Position Cards */}
+            {positions.length > 0 && !positionsLoading && (
+              <div
+                className="pmc-card"
+                style={{
+                  marginTop: "32px",
+                  padding: "32px",
+                  background:
+                    "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    marginBottom: "32px",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "12px",
+                      background:
+                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 8px 20px rgba(102, 126, 234, 0.3)",
+                    }}
+                  >
+                    <BarChart3
+                      style={{ width: "24px", height: "24px", color: "#fff" }}
+                    />
+                  </div>
+                  <h2
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: "700",
+                      color: "#111827",
+                    }}
+                  >
+                    Application Distribution by Position
+                  </h2>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    width: "100%",
+                  }}
+                >
+                  <PieChart
+                    data={chartData}
+                    width={600}
+                    height={450}
+                    showLegend
+                  />
+                </div>
+              </div>
+            )}
           </>
         );
       }
 
       case "stages": {
         return (
-          <>
-            <StageSummaryCards
-              stages={stages}
-              positionName={drillDownState.selectedPosition?.name || ""}
-              onStageClick={handleStageClick}
-              onBack={handleBackToPositions}
-              isLoading={stagesLoading}
-            />
-          </>
+          <StageSummaryCards
+            stages={stages}
+            positionName={drillDownState.selectedPosition?.name || ""}
+            onStageClick={handleStageClick}
+            onBack={handleBackToPositions}
+            isLoading={stagesLoading}
+          />
         );
       }
 

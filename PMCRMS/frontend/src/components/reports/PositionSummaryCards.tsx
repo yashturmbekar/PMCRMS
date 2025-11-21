@@ -35,12 +35,24 @@ const PositionSummaryCards: React.FC<PositionSummaryCardsProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        style={{
+          display: "flex",
+          gap: "24px",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+        }}
+      >
         {[1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}
             className="pmc-card animate-pulse"
-            style={{ padding: "0", overflow: "hidden" }}
+            style={{
+              flex: "1 1 calc(20% - 20px)",
+              minWidth: "180px",
+              padding: "0",
+              overflow: "hidden",
+            }}
           >
             <div style={{ padding: "24px" }}>
               <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
@@ -89,7 +101,14 @@ const PositionSummaryCards: React.FC<PositionSummaryCardsProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div
+      style={{
+        display: "flex",
+        gap: "24px",
+        flexWrap: "wrap",
+        justifyContent: "space-between",
+      }}
+    >
       {positions.map((position) => {
         const colors =
           positionColors[position.positionType] || positionColors.Architect;
@@ -105,6 +124,8 @@ const PositionSummaryCards: React.FC<PositionSummaryCardsProps> = ({
             key={position.positionType}
             className="pmc-card cursor-pointer"
             style={{
+              flex: "1 1 calc(20% - 20px)",
+              minWidth: "180px",
               padding: "0",
               overflow: "hidden",
               transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",

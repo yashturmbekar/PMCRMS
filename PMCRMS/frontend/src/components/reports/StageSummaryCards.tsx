@@ -120,8 +120,8 @@ const StageSummaryCards: React.FC<StageSummaryCardsProps> = ({
         <div className="mb-6">
           <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse"></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
             <div
               key={i}
               className="pmc-card animate-pulse"
@@ -217,7 +217,7 @@ const StageSummaryCards: React.FC<StageSummaryCardsProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
           {stages.map((stage) => {
             const Icon = getStageIcon(stage.stageName);
             const colors = getStageColor(stage.stageName);

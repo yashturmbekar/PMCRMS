@@ -31,38 +31,41 @@ namespace PMCRMS.API.Controllers
             {
                 _logger.LogInformation("Fetching position summaries for reports");
 
-                var positionsRaw = await _context.PositionApplications
-                    .GroupBy(a => a.PositionType)
-                    .Select(g => new
-                    {
-                        positionType = g.Key.ToString(),
-                        totalApplications = g.Count(),
-                        pendingCount = g.Count(a => a.Status == ApplicationCurrentStatus.Draft || 
-                                                   a.Status == ApplicationCurrentStatus.Submitted ||
-                                                   a.Status == ApplicationCurrentStatus.PaymentPending),
-                        approvedCount = g.Count(a => a.Status == ApplicationCurrentStatus.Completed ||
-                                                    a.Status == ApplicationCurrentStatus.CertificateIssued),
-                        rejectedCount = g.Count(a => a.Status == ApplicationCurrentStatus.REJECTED ||
-                                                    a.Status == ApplicationCurrentStatus.RejectedByJE ||
-                                                    a.Status == ApplicationCurrentStatus.RejectedByAE ||
-                                                    a.Status == ApplicationCurrentStatus.RejectedByEE1 ||
-                                                    a.Status == ApplicationCurrentStatus.RejectedByCE1),
-                        underReviewCount = g.Count(a => a.Status.ToString().Contains("UnderReview")),
-                        inProgressCount = g.Count(a => a.Status.ToString().Contains("UnderProcessing") ||
-                                                      a.Status.ToString().Contains("Stage"))
-                    })
-                    .ToListAsync();
+                // Get all applications
+                var allApplications = await _context.PositionApplications.ToListAsync();
 
-                var positions = positionsRaw.Select(p => new
+                // Get all position types from enum
+                var allPositionTypes = Enum.GetValues<PositionType>();
+
+                // Create position summaries for all position types, including those with zero applications
+                var positions = allPositionTypes.Select(positionType =>
                 {
-                    p.positionType,
-                    positionName = FormatPositionName(p.positionType),
-                    p.totalApplications,
-                    p.pendingCount,
-                    p.approvedCount,
-                    p.rejectedCount,
-                    p.underReviewCount,
-                    p.inProgressCount
+                    var applicationsForPosition = allApplications.Where(a => a.PositionType == positionType).ToList();
+                    
+                    return new
+                    {
+                        positionType = positionType.ToString(),
+                        positionName = FormatPositionName(positionType.ToString()),
+                        totalApplications = applicationsForPosition.Count,
+                        pendingCount = applicationsForPosition.Count(a => 
+                            a.Status == ApplicationCurrentStatus.Draft || 
+                            a.Status == ApplicationCurrentStatus.Submitted ||
+                            a.Status == ApplicationCurrentStatus.PaymentPending),
+                        approvedCount = applicationsForPosition.Count(a => 
+                            a.Status == ApplicationCurrentStatus.Completed ||
+                            a.Status == ApplicationCurrentStatus.CertificateIssued),
+                        rejectedCount = applicationsForPosition.Count(a => 
+                            a.Status == ApplicationCurrentStatus.REJECTED ||
+                            a.Status == ApplicationCurrentStatus.RejectedByJE ||
+                            a.Status == ApplicationCurrentStatus.RejectedByAE ||
+                            a.Status == ApplicationCurrentStatus.RejectedByEE1 ||
+                            a.Status == ApplicationCurrentStatus.RejectedByCE1),
+                        underReviewCount = applicationsForPosition.Count(a => 
+                            a.Status.ToString().Contains("UnderReview")),
+                        inProgressCount = applicationsForPosition.Count(a => 
+                            a.Status.ToString().Contains("UnderProcessing") ||
+                            a.Status.ToString().Contains("Stage"))
+                    };
                 }).ToList();
 
                 var data = new
@@ -105,16 +108,18 @@ namespace PMCRMS.API.Controllers
                     .Where(a => a.PositionType == positionEnum)
                     .ToListAsync();
 
-                // Group by status as "stages"
+                // Group by status as "stages" - kept simple to show all current statuses
                 var stages = applications
                     .GroupBy(a => a.Status)
                     .Select(g => new
                     {
                         stageName = g.Key.ToString(),
-                        displayName = FormatStatusDisplayName(g.Key.ToString()),
+                        stageDisplayName = FormatStatusDisplayName(g.Key.ToString()),
                         applicationCount = g.Count(),
-                        avgProcessingDays = g.Where(a => a.UpdatedDate.HasValue)
-                                            .Average(a => (a.UpdatedDate!.Value - a.CreatedDate).TotalDays),
+                        avgProcessingDays = g.Where(a => a.UpdatedDate.HasValue && a.UpdatedDate.HasValue)
+                                            .Select(a => (a.UpdatedDate!.Value - a.CreatedDate).TotalDays)
+                                            .DefaultIfEmpty(0)
+                                            .Average(),
                         oldestApplicationDate = g.Min(a => a.CreatedDate),
                         newestApplicationDate = g.Max(a => a.CreatedDate)
                     })
