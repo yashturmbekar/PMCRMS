@@ -65,6 +65,36 @@ export const authService = {
   },
 
   /**
+   * First-time password change for newly invited officers
+   */
+  async changePasswordFirstTime(
+    temporaryPassword: string,
+    newPassword: string,
+    confirmPassword: string
+  ): Promise<ApiResponse<AuthResponse>> {
+    return apiClient.post(`${endpoint}/change-password-first-time`, {
+      temporaryPassword,
+      newPassword,
+      confirmPassword,
+    });
+  },
+
+  /**
+   * Complete officer profile after first-time password change
+   */
+  async completeProfile(
+    name?: string,
+    phoneNumber?: string,
+    department?: string
+  ): Promise<ApiResponse<User>> {
+    return apiClient.post(`${endpoint}/complete-profile`, {
+      name,
+      phoneNumber,
+      department,
+    });
+  },
+
+  /**
    * Legacy login method (for backward compatibility)
    */
   async login(data: LoginRequest): Promise<ApiResponse<AuthResponse>> {

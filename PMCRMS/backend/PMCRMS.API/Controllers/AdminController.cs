@@ -188,24 +188,15 @@ namespace PMCRMS.API.Controllers
                     _logger.LogInformation("Auto-generated Employee ID: {EmployeeId}", request.EmployeeId);
                 }
 
-                // Check if email already exists in Officers or SystemAdmins
-                var existingOfficer = await _context.Officers.FirstOrDefaultAsync(o => o.Email == request.Email);
-                if (existingOfficer != null)
-                {
-                    return BadRequest(new ApiResponse
-                    {
-                        Success = false,
-                        Message = "An officer with this email already exists"
-                    });
-                }
-
+                // Only check if email exists in SystemAdmins (officers can share emails)
                 var existingAdmin = await _context.SystemAdmins.FirstOrDefaultAsync(a => a.Email == request.Email);
                 if (existingAdmin != null)
                 {
+                    _logger.LogWarning("Attempt to invite officer with admin email: {Email}", request.Email);
                     return BadRequest(new ApiResponse
                     {
                         Success = false,
-                        Message = "An admin with this email already exists"
+                        Message = "An admin with this email already exists. Please use a different email."
                     });
                 }
 
@@ -220,27 +211,28 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Check for pending invitations
-                var pendingInvitation = await _context.OfficerInvitations
-                    .FirstOrDefaultAsync(i => i.Email == request.Email && 
-                                            i.Status == InvitationStatus.Pending &&
-                                            i.ExpiresAt > DateTime.UtcNow);
+                // Check for any existing invitations for this email (expired or pending)
+                var existingInvitations = await _context.OfficerInvitations
+                    .Where(i => i.Email == request.Email && i.Status == InvitationStatus.Pending)
+                    .ToListAsync();
                 
-                if (pendingInvitation != null)
+                // Invalidate all existing pending invitations for this email
+                if (existingInvitations.Any())
                 {
-                    return BadRequest(new ApiResponse
+                    _logger.LogInformation("Invalidating {Count} existing invitation(s) for {Email}", 
+                        existingInvitations.Count, request.Email);
+                    
+                    foreach (var oldInvitation in existingInvitations)
                     {
-                        Success = false,
-                        Message = "A pending invitation already exists for this email"
-                    });
+                        oldInvitation.Status = InvitationStatus.Revoked;
+                    }
                 }
 
-                // Generate temporary password
-                var tempPassword = GenerateTemporaryPassword();
-                var hashedPassword = _passwordHasher.HashPassword(tempPassword);
+                // Generate secure invitation token (URL-safe)
+                var invitationToken = Guid.NewGuid().ToString("N"); // 32 character hex string
 
-                // Create Officer account immediately
-                var officer = new Officer
+                // Create invitation record (officer account will be created when they set password)
+                var invitation = new OfficerInvitation
                 {
                     Name = request.Name,
                     Email = request.Email,
@@ -248,58 +240,33 @@ namespace PMCRMS.API.Controllers
                     Role = officerRole,
                     EmployeeId = request.EmployeeId,
                     Department = request.Department ?? string.Empty,
-                    PasswordHash = hashedPassword,
-                    MustChangePassword = true, // Force password change on first login
-                    IsActive = true,
-                    CreatedBy = User.FindFirst("email")?.Value ?? "Admin",
-                    CreatedDate = DateTime.UtcNow
-                };
-
-                _context.Officers.Add(officer);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Officer account created: {Email}, ID: {OfficerId}, Employee ID: {EmployeeId}", 
-                    request.Email, officer.Id, officer.EmployeeId);
-
-                // Create invitation record for tracking
-                var invitation = new OfficerInvitation
-                {
-                    Name = request.Name,
-                    Email = request.Email,
-                    PhoneNumber = request.PhoneNumber,
-                    Role = officerRole, // Use the parsed OfficerRole enum value
-                    EmployeeId = request.EmployeeId,
-                    Department = request.Department ?? string.Empty,
-                    TemporaryPassword = hashedPassword,
-                    InvitedByAdminId = adminId, // Changed from InvitedByUserId
+                    InvitationToken = invitationToken,
+                    TemporaryPassword = null, // Not used in link-based flow
+                    InvitedByAdminId = adminId,
                     InvitedAt = DateTime.UtcNow,
                     ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays > 0 ? request.ExpiryDays : 7),
-                    Status = InvitationStatus.Accepted, // Mark as accepted since officer is created
-                    AcceptedAt = DateTime.UtcNow,
-                    OfficerId = officer.Id,
+                    Status = InvitationStatus.Pending,
+                    OfficerId = null, // Will be set when officer account is created
                     CreatedBy = User.FindFirst("email")?.Value ?? "Admin"
                 };
 
                 _context.OfficerInvitations.Add(invitation);
-
-                // Update officer with invitation reference
-                officer.InvitationId = invitation.Id;
-
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Officer invitation record created with ID: {InvitationId}", invitation.Id);
+                _logger.LogInformation("Officer invitation record created with ID: {InvitationId}, Token: {Token}", 
+                    invitation.Id, invitationToken);
 
-                // Send invitation email
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
-                var loginUrl = $"{baseUrl}/officer-login";
+                // Send invitation email with secure link
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var invitationLink = $"{baseUrl}/officer/setup-password/{invitationToken}";
                 
                 var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
                     request.Email,
                     request.Name,
-                    officerRole.ToString(), // Use the parsed OfficerRole enum
+                    officerRole.ToString(),
                     request.EmployeeId,
-                    tempPassword,
-                    loginUrl
+                    invitationToken,
+                    invitationLink
                 );
 
                 if (!emailSent)
@@ -323,14 +290,14 @@ namespace PMCRMS.API.Controllers
                     ExpiresAt = invitation.ExpiresAt,
                     InvitedByName = invitedByAdmin?.Name ?? "Admin",
                     IsExpired = invitation.ExpiresAt <= DateTime.UtcNow,
-                    TemporaryPassword = tempPassword // Include password in response
+                    TemporaryPassword = null // No temporary password in link-based flow
                 };
 
                 return Ok(new ApiResponse<OfficerInvitationDto>
                 {
                     Success = true,
                     Data = responseDto,
-                    Message = $"Officer invitation sent successfully! Temporary Password: {tempPassword}"
+                    Message = $"Officer invitation sent successfully! Check email for setup link."
                 });
             }
             catch (Exception ex)
@@ -432,29 +399,29 @@ namespace PMCRMS.API.Controllers
                     });
                 }
 
-                // Generate new temporary password
-                var tempPassword = GenerateTemporaryPassword();
-                var hashedPassword = _passwordHasher.HashPassword(tempPassword);
+                // Generate new invitation token
+                var invitationToken = Guid.NewGuid().ToString("N");
 
                 // Update invitation
-                invitation.TemporaryPassword = hashedPassword;
+                invitation.InvitationToken = invitationToken;
+                invitation.TemporaryPassword = null; // Not used in link-based flow
                 invitation.ExpiresAt = DateTime.UtcNow.AddDays(request.ExpiryDays);
                 invitation.Status = InvitationStatus.Pending;
                 invitation.UpdatedDate = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
-                // Resend email
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? throw new InvalidOperationException("Frontend URL not configured");
-                var loginUrl = $"{baseUrl}/officer-login";
+                // Resend email with new invitation link
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                var invitationLink = $"{baseUrl}/officer/setup-password/{invitationToken}";
 
                 await _emailService.SendOfficerInvitationEmailAsync(
                     invitation.Email,
                     invitation.Name,
                     invitation.Role.ToString(),
                     invitation.EmployeeId,
-                    tempPassword,
-                    loginUrl
+                    invitationToken,
+                    invitationLink
                 );
 
                 return Ok(new ApiResponse
@@ -681,19 +648,7 @@ namespace PMCRMS.API.Controllers
                 // Check if email is being changed
                 if (!string.IsNullOrEmpty(request.Email) && request.Email != officer.Email)
                 {
-                    // Validate that new email doesn't already exist
-                    var existingOfficer = await _context.Officers
-                        .FirstOrDefaultAsync(o => o.Email == request.Email && o.Id != id);
-                    if (existingOfficer != null)
-                    {
-                        return BadRequest(new ApiResponse
-                        {
-                            Success = false,
-                            Message = "An officer with this email already exists",
-                            Errors = new List<string> { "Email already in use" }
-                        });
-                    }
-
+                    // Only check if new email conflicts with admin (officers can share emails)
                     var existingAdmin = await _context.SystemAdmins
                         .FirstOrDefaultAsync(a => a.Email == request.Email);
                     if (existingAdmin != null)
@@ -702,19 +657,41 @@ namespace PMCRMS.API.Controllers
                         {
                             Success = false,
                             Message = "An admin with this email already exists",
-                            Errors = new List<string> { "Email already in use" }
+                            Errors = new List<string> { "Email already in use by admin" }
                         });
                     }
 
-                    // Generate new password when email changes
-                    newPassword = GenerateTemporaryPassword();
+                    // Generate new invitation token for password reset
+                    var invitationToken = Guid.NewGuid().ToString("N");
+                    
+                    // Create new invitation for the email change
+                    var invitation = new OfficerInvitation
+                    {
+                        Name = officer.Name,
+                        Email = request.Email,
+                        PhoneNumber = officer.PhoneNumber,
+                        Role = officer.Role,
+                        EmployeeId = officer.EmployeeId,
+                        Department = officer.Department,
+                        InvitationToken = invitationToken,
+                        InvitedByAdminId = adminId,
+                        InvitedAt = DateTime.UtcNow,
+                        ExpiresAt = DateTime.UtcNow.AddDays(7),
+                        Status = InvitationStatus.Pending,
+                        OfficerId = officer.Id,
+                        CreatedBy = User.FindFirst("email")?.Value ?? "Admin"
+                    };
+                    
+                    _context.OfficerInvitations.Add(invitation);
+                    newPassword = invitationToken; // Store token for email sending
+                    
+                    // Update officer email but keep account inactive until they set new password
                     officer.Email = request.Email;
-                    officer.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                    officer.IsActive = false; // Deactivate until password is reset
                     officer.MustChangePassword = true;
-                    officer.PasswordChangedAt = DateTime.UtcNow;
                     emailChanged = true;
 
-                    _logger.LogInformation("Officer {OfficerId} email changed from {OldEmail} to {NewEmail}", 
+                    _logger.LogInformation("Officer {OfficerId} email changed from {OldEmail} to {NewEmail}, invitation sent", 
                         id, oldEmail, request.Email);
                 }
 
@@ -731,7 +708,8 @@ namespace PMCRMS.API.Controllers
                 if (!string.IsNullOrEmpty(request.Department))
                     officer.Department = request.Department;
 
-                if (request.IsActive.HasValue)
+                // Only update IsActive if email wasn't changed (email change forces IsActive = false)
+                if (request.IsActive.HasValue && !emailChanged)
                     officer.IsActive = request.IsActive.Value;
 
                 officer.UpdatedDate = DateTime.UtcNow;
@@ -739,28 +717,30 @@ namespace PMCRMS.API.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // Send email with new password if email was changed
+                // Send invitation email if email was changed
                 if (emailChanged && newPassword != null)
                 {
-                    var loginUrl = $"{Request.Scheme}://{Request.Host}/officer-login";
+                    var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "http://localhost:5173";
+                    var invitationLink = $"{baseUrl}/officer/setup-password/{newPassword}";
+                    
                     var emailSent = await _emailService.SendOfficerInvitationEmailAsync(
                         officer.Email,
                         officer.Name,
                         officer.Role.ToString(),
                         officer.EmployeeId,
-                        newPassword,
-                        loginUrl
+                        newPassword, // This is the invitation token
+                        invitationLink
                     );
 
                     if (!emailSent)
                     {
-                        _logger.LogWarning("Failed to send new password email to {Email}", officer.Email);
+                        _logger.LogWarning("Failed to send invitation email to {Email}", officer.Email);
                     }
 
                     return Ok(new ApiResponse
                     {
                         Success = true,
-                        Message = $"Officer updated successfully. Email changed and new password sent to {officer.Email}. Temporary password: {newPassword}"
+                        Message = $"Officer updated successfully. Email changed and invitation link sent to {officer.Email}. Officer must complete password setup to reactivate account."
                     });
                 }
 
@@ -1379,7 +1359,7 @@ namespace PMCRMS.API.Controllers
                         FileName = d.FileName,
                         DocumentType = d.DocumentType.ToString(),
                         FileSize = d.FileSize.HasValue ? (long)d.FileSize.Value : null,
-                        FilePath = d.FilePath,
+                        FilePath = d.FilePath ?? "",
                         IsVerified = d.IsVerified,
                         VerifiedBy = d.VerifiedBy,
                         VerifiedByName = d.VerifiedByOfficer?.Name,

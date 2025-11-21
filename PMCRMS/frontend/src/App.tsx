@@ -13,7 +13,12 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import OfficerManagementPage from "./pages/admin/OfficerManagementPage";
 import FormManagementPage from "./pages/admin/FormManagementPage";
 import AdminReportsPage from "./pages/admin/AdminReportsPage";
-import { SetPasswordPage, OfficerProfileSetupPage } from "./pages/officer";
+import {
+  SetPasswordPage,
+  OfficerProfileSetupPage,
+  ChangePasswordPage,
+  ProfileSetupPage,
+} from "./pages/officer";
 import { PositionRegistrationPage } from "./pages/PositionRegistrationPage";
 import ViewPositionApplication from "./pages/ViewPositionApplication";
 import PaymentCallback from "./pages/PaymentCallback";
@@ -199,6 +204,26 @@ function App() {
               <Route
                 path="/officer/setup-password/:token"
                 element={<SetPasswordPage />}
+              />
+
+              {/* First-time password change for invited officers */}
+              <Route
+                path="/officer/change-password"
+                element={
+                  <ProtectedRoute>
+                    <ChangePasswordPage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Profile setup after password change */}
+              <Route
+                path="/officer/profile-setup"
+                element={
+                  <ProtectedRoute>
+                    <ProfileSetupPage />
+                  </ProtectedRoute>
+                }
               />
 
               {/* Officer profile setup - requires authentication */}

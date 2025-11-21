@@ -57,6 +57,36 @@ namespace PMCRMS.API.DTOs
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 
+    public class FirstTimePasswordChangeRequest
+    {
+        [Required]
+        public string TemporaryPassword { get; set; } = string.Empty;
+        
+        [Required]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters")]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$", 
+            ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character")]
+        public string NewPassword { get; set; } = string.Empty;
+        
+        [Required]
+        [Compare("NewPassword", ErrorMessage = "Passwords do not match")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
+    public class CompleteProfileRequest
+    {
+        [Required]
+        [MaxLength(100)]
+        public string Name { get; set; } = string.Empty;
+        
+        [Phone]
+        [MaxLength(15)]
+        public string? PhoneNumber { get; set; }
+        
+        [MaxLength(100)]
+        public string? Department { get; set; }
+    }
+
     public class ResetPasswordRequest
     {
         [Required]
@@ -90,6 +120,8 @@ namespace PMCRMS.API.DTOs
         public string? Address { get; set; }
         public string? EmployeeId { get; set; }
         public DateTime? LastLoginAt { get; set; }
+        public bool MustChangePassword { get; set; } = false;
+        public string? Department { get; set; }
     }
 
     public class ApiResponse<T>

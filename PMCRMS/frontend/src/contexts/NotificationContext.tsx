@@ -26,7 +26,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [summary, setSummary] = useState<NotificationSummary | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -45,24 +44,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  const fetchSummary = async () => {
-    if (!user) return;
-    try {
-      const response = await notificationService.getNotificationSummary();
-      if (response.success && response.data) {
-        setSummary(response.data);
-        setUnreadCount(response.data.totalUnread || 0);
-      }
-    } catch (error) {
-      console.error("Error fetching summary:", error);
-    }
-  };
-
   const markAsRead = async (id: number) => {
     try {
       const response = await notificationService.markAsRead([id]);
       if (response.success) {
-        await fetchSummary();
         await fetchNotifications();
       }
     } catch (error) {
@@ -74,7 +59,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
     try {
       const response = await notificationService.markAllAsRead();
       if (response.success) {
-        await fetchSummary();
         await fetchNotifications();
       }
     } catch (error) {
@@ -87,7 +71,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
       const response = await notificationService.deleteNotification(id);
       if (response.success) {
         await fetchNotifications();
-        await fetchSummary();
       }
     } catch (error) {
       console.error("Error deleting notification:", error);
@@ -95,28 +78,27 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   useEffect(() => {
-    let interval: number | null = null;
-    if (user) {
-      fetchSummary();
-      interval = setInterval(
-        fetchSummary,
-        NOTIFICATION_POLL_INTERVAL
-      ) as unknown as number;
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+    // Notification polling disabled
+    // let interval: number | null = null;
+    // if (user) {
+    //   fetchUnreadCount();
+    //   interval = setInterval(
+    //     fetchUnreadCount,
+    //     NOTIFICATION_POLL_INTERVAL
+    //   ) as unknown as number;
+    // }
+    // return () => {
+    //   if (interval) clearInterval(interval);
+    // };
   }, [user]);
 
   return (
     <NotificationContext.Provider
       value={{
         notifications,
-        summary,
         unreadCount,
         loading,
         fetchNotifications,
-        fetchSummary,
         markAsRead,
         markAllAsRead,
         deleteNotification,

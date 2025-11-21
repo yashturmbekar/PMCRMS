@@ -37,8 +37,11 @@ namespace PMCRMS.API.Models
         public InvitationStatus Status { get; set; } = InvitationStatus.Pending;
 
         [Required]
+        [MaxLength(100)]
+        public string InvitationToken { get; set; } = string.Empty;
+
         [MaxLength(500)]
-        public string TemporaryPassword { get; set; } = string.Empty;
+        public string? TemporaryPassword { get; set; }
 
         public DateTime InvitedAt { get; set; } = DateTime.UtcNow;
 

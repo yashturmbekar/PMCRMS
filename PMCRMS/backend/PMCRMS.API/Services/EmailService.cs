@@ -14,7 +14,7 @@ namespace PMCRMS.API.Services
         Task<bool> SendApplicationApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string approvedBy, string approvedRole, string remarks, string viewUrl);
         Task<bool> SendApplicationRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectedBy, string rejectedRole, string remarks, string viewUrl);
         Task<bool> SendAssignmentNotificationEmailAsync(string toEmail, string officerName, string applicationNumber, string applicationType, string applicantName, string assignedBy, string viewUrl);
-        Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string temporaryPassword, string loginUrl);
+        Task<bool> SendOfficerInvitationEmailAsync(string toEmail, string officerName, string role, string employeeId, string invitationToken, string invitationLink);
         Task<bool> SendClerkApprovalEmailAsync(string toEmail, string applicantName, string applicationNumber, string remarks, string viewUrl);
         Task<bool> SendClerkRejectionEmailAsync(string toEmail, string applicantName, string applicationNumber, string rejectionReason, string viewUrl);
         
@@ -288,13 +288,13 @@ namespace PMCRMS.API.Services
             string officerName,
             string role,
             string employeeId,
-            string temporaryPassword,
-            string loginUrl)
+            string invitationToken,
+            string invitationLink)
         {
             try
             {
-                var subject = "Invitation to Join PMCRMS - Officer Account Created";
-                var body = await GenerateOfficerInvitationEmailBody(officerName, role, employeeId, temporaryPassword, loginUrl);
+                var subject = "Invitation to Join PMCRMS - Set Up Your Account";
+                var body = await GenerateOfficerInvitationEmailBody(officerName, role, employeeId, invitationToken, invitationLink);
                 return await SendEmailAsync(toEmail, subject, body);
             }
             catch (Exception ex)
@@ -1079,8 +1079,8 @@ namespace PMCRMS.API.Services
             string officerName,
             string role,
             string employeeId,
-            string temporaryPassword,
-            string loginUrl)
+            string invitationToken,
+            string invitationLink)
         {
             var logoDataUri = GetPmcLogoUrl();
             return $@"
@@ -1227,34 +1227,29 @@ namespace PMCRMS.API.Services
                 <span class='info-value'>{role}</span>
             </div>
             
-            <div class='password-box'>
-                <p style='margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: #0c4a6e;'>Your Temporary Password</p>
-                <div class='password-code'>{temporaryPassword}</div>
-                <p style='margin: 10px 0 0 0; font-size: 14px; color: #6b7280;'>Valid for 7 days</p>
-            </div>
-            
-            <div style='text-align: center;'>
-                <a href='{loginUrl}' class='btn-primary'>Login to PMCRMS</a>
+            <div style='text-align: center; margin: 30px 0;'>
+                <p style='font-size: 16px; color: #374151; margin-bottom: 16px;'>Click the button below to set up your account:</p>
+                <a href='{invitationLink}' class='btn-primary' style='font-size: 18px; padding: 16px 40px;'>Set Up Your Account</a>
+                <p style='margin: 16px 0 0 0; font-size: 13px; color: #6b7280;'>This invitation link is valid for 7 days</p>
             </div>
             
             <div class='warning'>
                 <strong>⚠️ Important Security Instructions:</strong>
                 <ul style='margin: 5px 0; padding-left: 20px;'>
-                    <li><strong>Change your password immediately</strong> after first login</li>
-                    <li>Use your <strong>Employee ID</strong> and the temporary password above to login</li>
-                    <li>This password expires in 7 days</li>
-                    <li>Never share your credentials with anyone</li>
+                    <li><strong>Click the link above</strong> to set up your account</li>
+                    <li>This invitation link is unique to you and expires in 7 days</li>
+                    <li>Create a strong password following the requirements shown</li>
+                    <li>Never share your invitation link with anyone</li>
                     <li>Contact IT support if you need assistance</li>
                 </ul>
             </div>
             
             <p style='background-color: #f0f9ff; padding: 15px; border-radius: 6px; margin: 20px 0;'>
                 <strong>📋 Next Steps:</strong><br>
-                1. Click the 'Login to PMCRMS' button above<br>
-                2. Enter your Employee ID and temporary password<br>
-                3. Set a new secure password<br>
-                4. Complete your profile setup<br>
-                5. Start managing applications
+                1. Click the 'Set Up Your Account' button above<br>
+                2. Create a secure password<br>
+                3. Complete your profile information<br>
+                4. Login and start managing applications
             </p>
             
             <p>If you have any questions, please contact the system administrator.</p>

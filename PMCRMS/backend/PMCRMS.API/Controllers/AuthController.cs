@@ -643,17 +643,24 @@ namespace PMCRMS.API.Controllers
                         IsActive = officer.IsActive,
                         Address = null, // Officers don't have address field
                         EmployeeId = officer.EmployeeId,
-                        LastLoginAt = officer.LastLoginAt
+                        LastLoginAt = officer.LastLoginAt,
+                        MustChangePassword = officer.MustChangePassword,
+                        Department = officer.Department
                     }
                 };
 
-                _logger.LogInformation("Officer {OfficerId} ({Role}) logged in successfully", officer.Id, officer.Role);
+                _logger.LogInformation("Officer {OfficerId} ({Role}) logged in successfully. MustChangePassword: {MustChangePassword}", 
+                    officer.Id, officer.Role, officer.MustChangePassword);
                 _logger.LogInformation("=== Officer Login Successful - Token Generated ===");
+
+                var welcomeMessage = officer.MustChangePassword 
+                    ? "Welcome! Please change your temporary password." 
+                    : $"Welcome back, {officer.Name}!";
 
                 return Ok(new ApiResponse<LoginResponse>
                 {
                     Success = true,
-                    Message = $"Welcome back, {officer.Name}!",
+                    Message = welcomeMessage,
                     Data = loginResponse
                 });
             }
@@ -912,6 +919,149 @@ namespace PMCRMS.API.Controllers
                 {
                     Success = false,
                     Message = "Failed to change password",
+                    Errors = new List<string> { "Internal server error" }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Change password for first-time officer login (after invitation)
+        /// </summary>
+        [HttpPost("change-password-first-time")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse>> ChangePasswordFirstTime([FromBody] FirstTimePasswordChangeRequest request)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst("officer_id")?.Value ?? User.FindFirst("user_id")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var officerId))
+                {
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid authentication token",
+                        Errors = new List<string> { "Unauthorized" }
+                    });
+                }
+
+                var officer = await _context.Officers.FindAsync(officerId);
+                if (officer == null || !officer.IsActive)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer not found or inactive",
+                        Errors = new List<string> { "Officer not found" }
+                    });
+                }
+
+                // Verify temporary password
+                if (!_passwordHasher.VerifyPassword(request.TemporaryPassword, officer.PasswordHash))
+                {
+                    _logger.LogWarning("Failed first-time password change attempt for officer {OfficerId}", officerId);
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Temporary password is incorrect",
+                        Errors = new List<string> { "Invalid temporary password" }
+                    });
+                }
+
+                // Ensure this is indeed a first-time password change
+                if (!officer.MustChangePassword)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Password has already been changed. Use regular password change endpoint.",
+                        Errors = new List<string> { "Invalid operation" }
+                    });
+                }
+
+                // Hash and update new password
+                officer.PasswordHash = _passwordHasher.HashPassword(request.NewPassword);
+                officer.MustChangePassword = false;
+                officer.PasswordChangedAt = DateTime.UtcNow;
+                officer.UpdatedBy = officer.Email;
+                officer.UpdatedDate = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("First-time password changed successfully for officer {OfficerId}", officerId);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Password changed successfully! Please complete your profile."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing first-time password for officer");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to change password",
+                    Errors = new List<string> { "Internal server error" }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Complete officer profile after first login
+        /// </summary>
+        [HttpPost("complete-profile")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse>> CompleteProfile([FromBody] CompleteProfileRequest request)
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst("officer_id")?.Value ?? User.FindFirst("user_id")?.Value;
+                if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var officerId))
+                {
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid authentication token",
+                        Errors = new List<string> { "Unauthorized" }
+                    });
+                }
+
+                var officer = await _context.Officers.FindAsync(officerId);
+                if (officer == null || !officer.IsActive)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Officer not found or inactive",
+                        Errors = new List<string> { "Officer not found" }
+                    });
+                }
+
+                // Update profile
+                officer.Name = request.Name;
+                officer.PhoneNumber = request.PhoneNumber;
+                officer.Department = request.Department;
+                officer.UpdatedBy = officer.Email;
+                officer.UpdatedDate = DateTime.UtcNow;
+                
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Profile completed successfully for officer {OfficerId}", officerId);
+
+                return Ok(new ApiResponse
+                {
+                    Success = true,
+                    Message = "Profile completed successfully! You can now access your dashboard."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing profile for officer");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Failed to complete profile",
                     Errors = new List<string> { "Internal server error" }
                 });
             }
@@ -1182,10 +1332,257 @@ ORDER BY ""EmployeeId"";
         }
 
         #endregion
+
+        #region Officer Invitation Endpoints
+
+        /// <summary>
+        /// Validate invitation token and retrieve invitation details
+        /// </summary>
+        [HttpGet("validate-invitation/{token}")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<object>>> ValidateInvitationToken(string token)
+        {
+            try
+            {
+                _logger.LogInformation("Validating invitation token: {Token}", token);
+
+                var invitation = await _context.OfficerInvitations
+                    .FirstOrDefaultAsync(i => i.InvitationToken == token);
+
+                if (invitation == null)
+                {
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { IsValid = false },
+                        Message = "Invalid invitation token"
+                    });
+                }
+
+                // Check if already accepted
+                if (invitation.Status == InvitationStatus.Accepted)
+                {
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { IsValid = false },
+                        Message = "This invitation has already been accepted"
+                    });
+                }
+
+                // Check if expired
+                if (invitation.ExpiresAt <= DateTime.UtcNow)
+                {
+                    invitation.Status = InvitationStatus.Expired;
+                    await _context.SaveChangesAsync();
+
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { IsValid = false },
+                        Message = "This invitation has expired"
+                    });
+                }
+
+                // Check if revoked
+                if (invitation.Status == InvitationStatus.Revoked)
+                {
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { IsValid = false },
+                        Message = "This invitation has been revoked"
+                    });
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = new 
+                    { 
+                        IsValid = true,
+                        Name = invitation.Name,
+                        Email = invitation.Email,
+                        Role = invitation.Role.ToString()
+                    },
+                    Message = "Valid invitation"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validating invitation token");
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Error validating invitation"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Set password for invited officer and create their account
+        /// </summary>
+        [HttpPost("set-password")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<object>>> SetPassword([FromBody] SetPasswordRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("Setting password for invitation token: {Token}", request.Token);
+
+                // Validate password match
+                if (request.Password != request.ConfirmPassword)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Passwords do not match"
+                    });
+                }
+
+                // Validate password strength
+                if (!IsPasswordStrong(request.Password))
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Password must be at least 8 characters long and contain uppercase, lowercase, number and special character"
+                    });
+                }
+
+                // Find invitation
+                var invitation = await _context.OfficerInvitations
+                    .FirstOrDefaultAsync(i => i.InvitationToken == request.Token);
+
+                if (invitation == null)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Invalid invitation token"
+                    });
+                }
+
+                // Check if already accepted
+                if (invitation.Status == InvitationStatus.Accepted)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This invitation has already been accepted"
+                    });
+                }
+
+                // Check if expired
+                if (invitation.ExpiresAt <= DateTime.UtcNow)
+                {
+                    invitation.Status = InvitationStatus.Expired;
+                    await _context.SaveChangesAsync();
+
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This invitation has expired"
+                    });
+                }
+
+                // Check if revoked
+                if (invitation.Status == InvitationStatus.Revoked)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "This invitation has been revoked"
+                    });
+                }
+
+                // Hash password
+                var passwordHash = _passwordHasher.HashPassword(request.Password);
+
+                // Create officer account
+                var officer = new Officer
+                {
+                    Name = invitation.Name,
+                    Email = invitation.Email,
+                    PhoneNumber = invitation.PhoneNumber,
+                    Role = invitation.Role,
+                    EmployeeId = invitation.EmployeeId,
+                    Department = invitation.Department ?? string.Empty,
+                    PasswordHash = passwordHash,
+                    MustChangePassword = false, // Password already set
+                    PasswordChangedAt = DateTime.UtcNow,
+                    IsActive = true,
+                    InvitationId = invitation.Id,
+                    CreatedBy = invitation.Email,
+                    CreatedDate = DateTime.UtcNow
+                };
+
+                _context.Officers.Add(officer);
+                
+                // Save officer first to get the ID
+                await _context.SaveChangesAsync();
+
+                // Now update invitation status with the officer ID
+                invitation.Status = InvitationStatus.Accepted;
+                invitation.AcceptedAt = DateTime.UtcNow;
+                invitation.OfficerId = officer.Id;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Officer account created successfully for {Email} with ID {OfficerId}", 
+                    officer.Email, officer.Id);
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = new 
+                    { 
+                        UserId = officer.Id,
+                        Email = officer.Email,
+                        Message = "Password set successfully! You can now login."
+                    },
+                    Message = "Password set successfully! You can now login to PMCRMS."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting password");
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error setting password"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Validate password strength
+        /// </summary>
+        private bool IsPasswordStrong(string password)
+        {
+            if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
+                return false;
+
+            var hasUpperCase = password.Any(char.IsUpper);
+            var hasLowerCase = password.Any(char.IsLower);
+            var hasDigit = password.Any(char.IsDigit);
+            var hasSpecialChar = password.Any(c => "!@#$%^&*(),.?\":{}|<>".Contains(c));
+
+            return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
+        }
+
+        #endregion
     }
 }
 
 public class GenerateHashRequest
 {
     public string Password { get; set; } = string.Empty;
+}
+
+public class SetPasswordRequest
+{
+    public string Token { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string ConfirmPassword { get; set; } = string.Empty;
 }

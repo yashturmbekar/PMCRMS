@@ -52,13 +52,6 @@ namespace PMCRMS.API.DTOs
         public List<int> NotificationIds { get; set; } = new List<int>();
     }
 
-    public class NotificationSummaryDto
-    {
-        public int TotalUnread { get; set; }
-        public int TotalNotifications { get; set; }
-        public List<NotificationDto> RecentNotifications { get; set; } = new List<NotificationDto>();
-    }
-
     public class EmailNotificationRequest
     {
         [Required]

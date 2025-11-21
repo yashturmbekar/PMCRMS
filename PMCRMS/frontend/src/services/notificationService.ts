@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import type { Notification, NotificationSummary, ApiResponse } from "../types";
+import type { Notification, ApiResponse } from "../types";
 
 class NotificationService {
   async getNotifications(
@@ -13,24 +13,6 @@ class NotificationService {
       });
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      throw error;
-    }
-  }
-
-  async getNotificationSummary(): Promise<ApiResponse<NotificationSummary>> {
-    try {
-      return await apiClient.get("/notifications/summary");
-    } catch (error) {
-      console.error("Error fetching notification summary:", error);
-      throw error;
-    }
-  }
-
-  async getUnreadCount(): Promise<ApiResponse<number>> {
-    try {
-      return await apiClient.get("/notifications/unread-count");
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
       throw error;
     }
   }

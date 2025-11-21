@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Lock, Eye, EyeOff, CheckCircle2, XCircle } from "lucide-react";
 import apiClient from "../../services/apiClient";
 import type { ApiResponse } from "../../types";
+import { FullScreenLoader } from "../../components";
 
 interface SetPasswordRequest {
   token: string;
@@ -180,35 +181,44 @@ const SetPasswordPage: React.FC = () => {
   // Loading state while validating token
   if (validatingToken) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        }}
-      >
-        <div className="pmc-card" style={{ maxWidth: "450px", width: "100%" }}>
-          <div style={{ padding: "32px", textAlign: "center" }}>
-            <div
-              className="spinner"
-              style={{
-                margin: "0 auto 16px",
-                width: "40px",
-                height: "40px",
-                border: "3px solid #e5e7eb",
-                borderTop: "3px solid #667eea",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite",
-              }}
-            />
-            <p style={{ color: "#6b7280", fontSize: "16px" }}>
-              Validating invitation...
-            </p>
+      <>
+        <FullScreenLoader
+          message="Validating Invitation..."
+          submessage="Please wait while we verify your invitation link"
+        />
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          }}
+        >
+          <div
+            className="pmc-card"
+            style={{ maxWidth: "450px", width: "100%" }}
+          >
+            <div style={{ padding: "32px", textAlign: "center" }}>
+              <div
+                className="spinner"
+                style={{
+                  margin: "0 auto 16px",
+                  width: "40px",
+                  height: "40px",
+                  border: "3px solid #e5e7eb",
+                  borderTop: "3px solid #667eea",
+                  borderRadius: "50%",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+              <p style={{ color: "#6b7280", fontSize: "16px" }}>
+                Validating invitation...
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -326,294 +336,310 @@ const SetPasswordPage: React.FC = () => {
 
   // Main form
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "20px",
-      }}
-    >
-      <div className="pmc-card" style={{ maxWidth: "500px", width: "100%" }}>
-        {/* Header */}
-        <div
-          style={{
-            padding: "32px 32px 24px",
-            textAlign: "center",
-            borderBottom: "1px solid #e5e7eb",
-          }}
-        >
-          <img
-            src="/pmc-logo.png"
-            alt="PMC Logo"
-            style={{ height: "60px", marginBottom: "16px" }}
-          />
-          <h2
+    <>
+      {loading && (
+        <FullScreenLoader
+          message="Setting Password..."
+          submessage="Please wait while we set up your account"
+        />
+      )}
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          padding: "20px",
+        }}
+      >
+        <div className="pmc-card" style={{ maxWidth: "500px", width: "100%" }}>
+          {/* Header */}
+          <div
             style={{
-              fontSize: "24px",
-              fontWeight: "700",
-              color: "#111827",
-              marginBottom: "8px",
+              padding: "32px 32px 24px",
+              textAlign: "center",
+              borderBottom: "1px solid #e5e7eb",
             }}
           >
-            Set Your Password
-          </h2>
-          {invitationDetails && (
-            <div
+            <img
+              src="/pmc-logo.png"
+              alt="PMC Logo"
+              style={{ height: "60px", marginBottom: "16px" }}
+            />
+            <h2
               style={{
-                marginTop: "16px",
-                padding: "12px",
-                backgroundColor: "#f3f4f6",
-                borderRadius: "8px",
-                textAlign: "left",
-              }}
-            >
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "#374151",
-                  marginBottom: "4px",
-                }}
-              >
-                <strong>Name:</strong> {invitationDetails.name}
-              </p>
-              <p
-                style={{
-                  fontSize: "14px",
-                  color: "#374151",
-                  marginBottom: "4px",
-                }}
-              >
-                <strong>Email:</strong> {invitationDetails.email}
-              </p>
-              <p
-                style={{ fontSize: "14px", color: "#374151", marginBottom: 0 }}
-              >
-                <strong>Role:</strong> {formatRole(invitationDetails.role)}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: "32px" }}>
-          {/* Error Message */}
-          {error && (
-            <div
-              style={{
-                padding: "12px",
-                backgroundColor: "#fee2e2",
-                border: "1px solid #fecaca",
-                borderRadius: "6px",
-                color: "#991b1b",
-                fontSize: "14px",
-                marginBottom: "20px",
-              }}
-            >
-              {error}
-            </div>
-          )}
-
-          {/* Password Field */}
-          <div style={{ marginBottom: "20px" }}>
-            <label
-              style={{
-                display: "block",
+                fontSize: "24px",
+                fontWeight: "700",
+                color: "#111827",
                 marginBottom: "8px",
-                fontWeight: "600",
-                color: "#374151",
-                fontSize: "14px",
               }}
             >
-              Password *
-            </label>
-            <div style={{ position: "relative" }}>
-              <Lock
+              Set Your Password
+            </h2>
+            {invitationDetails && (
+              <div
                 style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#9ca3af",
-                  width: "18px",
-                  height: "18px",
-                }}
-              />
-              <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Enter your password"
-                style={{
-                  width: "100%",
-                  padding: "12px 40px 12px 40px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute",
-                  right: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px",
-                  color: "#9ca3af",
+                  marginTop: "16px",
+                  padding: "12px",
+                  backgroundColor: "#f3f4f6",
+                  borderRadius: "8px",
+                  textAlign: "left",
                 }}
               >
-                {showPassword ? (
-                  <EyeOff style={{ width: "18px", height: "18px" }} />
-                ) : (
-                  <Eye style={{ width: "18px", height: "18px" }} />
-                )}
-              </button>
-            </div>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#374151",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <strong>Name:</strong> {invitationDetails.name}
+                </p>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#374151",
+                    marginBottom: "4px",
+                  }}
+                >
+                  <strong>Email:</strong> {invitationDetails.email}
+                </p>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#374151",
+                    marginBottom: 0,
+                  }}
+                >
+                  <strong>Role:</strong> {formatRole(invitationDetails.role)}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Confirm Password Field */}
-          <div style={{ marginBottom: "24px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "8px",
-                fontWeight: "600",
-                color: "#374151",
-                fontSize: "14px",
-              }}
-            >
-              Confirm Password *
-            </label>
-            <div style={{ position: "relative" }}>
-              <Lock
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ padding: "32px" }}>
+            {/* Error Message */}
+            {error && (
+              <div
                 style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "#9ca3af",
-                  width: "18px",
-                  height: "18px",
-                }}
-              />
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                placeholder="Confirm your password"
-                style={{
-                  width: "100%",
-                  padding: "12px 40px 12px 40px",
-                  border: "1px solid #d1d5db",
+                  padding: "12px",
+                  backgroundColor: "#fee2e2",
+                  border: "1px solid #fecaca",
                   borderRadius: "6px",
+                  color: "#991b1b",
                   fontSize: "14px",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={{
-                  position: "absolute",
-                  right: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: "4px",
-                  color: "#9ca3af",
+                  marginBottom: "20px",
                 }}
               >
-                {showConfirmPassword ? (
-                  <EyeOff style={{ width: "18px", height: "18px" }} />
-                ) : (
-                  <Eye style={{ width: "18px", height: "18px" }} />
-                )}
-              </button>
-            </div>
-          </div>
+                {error}
+              </div>
+            )}
 
-          {/* Password Requirements */}
-          {password && (
-            <div
-              style={{
-                padding: "16px",
-                backgroundColor: "#f9fafb",
-                borderRadius: "8px",
-                marginBottom: "24px",
-              }}
-            >
-              <p
+            {/* Password Field */}
+            <div style={{ marginBottom: "20px" }}>
+              <label
                 style={{
-                  fontSize: "13px",
+                  display: "block",
+                  marginBottom: "8px",
                   fontWeight: "600",
                   color: "#374151",
-                  marginBottom: "12px",
+                  fontSize: "14px",
                 }}
               >
-                Password Requirements:
-              </p>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: "8px" }}
-              >
-                <PasswordRequirement
-                  met={passwordStrength.hasMinLength}
-                  text="At least 8 characters"
+                Password *
+              </label>
+              <div style={{ position: "relative" }}>
+                <Lock
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#9ca3af",
+                    width: "18px",
+                    height: "18px",
+                  }}
                 />
-                <PasswordRequirement
-                  met={passwordStrength.hasUpperCase}
-                  text="One uppercase letter"
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="Enter your password"
+                  style={{
+                    width: "100%",
+                    padding: "12px 40px 12px 40px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  }}
                 />
-                <PasswordRequirement
-                  met={passwordStrength.hasLowerCase}
-                  text="One lowercase letter"
-                />
-                <PasswordRequirement
-                  met={passwordStrength.hasNumber}
-                  text="One number"
-                />
-                <PasswordRequirement
-                  met={passwordStrength.hasSpecialChar}
-                  text="One special character"
-                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px",
+                    color: "#9ca3af",
+                  }}
+                >
+                  {showPassword ? (
+                    <EyeOff style={{ width: "18px", height: "18px" }} />
+                  ) : (
+                    <Eye style={{ width: "18px", height: "18px" }} />
+                  )}
+                </button>
               </div>
             </div>
-          )}
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="pmc-button pmc-button-primary"
-            style={{ width: "100%", padding: "12px" }}
+            {/* Confirm Password Field */}
+            <div style={{ marginBottom: "24px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "8px",
+                  fontWeight: "600",
+                  color: "#374151",
+                  fontSize: "14px",
+                }}
+              >
+                Confirm Password *
+              </label>
+              <div style={{ position: "relative" }}>
+                <Lock
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "#9ca3af",
+                    width: "18px",
+                    height: "18px",
+                  }}
+                />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="Confirm your password"
+                  style={{
+                    width: "100%",
+                    padding: "12px 40px 12px 40px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px",
+                    color: "#9ca3af",
+                  }}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff style={{ width: "18px", height: "18px" }} />
+                  ) : (
+                    <Eye style={{ width: "18px", height: "18px" }} />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Password Requirements */}
+            {password && (
+              <div
+                style={{
+                  padding: "16px",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "8px",
+                  marginBottom: "24px",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: "600",
+                    color: "#374151",
+                    marginBottom: "12px",
+                  }}
+                >
+                  Password Requirements:
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                  }}
+                >
+                  <PasswordRequirement
+                    met={passwordStrength.hasMinLength}
+                    text="At least 8 characters"
+                  />
+                  <PasswordRequirement
+                    met={passwordStrength.hasUpperCase}
+                    text="One uppercase letter"
+                  />
+                  <PasswordRequirement
+                    met={passwordStrength.hasLowerCase}
+                    text="One lowercase letter"
+                  />
+                  <PasswordRequirement
+                    met={passwordStrength.hasNumber}
+                    text="One number"
+                  />
+                  <PasswordRequirement
+                    met={passwordStrength.hasSpecialChar}
+                    text="One special character"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="pmc-button pmc-button-primary"
+              style={{ width: "100%", padding: "12px" }}
+            >
+              {loading ? "Setting Password..." : "Set Password & Continue"}
+            </button>
+          </form>
+
+          {/* Footer */}
+          <div
+            style={{
+              padding: "16px",
+              textAlign: "center",
+              borderTop: "1px solid #e5e7eb",
+              fontSize: "14px",
+              color: "#6b7280",
+            }}
           >
-            {loading ? "Setting Password..." : "Set Password & Continue"}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <div
-          style={{
-            padding: "16px",
-            textAlign: "center",
-            borderTop: "1px solid #e5e7eb",
-            fontSize: "14px",
-            color: "#6b7280",
-          }}
-        >
-          © {new Date().getFullYear()} Pune Municipal Corporation
+            © {new Date().getFullYear()} Pune Municipal Corporation
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

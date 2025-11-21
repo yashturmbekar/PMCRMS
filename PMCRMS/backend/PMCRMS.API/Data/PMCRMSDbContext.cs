@@ -65,7 +65,7 @@ namespace PMCRMS.API.Data
             // Configure Officer entity
             modelBuilder.Entity<Officer>(entity =>
             {
-                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => e.Email); // Not unique - officers can share emails
                 entity.HasIndex(e => e.EmployeeId).IsUnique();
                 entity.Property(e => e.Role).HasConversion<int>();
             });

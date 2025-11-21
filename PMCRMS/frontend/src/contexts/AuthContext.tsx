@@ -18,6 +18,7 @@ export interface AuthContextType {
   verifyOtp: (data: OtpVerificationRequest) => Promise<AuthResponse>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<User>;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,6 +119,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshUser = (): void => {
+    try {
+      const currentUser = apiService.getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+      }
+    } catch (error) {
+      console.error("Refresh user error:", error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
@@ -128,6 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     verifyOtp,
     logout,
     updateProfile,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

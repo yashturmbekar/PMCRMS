@@ -12,6 +12,9 @@ export interface User {
   createdBy: string;
   updatedDate?: string;
   updatedBy?: string;
+  mustChangePassword?: boolean;
+  department?: string;
+  employeeId?: string;
 }
 
 export type UserRole =
@@ -373,12 +376,6 @@ export const NotificationPriorities = {
   High: 2,
   Urgent: 3,
 };
-
-export interface NotificationSummary {
-  totalUnread: number;
-  totalNotifications: number;
-  recentNotifications: Notification[];
-}
 
 export interface CreateNotificationRequest {
   userId: number;
