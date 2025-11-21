@@ -4,17 +4,7 @@ import {
   adminService,
   type AdminDashboardStats,
 } from "../../services/adminService";
-import {
-  Users,
-  FileText,
-  CheckCircle,
-  XCircle,
-  Clock,
-  DollarSign,
-  UserCog,
-  Mail,
-  Eye,
-} from "lucide-react";
+import { FileText, CheckCircle, XCircle, Clock, Eye } from "lucide-react";
 import { PageLoader } from "../../components";
 import { parseLocalDateTime } from "../../utils/dateUtils";
 

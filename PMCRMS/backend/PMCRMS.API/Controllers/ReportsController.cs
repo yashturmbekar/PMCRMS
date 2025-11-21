@@ -65,14 +65,19 @@ namespace PMCRMS.API.Controllers
                     p.inProgressCount
                 }).ToList();
 
-                var response = new
+                var data = new
                 {
                     positions = positions.OrderBy(p => p.positionType).ToList(),
                     totalPositions = positions.Count,
                     totalApplications = positions.Sum(p => p.totalApplications)
                 };
 
-                return Ok(response);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Position summaries retrieved successfully",
+                    Data = data
+                });
             }
             catch (Exception ex)
             {
@@ -116,7 +121,7 @@ namespace PMCRMS.API.Controllers
                     .OrderByDescending(s => s.applicationCount)
                     .ToList();
 
-                var response = new
+                var data = new
                 {
                     positionType = positionType,
                     positionName = FormatPositionName(positionType),
@@ -125,7 +130,12 @@ namespace PMCRMS.API.Controllers
                     totalApplications = applications.Count
                 };
 
-                return Ok(response);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Stage summaries retrieved successfully",
+                    Data = data
+                });
             }
             catch (Exception ex)
             {
@@ -210,7 +220,7 @@ namespace PMCRMS.API.Controllers
                     daysSinceCreation = (DateTime.UtcNow - a.CreatedDate).Days
                 }).ToList();
 
-                var response = new
+                var data = new
                 {
                     positionType = positionType,
                     positionName = FormatPositionName(positionType),
@@ -226,7 +236,12 @@ namespace PMCRMS.API.Controllers
                     }
                 };
 
-                return Ok(response);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Applications retrieved successfully",
+                    Data = data
+                });
             }
             catch (Exception ex)
             {
