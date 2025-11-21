@@ -131,13 +131,49 @@ const ViewPositionApplication: React.FC = () => {
     return "AE"; // Default
   };
 
-  const backPath = isAdminView
-    ? "/admin/reports"
-    : isJEOfficer
-    ? "/je-dashboard"
-    : isClerkOfficer
-    ? "/clerk-dashboard"
-    : "/dashboard";
+  // Get navigation state for maintaining breadcrumb
+  const navigationState = location.state as {
+    from?: string;
+    positionType?: string;
+    stageName?: string;
+    stageDisplayName?: string;
+  } | null;
+
+  // Construct back path based on where we came from
+  const getBackPath = () => {
+    if (isAdminView && navigationState?.from === "reports") {
+      // Maintain drill-down state by going back to reports page with state
+      return "/admin/reports";
+    }
+    if (isAdminView) return "/admin/reports";
+    if (isJEOfficer) return "/je-dashboard";
+    if (isClerkOfficer) return "/clerk-dashboard";
+    return "/dashboard";
+  };
+
+  const backPath = getBackPath();
+
+  // Function to handle back navigation with state
+  const handleBackNavigation = () => {
+    if (
+      isAdminView &&
+      navigationState?.from === "reports" &&
+      navigationState?.positionType &&
+      navigationState?.stageName
+    ) {
+      // Navigate back with drill-down state to restore the stage view
+      navigate(backPath, {
+        state: {
+          restoreDrillDown: true,
+          positionType: navigationState.positionType,
+          stageName: navigationState.stageName,
+          stageDisplayName: navigationState.stageDisplayName,
+        },
+      });
+    } else {
+      navigate(backPath);
+    }
+  };
 
   // Determine the correct dashboard route based on officer role
   const getDashboardRoute = () => {
@@ -1039,7 +1075,7 @@ const ViewPositionApplication: React.FC = () => {
             <h2 style={{ marginTop: "16px", color: "#dc2626" }}>Error</h2>
             <p style={{ color: "#64748b", marginTop: "8px" }}>{error}</p>
             <button
-              onClick={() => navigate(backPath)}
+              onClick={handleBackNavigation}
               className="pmc-button pmc-button-primary"
               style={{
                 marginTop: "24px",
@@ -1090,7 +1126,7 @@ const ViewPositionApplication: React.FC = () => {
         {/* Header */}
         <div style={{ marginBottom: "24px" }}>
           <button
-            onClick={() => navigate(backPath)}
+            onClick={handleBackNavigation}
             className="pmc-button pmc-button-secondary pmc-button-sm"
             style={{
               marginBottom: "16px",

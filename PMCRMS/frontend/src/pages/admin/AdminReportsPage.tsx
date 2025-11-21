@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   BarChart3,
   AlertCircle,
@@ -35,6 +35,7 @@ interface DrillDownState {
 
 const AdminReportsPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // State for drill-down navigation
   const [drillDownState, setDrillDownState] = useState<DrillDownState>({
@@ -66,6 +67,60 @@ const AdminReportsPage: React.FC = () => {
   useEffect(() => {
     loadPositions();
   }, []);
+
+  // Handle drill-down restoration from navigation state
+  useEffect(() => {
+    const navigationState = location.state as {
+      restoreDrillDown?: boolean;
+      positionType?: string;
+      stageName?: string;
+      stageDisplayName?: string;
+    } | null;
+
+    if (
+      navigationState?.restoreDrillDown &&
+      navigationState.positionType &&
+      navigationState.stageName &&
+      navigationState.stageDisplayName
+    ) {
+      // Find the position name from the positions array
+      const position = positions.find(
+        (p) => p.positionType === navigationState.positionType
+      );
+
+      if (position) {
+        // First drill down to stages view
+        setDrillDownState({
+          view: "stages",
+          selectedPosition: {
+            type: navigationState.positionType,
+            name: position.positionName,
+          },
+        });
+
+        // Load stages for this position
+        loadStages(navigationState.positionType).then(() => {
+          // Then drill down to applications view
+          setDrillDownState({
+            view: "applications",
+            selectedPosition: {
+              type: navigationState.positionType!,
+              name: position.positionName,
+            },
+            selectedStage: {
+              name: navigationState.stageName!,
+              displayName: navigationState.stageDisplayName!,
+            },
+          });
+          setCurrentPage(1);
+          setSearchTerm("");
+        });
+      }
+
+      // Clear the navigation state to prevent re-triggering
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location.state, positions, navigate, location.pathname]);
 
   const loadPositions = async () => {
     try {
